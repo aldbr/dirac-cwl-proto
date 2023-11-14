@@ -1,3 +1,4 @@
+import logging
 import subprocess
 import typer
 import yaml
@@ -12,135 +13,140 @@ app = typer.Typer()
 
 
 @app.command()
-def run(cwl_file: str , sub_cwl_files: List[str] | None = None):
+def run(workflow_path: str = typer.Argument(..., help="Path to the CWL file"),):
     """
     Run a workflow from end to end (production/transformation/job).
     """
     # Generate a production
+    console.print(f"[blue]:information_source:[/blue] [bold]Creating new production based on {workflow_path}...[/bold]")
     try:
-        production = create_production(cwl_file=cwl_file, sub_cwl_files=sub_cwl_files)
-    except ValueError as ex:
+        production = create_production(workflow_path)
+    except (ValueError, RuntimeError) as ex:
         console.print(f"[red]:heavy_multiplication_x:[/red] {ex}")
         return typer.Exit(code=1)
+    console.print(f"[green]:heavy_check_mark:[/green] [bold]Production created: ready to start.[/bold]")
 
-    
-    console.print(f"[green]:heavy_check_mark:[/green] Production created: ready to start.")
-
-    # 
-    # production.start()
-    # for transformation_id in production.transformation_ids:
-    #     trans.start()
-    # 
-    # based on input plugins submit jobs    
-
-
-    # Execute each split CWL workflow
-    #transformation_ids = []
-    #for sub_cwl_file in sub_cwl_files:
-    #    transformation_ids.append(transformation.create(sub_cwl_file))
-
-    #for transformation_id in transformation_ids:
-    #    job.create(transformation_id)
+    # Start the production
+    console.print(f"[blue]:information_source:[/blue] [bold]Starting the production...[/bold]")
+    start_production(production) 
+    console.print(f"[green]:heavy_check_mark:[/green] [bold]Production started.[/bold]")
 
 # -----------------------------------------------------------------------------
 # Pydantic models
 # -----------------------------------------------------------------------------
 
 class JobModel(BaseModel):
-    cwl_file: str
+    workflow_path: str
 
-    @validator('cwl_file')
-    def validate_main_cwl_file(cls, cwl_file):
-        if not validate_cwl(cwl_file):
-            raise ValueError(f"Invalid CWL file: {cwl_file}")
-        return cwl_file
+    @validator('workflow_path')
+    def validate_cwl_workflow(cls, workflow_path):
+        if not validate_cwl(workflow_path):
+            raise ValueError(f"Invalid CWL file: {workflow_path}")
+        return workflow_path
 
 
 class TransformationModel(BaseModel):
-    cwl_file: str
-    jobs: List[JobModel] | None
+    workflow_path: str
+    jobs: List[JobModel] | None = None
 
-    @validator('cwl_file')
-    def validate_main_cwl_file(cls, cwl_file):
-        if not validate_cwl(cwl_file):
-            raise ValueError(f"Invalid CWL file: {cwl_file}")
-        return cwl_file
+    @validator('workflow_path')
+    def validate_cwl_workflow(cls, workflow_path):
+        if not validate_cwl(workflow_path):
+            raise ValueError(f"Invalid CWL file: {workflow_path}")
+        return workflow_path
 
 
 class ProductionModel(BaseModel):
-    cwl_file: str
-    sub_cwl_files: List[str] | None
-    transformations: List[TransformationModel] | None
+    workflow_path: str
+    transformations: List[TransformationModel] | None = None
 
-    @validator('cwl_file')
-    def validate_main_cwl_file(cls, cwl_file):
-        if not validate_cwl(cwl_file):
-            raise ValueError(f"Invalid CWL file: {cwl_file}")
-        return cwl_file
-
-    @validator('sub_cwl_files')
-    def validate_sub_cwl_files(cls, sub_cwl_files):
-        if not sub_cwl_files:
-            return sub_cwl_files
-
-        for file in sub_cwl_files:
-            if not validate_cwl(file):
-                raise ValueError(f"Invalid CWL file: {file}")
-        return sub_cwl_files
+    @validator('workflow_path')
+    def validate_cwl_workflow(cls, workflow_path):
+        if not validate_cwl(workflow_path):
+            raise ValueError(f"Invalid CWL file: {workflow_path}")
+        return workflow_path
 
 # -----------------------------------------------------------------------------
 # Production management
 # -----------------------------------------------------------------------------
 
-def create_production(cwl_file: str , sub_cwl_files: List[str] | None = None):
-    """Validate a CWL workflow and subworkflows and create transformations from them."""
+def create_production(workflow_path: str) -> ProductionModel:
+    """Validate a CWL workflow and create transformations from them."""
 
-    production = ProductionModel(cwl_file=cwl_file, sub_cwl_files=sub_cwl_files)
+    logging.info(f"Creating production from workflow: {workflow_path}...")
+    # Validate the main workflow
+    production = ProductionModel(workflow_path=workflow_path)
 
-    with open(cwl_file, 'r') as file:
+    # Get the workflow content
+    with open(workflow_path, 'r') as file:
         workflow = yaml.safe_load(file)
 
     if 'steps' not in workflow:
-        console.print("[red]:heavy_multiplication_x:[/red]No steps found in the workflow.", style="bold")
-        return
+        raise RuntimeError("No steps found in the workflow.")
 
-    output_dir = Path(cwl_file).parent / "split_steps"
+    logging.info(f"Production validated and created!")
+    logging.info(f"Creating transformations from workflow: {workflow_path}...")
+
+    # Create a directory to store the subworkflows
+    output_dir = Path(workflow_path).parent / "subworkflows"
     output_dir.mkdir(exist_ok=True)
 
+    # Create a subworkflow and a transformation for each step
+    transformations = []
     for step_name, step_content in workflow['steps'].items():
-        create_cwl_file(step_name, step_content['run'], output_dir)
-    
+        subworkflow = _create_subworkflow(step_name, step_content['run'], output_dir)
+        transformations.append(TransformationModel(workflow_path=subworkflow.as_posix()))
+
+    production.transformations = transformations
     return production
 
-
-def create_cwl_file(step_name: str, step_content: str, output_dir: str):
-    """Creates a CWL file for a given step."""
-    file_name = f"{step_name}.cwl"
-    with open(output_dir / file_name, 'w') as file:
+def _create_subworkflow(step_name: str, step_content: str, output_dir: str) -> Path:
+    """Create a CWL file for a given step."""
+    file_name = output_dir / f"{step_name}.cwl"
+    
+    # Add the cwlVersion to the step
+    step_content["cwlVersion"] = "v1.2"
+    
+    # Write the step to a file
+    with open(file_name, 'w') as file:
         yaml.dump(step_content, file)
-    console.print(f"[green]Created[/green] [bold]{file_name}[/bold]")
+    return file_name
+
+def start_production(production: ProductionModel):
+    """Start a production."""
+    logging.info(f"Starting transformations")
+    for transformation in production.transformations:
+        start_transformation(transformation)
 
 # -----------------------------------------------------------------------------
 # Transformation management
 # -----------------------------------------------------------------------------
 
+def create_transformation(workflow_path: str):
+    """Validate a CWL workflow."""
+    transformation = TransformationModel(workflow_path=workflow_path)
+    return transformation
 
+
+def start_transformation(transformation: TransformationModel):
+    """Start a transformation."""
+    # Should probably be done as a thread
+    logging.info(f"Submit jobs")
+    submit_job(transformation.workflow_path)
 
 # -----------------------------------------------------------------------------
 # Job management
 # -----------------------------------------------------------------------------
 
-
-
-def submit_job(cwl_file: str):
+def submit_job(workflow_path: str):
     """
     Executes a given CWL workflow using cwltool.
     """
-    job = JobModel(cwl_file)
+    job = JobModel(workflow_path=workflow_path)
 
     try:
-        console.print(f"Executing workflow: [yellow]{cwl_file}[/yellow]")
-        result = subprocess.run(["cwltool", cwl_file], capture_output=True, text=True)
+        console.print(f"Executing workflow: [yellow]{workflow_path}[/yellow]")
+        result = subprocess.run(["cwltool", workflow_path], capture_output=True, text=True)
 
         if result.returncode == 0:
             console.print(f"[green]:heavy_check_mark: Workflow executed successfully.[/green]")

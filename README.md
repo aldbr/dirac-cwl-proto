@@ -19,15 +19,12 @@ pip install -e .
 
 ## Usage
 
+```bash
+dirac-cwl <workflow_path>
+```
+
 This package contains modules and tools to manage CWL workflows:
 
 - `src/modules`: Python scripts for individual steps in workflows.
 - `src/cli`: Utility scripts for managing and executing CWL workflows.
 - `workflows`: CWL workflow definitions.
-
-
-## Design choices
-
-> Why do I need to define sub-workflows when defining a production?
-
-`CWL` does not support sub-workflow definitions within the main workflow: [ref](https://www.commonwl.org/user_guide/topics/workflows.html#workflows)
