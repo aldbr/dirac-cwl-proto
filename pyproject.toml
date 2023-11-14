@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=42", "wheel", "setuptools_scm[toml]>=3.4"]
+build-backend = "setuptools.build_meta"
+
+# Enable setuptools_scm to compute the version number from the most recent tag
+# https://github.com/pypa/setuptools_scm/#pyprojecttoml-usage
+[tool.setuptools_scm]
+
+[tool.ruff]
+select = ["E", "F", "B", "I", "PLE"]
+ignore = ["B905", "B008", "B006"]
+line-length = 120
+src = ["src", "tests"]
+
+[tool.mypy]
+plugins = ["pydantic.mypy"]
+exclude = ["^tests/", "^build/"]
+allow_redefinition = true
+# strict = true
+enable_error_code = ["import", "attr-defined"]
+
+[tool.pytest.ini_options]
+addopts = ["-v", "--cov=diracx", "--cov-report=term-missing"]
+asyncio_mode = "auto"
