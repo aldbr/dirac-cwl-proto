@@ -1,7 +1,6 @@
 import typer
 from rich.console import Console
 from pathlib import Path
-import random
 
 app = typer.Typer()
 console = Console()

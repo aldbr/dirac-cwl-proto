@@ -1,20 +1,17 @@
-import cwltool
+import subprocess
 from rich.console import Console
-from cwltool.main import main as cwl_main
+from rich.text import Text
 
 console = Console()
 
 def validate_cwl(cwl_file: str):
     """Validates a CWL file."""
-    try:
-        result = cwl_main(["--validate", cwl_file])
-        if result == 0:
-            console.print(":heavy_check_mark: [green]Validation successful[/green]")
-            return True
-        else:
-            console.print(":x: [red]Validation failed[/red]")
-            return False
-    except Exception as e:
-        console.print(f":warning: [yellow]Validation error: {e}[/yellow]")
-        return False
+    result = subprocess.run(["cwltool", "--validate", cwl_file], capture_output=True, text=True)
+    if result.returncode == 0:
+        console.print(":heavy_check_mark: [green]Validation successful[/green]")
+        return True
+
+    error_text = Text.from_ansi(result.stderr)
+    console.print(f"[red]:heavy_multiplication_x:[/red] Validation failed\n{error_text}")
+    return False
 

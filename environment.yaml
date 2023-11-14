@@ -6,8 +6,9 @@ dependencies:
   - python>=3.10
   - pip
   - pip:
-      - typer
-      - rich
-      - pyyaml
       - cwltool
       - mypy
+      - pydantic
+      - pyyaml
+      - typer
+      - rich
