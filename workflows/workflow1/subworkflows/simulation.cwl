@@ -1,7 +1,7 @@
 class: Workflow
 cwlVersion: v1.2
 inputs:
-  parameters: string[]
+  simulation-config: File
 outputs:
   input_data_query:
     outputSource: resolve_input_data_query/input_data_query
@@ -28,17 +28,17 @@ steps:
           type: File
   simulate:
     in:
-      parameters: parameters
+      simulation_config: simulation-config
     out:
     - result_sim
     - input_data_query_parameters
     run:
       baseCommand:
       - python
-      - ../src/dirac_cwl_proto/modules/sim.py
+      - ../src/dirac_cwl_proto/modules/simulate.py
       class: CommandLineTool
       inputs:
-        parameters: string[]
+        simulation_config: File
       outputs:
         input_data_query_parameters:
           type: string[]

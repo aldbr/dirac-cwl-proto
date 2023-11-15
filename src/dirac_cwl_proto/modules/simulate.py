@@ -7,12 +7,13 @@ app = typer.Typer()
 console = Console()
 
 @app.command()
-def simulate(parameters: str = typer.Argument(..., help="Comma-separated list of parameters")):
-    params_list = parameters.split(',')
+def simulate(simulation_config: str = typer.Argument(..., help="Configuration file")):
+    with open(simulation_config) as file:
+        config = json.load(file)
 
     # Generate a random result for simulation
     result_sim = random.random()
-    input_data_query_param = random.choice(params_list)
+    input_data_query_param = random.randint(config["min-random"], config["max-random"])
 
     # Writing outputs to files
     with open('result_sim.txt', 'w') as file:

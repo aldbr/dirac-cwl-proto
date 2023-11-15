@@ -1,10 +1,15 @@
 cwlVersion: v1.2
 class: Workflow
+label: "My Analysis Workflow"
+doc: >
+  This workflow processes data through several steps including
+  simulation, data resolution, and processing. It's designed for
+  XYZ analysis.
 
 # Define the inputs for the workflow
 inputs:
-  parameters: string[]  # Parameters for the simulation step
-  input_data: File[]    # Input data files for the processing step
+  simulation-config: File  # Parameters for the simulation step
+  input_data: File[] # Input data files for the processing step
 
 # Define the outputs of the workflow
 outputs:
@@ -21,7 +26,7 @@ steps:
   # Simulation step
   simulation:
     in:
-      parameters: parameters
+      simulation-config: simulation-config
     out: [input_data_query]
     
     # Nested workflow for the simulation step
@@ -33,7 +38,7 @@ steps:
           ramMin: 2048
 
       inputs:
-        parameters: string[]
+        simulation-config: File
       
       outputs:
         input_data_query:
@@ -44,13 +49,13 @@ steps:
         # First part of the simulation: running the simulation script
         simulate:
           in:
-            parameters: parameters
+            simulation_config: simulation-config
           out: [result_sim, input_data_query_parameters]
           run:
             class: CommandLineTool
-            baseCommand: [python, ../src/dirac_cwl_proto/modules/sim.py]
+            baseCommand: [python, ../src/dirac_cwl_proto/modules/simulate.py]
             inputs:
-              parameters: string[]
+              simulation_config: File
             outputs:
               result_sim:
                 type: File
@@ -89,4 +94,4 @@ steps:
           type: File[]
           outputBinding:
             glob: "*"
-      baseCommand: [python, ../src/dirac_cwl_proto/modules/processing.py]
+      baseCommand: [python, ../src/dirac_cwl_proto/modules/process.py]

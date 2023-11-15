@@ -1,6 +1,6 @@
 baseCommand:
 - python
-- ../src/dirac_cwl_proto/modules/processing.py
+- ../src/dirac_cwl_proto/modules/process.py
 class: CommandLineTool
 cwlVersion: v1.2
 inputs:

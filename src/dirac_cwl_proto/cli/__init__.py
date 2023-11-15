@@ -5,6 +5,7 @@ import yaml
 
 from pathlib import Path
 from pydantic import BaseModel, validator
+from rich.text import Text
 from typing import List
 
 from .utils import validate_cwl, console
@@ -13,14 +14,17 @@ app = typer.Typer()
 
 
 @app.command()
-def run(workflow_path: str = typer.Argument(..., help="Path to the CWL file"),):
+def run(
+    workflow_path: str = typer.Argument(..., help="Path to the CWL file"),
+    metadata: str = typer.Option(None, help="Path to the metadata file"),
+):
     """
     Run a workflow from end to end (production/transformation/job).
     """
     # Generate a production
     console.print(f"[blue]:information_source:[/blue] [bold]Creating new production based on {workflow_path}...[/bold]")
     try:
-        production = create_production(workflow_path)
+        production = create_production(workflow_path, metadata)
     except (ValueError, RuntimeError) as ex:
         console.print(f"[red]:heavy_multiplication_x:[/red] {ex}")
         return typer.Exit(code=1)
@@ -70,7 +74,7 @@ class ProductionModel(BaseModel):
 # Production management
 # -----------------------------------------------------------------------------
 
-def create_production(workflow_path: str) -> ProductionModel:
+def create_production(workflow_path: str, metadata: str | None = None) -> ProductionModel:
     """Validate a CWL workflow and create transformations from them."""
 
     logging.info(f"Creating production from workflow: {workflow_path}...")
@@ -94,18 +98,18 @@ def create_production(workflow_path: str) -> ProductionModel:
     # Create a subworkflow and a transformation for each step
     transformations = []
     for step_name, step_content in workflow['steps'].items():
-        subworkflow = _create_subworkflow(step_name, step_content['run'], output_dir)
+        subworkflow = _create_subworkflow(step_name, step_content['run'], workflow["cwlVersion"], output_dir)
         transformations.append(TransformationModel(workflow_path=subworkflow.as_posix()))
 
     production.transformations = transformations
     return production
 
-def _create_subworkflow(step_name: str, step_content: str, output_dir: str) -> Path:
+def _create_subworkflow(step_name: str, step_content: str, cwl_version: str, output_dir: str) -> Path:
     """Create a CWL file for a given step."""
     file_name = output_dir / f"{step_name}.cwl"
     
     # Add the cwlVersion to the step
-    step_content["cwlVersion"] = "v1.2"
+    step_content["cwlVersion"] = cwl_version
     
     # Write the step to a file
     with open(file_name, 'w') as file:
@@ -151,7 +155,7 @@ def submit_job(workflow_path: str):
         if result.returncode == 0:
             console.print(f"[green]:heavy_check_mark: Workflow executed successfully.[/green]")
         else:
-            console.print(f":x: [red]Error in executing workflow:[/red] \n{result.stderr}")
+            console.print(f":x: [red]Error in executing workflow:[/red] \n{Text.from_ansi(result.stderr)}")
 
     except Exception as e:
         console.print(f":x: [red]Failed to execute workflow: {e}[/red]")
