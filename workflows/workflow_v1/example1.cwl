@@ -28,7 +28,7 @@ steps:
     in:
       simulation-config: simulation-config
     out: [input_data_query]
-    
+
     # Nested workflow for the simulation step
     run:
       class: Workflow
@@ -39,12 +39,12 @@ steps:
 
       inputs:
         simulation-config: File
-      
+
       outputs:
         input_data_query:
           type: File
           outputSource: resolve_input_data_query/input_data_query
-      
+
       steps:
         # First part of the simulation: running the simulation script
         simulate:

@@ -6,9 +6,13 @@ dependencies:
   - python>=3.10
   - pip
   - pip:
+      - cwl-utils
+      - cwlformat
       - cwltool
       - mypy
+      - pre-commit
       - pydantic
+      - pytest
       - pyyaml
       - typer
       - rich

@@ -20,7 +20,7 @@ pip install -e .
 ## Usage
 
 ```bash
-dirac-cwl <workflow_path>
+dirac-cwl <workflow_path> <input_path>
 ```
 
 This package contains modules and tools to manage CWL workflows:
