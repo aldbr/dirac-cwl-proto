@@ -9,6 +9,7 @@ dependencies:
       - cwl-utils
       - cwlformat
       - cwltool
+      - lbprodrun
       - mypy
       - pre-commit
       - pydantic
