@@ -33,7 +33,7 @@ def run_application(
     ),
     application_version: str = typer.Argument(..., help="Application version"),
     extra_packages: Optional[list[str]] = typer.Option(None, help="Extra packages"),
-    system_config: str = typer.Argument(..., help="System configuration"),
+    system_config: Optional[str] = typer.Option(None, help="System configuration"),
     event_timeout: int = typer.Option(3600, help="Event timeout"),
     number_of_processors: int = typer.Option(1, help="Number of processors"),
     nightly: Optional[str] = typer.Option(None, help="Nightly"),
@@ -44,7 +44,9 @@ def run_application(
     gaudi_extra_options: str = typer.Option(None, help="Gaudi extra options"),
     processing_pass: Optional[str] = typer.Option(None, help="Processing pass"),
     # Inputs
-    pool_xml_catalog_name: str = typer.Argument(..., help="Pool XML catalog name"),
+    pool_xml_catalog_name: Optional[str] = typer.Option(
+        None, help="Pool XML catalog name"
+    ),
     run_id: int = typer.Argument(..., help="Run ID"),  # Corresponds to production_id
     task_id: int = typer.Argument(..., help="Task ID"),  # Corresponds to prod_job_id
     inputs: Optional[list[str]] = typer.Option(None, help="Input data"),
@@ -86,6 +88,8 @@ def run_application(
         and online_conddb_tag
     ):
         raise typer.Exit("DDDB tag set, but shouldn't be!")
+    if application_name.value != ApplicationName.Gauss and not pool_xml_catalog_name:
+        raise typer.Exit("Pool XML catalog name is required")
 
     console.print("[bold blue]Getting parameters...[/bold blue]")
 
@@ -104,6 +108,9 @@ def run_application(
         console.print(
             f"[bold blue]Run number: {run_number_gauss} & Event number: {first_event_number_gauss}[/bold blue]"
         )
+
+    if not pool_xml_catalog_name:
+        pool_xml_catalog_name = "pool_xml_catalog.xml"
 
     if gaudi_options:
         console.print("[bold blue]Building Gaudi extra options...[/bold blue]")
@@ -349,7 +356,6 @@ def get_module_options(
 def build_prodconf_json(
     application_name: ApplicationName,
     application_version: str,
-    system_config: str,
     pool_xml_catalog_name: str,
     event_timeout: int,
     output_file_prefix: str,
@@ -357,6 +363,7 @@ def build_prodconf_json(
     run_number_gauss: int,
     first_event_number_gauss: int,
     output_types: list[str],
+    system_config: str | None,
     nightly: str | None,
     inputs: list[str] | None,
     extra_packages: list[str] | None,

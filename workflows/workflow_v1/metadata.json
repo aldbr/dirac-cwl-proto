@@ -1,7 +1,0 @@
-{
-    "input_sandbox_path": "input_sandbox",
-    "arguments": [
-        "--simulation-config",
-        "simulation_config.json"
-    ]
-}
