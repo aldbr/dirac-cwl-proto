@@ -29,7 +29,7 @@ class BasicMetadataModel(IMetadataModel):
         return output_path
 
 
-class LHCbMetadataModelV1(IMetadataModel):
+class LHCbMetadataModel(IMetadataModel):
     """LHCb metadata model version 1."""
 
     task_id: int

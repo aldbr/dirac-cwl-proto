@@ -16,7 +16,7 @@ from pydantic import BaseModel, PrivateAttr, ValidationError, model_validator, v
 from rich.console import Console
 from rich.text import Text
 
-from .metadata_models import BasicMetadataModel, IMetadataModel, LHCbMetadataModelV1
+from .metadata_models import BasicMetadataModel, IMetadataModel, LHCbMetadataModel
 
 app = typer.Typer()
 console = Console()
@@ -115,7 +115,7 @@ class CWLBaseModel(BaseModel):
         """Load the workflow and metadata files."""
         metadata_models = {
             "basic": BasicMetadataModel,
-            "lhcb": LHCbMetadataModelV1,
+            "lhcb": LHCbMetadataModel,
         }
         try:
             self.workflow = load_document_by_uri(self.workflow_path)

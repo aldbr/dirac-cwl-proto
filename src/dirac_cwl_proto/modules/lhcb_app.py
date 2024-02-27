@@ -4,21 +4,125 @@ import json
 import logging
 import re
 import shlex
+import shutil
 import subprocess
 from enum import Enum
+from pathlib import Path
 from typing import Optional
 
 import typer
 from LbProdRun.models import JobSpecV1
+from pydantic import BaseModel, model_validator
 from rich.console import Console
 
 
 class ApplicationName(str, Enum):
     Boole = "Boole"
+    Brunel = "Brunel"
     DaVinci = "DaVinci"
     Gauss = "Gauss"
     LHCb = "LHCb"  # Merge
     Moore = "Moore"
+
+
+class ApplicationConfiguration(BaseModel):
+    """Application configuration."""
+
+    name: ApplicationName
+    version: str
+    event_timeout: int = 3600
+    extra_packages: Optional[list[str]] = []
+    nightly: Optional[str] = None
+    number_of_processors: int = 1
+    system_config: str = "best"
+    use_prmon: bool = False
+
+
+class InputConfiguration(BaseModel):
+    """Input configuration."""
+
+    files: Optional[list[str]] = None
+    secondary_files: Optional[list[str]] = None
+    tck: Optional[str] = None
+    mc_tck: Optional[str] = None
+    pool_xml_catalog: str
+    run_number: Optional[int] = None
+    number_of_events: int = -1
+
+    # validate that tck and mc_tck are not both set
+    @model_validator(mode="after")
+    def tck_xor_mc_tck(self):
+        if self.tck and self.mc_tck:
+            raise ValueError("TCK set, but shouldn't be!")
+        return self
+
+
+class OutputConfiguration(BaseModel):
+    """Output configuration."""
+
+    types: list[str]
+    histogram: bool = False
+
+
+class OptionsConfiguration(BaseModel):
+    """Options configuration."""
+
+    options: list[str] | dict[str, str]
+    format: Optional[str] = None
+    gaudi_options: Optional[list[str]] = None
+    gaudi_extra_options: Optional[str] = None
+    processing_pass: Optional[str] = None
+
+
+class DBTagsConfiguration(BaseModel):
+    """DB tags configuration."""
+
+    dddb_tag: Optional[str] = None
+    online_ddb_tag: Optional[str] = None
+    conddb_tag: Optional[str] = None
+    online_conddb_tag: Optional[str] = None
+    dq_tag: Optional[str] = None
+
+    # validate that dddb_tag and online_ddb_tag are not both set
+    # validate that conddb_tag and online_conddb_tag are not both set
+    @model_validator(mode="after")
+    def db_tag_xor_online_ddb_tag(self):
+        if self.dddb_tag and self.dddb_tag != "online" and self.online_ddb_tag:
+            raise ValueError("DDDB tag set, but shouldn't be!")
+
+        if self.conddb_tag and self.conddb_tag != "online" and self.online_conddb_tag:
+            raise ValueError("Conddb tag set, but shouldn't be!")
+        return self
+
+
+class Configuration(BaseModel):
+    """Configuration."""
+
+    run_id: int
+    task_id: int
+    step_id: int
+    application: ApplicationConfiguration
+    input: InputConfiguration
+    output: OutputConfiguration
+    options: OptionsConfiguration
+    db_tags: DBTagsConfiguration
+
+    @model_validator(mode="after")
+    def gaudi_required_fields(self):
+        if self.application.name.value == ApplicationName.Gauss and not (
+            self.run_id and self.task_id and self.input.number_of_events
+        ):
+            raise ValueError(
+                "Simulation ID, Task ID and Number of Events are required for Gauss application"
+            )
+        if (
+            self.application.name.value != ApplicationName.Gauss
+            and not self.input.pool_xml_catalog
+        ):
+            raise ValueError("Pool XML catalog name is required")
+        if self.application.name != ApplicationName.Gauss and not self.input.files:
+            raise ValueError("Input data is required")
+        return self
 
 
 app = typer.Typer()
@@ -27,160 +131,110 @@ console = Console()
 
 @app.command()
 def run_application(
-    # Application
-    application_name: ApplicationName = typer.Argument(
-        ..., help="Application to execute"
+    app_config_path: str = typer.Argument(..., help="Application configuration"),
+    files: Optional[list[str]] = typer.Option(
+        None, help="List of input data files", show_default=False
     ),
-    application_version: str = typer.Argument(..., help="Application version"),
-    extra_packages: Optional[list[str]] = typer.Option(None, help="Extra packages"),
-    system_config: Optional[str] = typer.Option(None, help="System configuration"),
-    event_timeout: int = typer.Option(3600, help="Event timeout"),
-    number_of_processors: int = typer.Option(1, help="Number of processors"),
-    nightly: Optional[str] = typer.Option(None, help="Nightly"),
-    # Options
-    options: str = typer.Argument(..., help="Options"),
-    options_format: Optional[str] = typer.Option(None, help="Options format"),
-    gaudi_options: Optional[list[str]] = typer.Option(None, help="Gaudi options"),
-    gaudi_extra_options: str = typer.Option(None, help="Gaudi extra options"),
-    processing_pass: Optional[str] = typer.Option(None, help="Processing pass"),
-    # Inputs
-    pool_xml_catalog_name: Optional[str] = typer.Option(
-        None, help="Pool XML catalog name"
+    pool_xml_catalog: Optional[str] = typer.Option(
+        None, help="Pool XML catalog name", show_default=False
     ),
-    run_id: int = typer.Argument(..., help="Run ID"),  # Corresponds to production_id
-    task_id: int = typer.Argument(..., help="Task ID"),  # Corresponds to prod_job_id
-    inputs: Optional[list[str]] = typer.Option(None, help="Input data"),
-    tck: Optional[str] = typer.Option(None, help="TCK"),
-    mc_tck: Optional[str] = typer.Option(None, help="MC TCK"),
-    run_number: Optional[int] = typer.Option(None, help="Run number"),
-    # Outputs
-    output_types: list[str] = typer.Argument(..., help="Output types"),
-    histogram: bool = typer.Option(False, help="Histogram"),
-    # DB Tags
-    dddb_tag: Optional[str] = typer.Option(None, help="DDDB tag"),
-    online_ddb_tag: Optional[str] = typer.Option(None, help="Online DDB tag"),
-    conddb_tag: Optional[str] = typer.Option(None, help="CondDB tag"),
-    online_conddb_tag: Optional[str] = typer.Option(None, help="Online CondDB tag"),
-    dq_tag: Optional[str] = typer.Option(None, help="DQ tag"),
-    # Gauss specific options
-    number_of_events: int = typer.Option(-1, help="Number of events"),
-    use_prmon: bool = typer.Option(False, help="Use prmon"),
-    # Step ID
-    step_id: int = typer.Option(0, help="Step ID"),
+    secondary_files: Optional[list[str]] = typer.Option(
+        None,
+        help="List of input data files that should be present in the working directory during the execution",
+        show_default=False,
+    ),
 ):
     """
     LHCb application: generates a prodconf.json file and runs the application.
     """
-    if application_name.value == ApplicationName.Gauss and not (
-        run_id and task_id and number_of_events
-    ):
-        raise typer.Exit(
-            "Simulation ID, Task ID and Number of Events are required for Gauss application"
-        )
-    if application_name.value != ApplicationName.Gauss and not inputs:
-        raise typer.Exit("No MC, but no input data")
-    if tck and mc_tck:
-        raise typer.Exit("TCK set, but shouldn't be!")
-    if (
-        dddb_tag != "online"
-        and online_ddb_tag
-        or conddb_tag != "online"
-        and online_conddb_tag
-    ):
-        raise typer.Exit("DDDB tag set, but shouldn't be!")
-    if application_name.value != ApplicationName.Gauss and not pool_xml_catalog_name:
-        raise typer.Exit("Pool XML catalog name is required")
-
     console.print("[bold blue]Getting parameters...[/bold blue]")
 
-    # Get command options
-    command_options = get_command_options(options=options)
-    console.print(f"[bold blue]Command options: {command_options}[/bold blue]")
+    with open(app_config_path, "r") as f:
+        app_config = json.load(f)
+
+    # Override input files and pool_xml_catalog if provided
+    if files:
+        app_config["input"]["files"] = files
+    if pool_xml_catalog:
+        app_config["input"]["pool_xml_catalog"] = pool_xml_catalog
+    if secondary_files:
+        app_config["input"]["secondary_files"] = secondary_files
+
+    configuration = Configuration.model_validate(app_config)
+
+    # Check whether the execution needs hidden deps
+    if not install_dependencies(configuration.input.secondary_files):
+        console.print("[bold red]Failed to install dependencies[/bold red]")
+        raise typer.Exit(code=1)
 
     # Get run & event number for Gauss application
     run_number_gauss, first_event_number_gauss = get_run_event_numbers(
-        application_name,
-        run_id,
-        task_id,
-        number_of_events,
+        configuration.application.name,
+        configuration.run_id,
+        configuration.task_id,
+        configuration.input.number_of_events,
     )
     if run_number_gauss and first_event_number_gauss:
         console.print(
             f"[bold blue]Run number: {run_number_gauss} & Event number: {first_event_number_gauss}[/bold blue]"
         )
 
-    if not pool_xml_catalog_name:
-        pool_xml_catalog_name = "pool_xml_catalog.xml"
-
-    if gaudi_options:
+    if configuration.options.gaudi_options:
         console.print("[bold blue]Building Gaudi extra options...[/bold blue]")
         # Prepare standard project run time options
         generated_options = build_gaudi_extra_options(
-            gaudi_options=gaudi_options,
-            application_name=application_name,
-            number_of_events=number_of_events,
-            pool_xml_catalog_name=pool_xml_catalog_name,
+            gaudi_options=configuration.options.gaudi_options,
+            application_name=configuration.application.name,
+            number_of_events=configuration.input.number_of_events,
+            pool_xml_catalog=configuration.input.pool_xml_catalog,
             run_number=run_number_gauss,
             first_event_number=first_event_number_gauss,
-            inputs=inputs,
+            inputs=configuration.input.files,
         )
         # If not lbexec style
-        if isinstance(command_options, list):
-            command_options.append(generated_options)
+        if isinstance(configuration.options.options, list):
+            configuration.options.options.append(generated_options)
         console.print("[bold blue]Gaudi extra options generated![/bold blue]")
 
-    output_file_prefix = f"{application_name}_{run_id}_{task_id}_{step_id}"
+    output_file_prefix = (
+        f"{configuration.application.name.value}_"
+        f"{configuration.run_id}_"
+        f"{configuration.task_id}_"
+        f"{configuration.step_id}"
+    )
 
     console.print("[bold blue]Building prodconf.json file...[/bold blue]")
     prodconf_file = build_prodconf_json(
-        application_name=application_name,
-        application_version=application_version,
-        system_config=system_config,
-        pool_xml_catalog_name=pool_xml_catalog_name,
-        event_timeout=event_timeout,
+        configuration,
         output_file_prefix=output_file_prefix,
-        output_types=output_types,
-        number_of_processors=number_of_processors,
-        run_number_gauss=run_number_gauss,
-        first_event_number_gauss=first_event_number_gauss,
-        nightly=nightly,
-        inputs=inputs,
-        extra_packages=extra_packages,
-        command_options=command_options,
-        options_format=options_format,
-        gaudi_extra_options=gaudi_extra_options,
-        processing_pass=processing_pass,
-        run_number=run_number,
-        tck=tck,
-        mc_tck=mc_tck,
-        dddb_tag=dddb_tag,
-        online_ddb_tag=online_ddb_tag,
-        conddb_tag=conddb_tag,
-        online_conddb_tag=online_conddb_tag,
-        dq_tag=dq_tag,
-        number_of_events=number_of_events,
-        histogram=histogram,
+        first_event_number=first_event_number_gauss,
     )
-    console.print("[bold blue]prodconf.json file generated...[/bold blue]")
+    console.print(
+        f"[bold blue]prodconf.json file generated:\n{prodconf_file}[/bold blue]"
+    )
 
     console.print("[bold blue]Running lb-prod-run prodconf.json...[/bold blue]")
     try:
-        status_code = run_lbprodrun(
-            application_name=application_name,
-            output_file_prefix=output_file_prefix,
-            prodconf_file=prodconf_file,
-            use_prmon=use_prmon,
+        status_code, stdout, stderr = asyncio.get_event_loop().run_until_complete(
+            run_lbprodrun(
+                application_name=configuration.application.name,
+                output_file_prefix=output_file_prefix,
+                prodconf_file=prodconf_file,
+                use_prmon=configuration.application.use_prmon,
+            )
         )
     except RuntimeError as e:
         console.print(
-            f"[bold red]{application_name} {application_version} Error: {e}[/bold red]"
+            f"[bold red]{configuration.application.name} {configuration.application.version} Error: {e}[/bold red]"
         )
         raise typer.Exit(code=1) from e
 
     if status_code != 0:
-        raise typer.Exit(
-            f"{application_name} {application_version} failed with status {status_code}"
+        console.print(
+            f"[bold red]{configuration.application.name} {configuration.application.version} "
+            f"failed with status {status_code}: {stderr}[/bold red]"
         )
+        raise typer.Exit(code=status_code)
 
     console.print(
         f"[bold green]lb-prod-run finished with status {status_code}[/bold green]"
@@ -188,21 +242,27 @@ def run_application(
 
 
 # ------------------------------------------------------------------------------
+def install_dependencies(secondary_files):
+    """Install dependencies.
+    Basically check whether the files are present in the current working directory.
+    If not, copy them locally."""
+    if not secondary_files:
+        return True
 
+    for secondary_file in secondary_files:
+        secondary_file_path = Path(secondary_file)
+        if not secondary_file_path.is_file():
+            logging.error(f"File {secondary_file} does not exist")
+            return False
 
-def get_command_options(options: str) -> dict | list[str]:
-    """
-    Get the command options from the input string
-    """
-    command_options = []
-    # Resolve options files
-    if options.startswith("{"):
-        command_options = json.loads(options)
-        logging.info(f"Found lbexec style configuration: {command_options}")
-    else:
-        if options and options != "None":
-            command_options = options.split(";")
-    return command_options
+        # Already present in the current working directory
+        if Path(secondary_file_path.name).is_file():
+            continue
+
+        # Copy the file to the current working directory
+        logging.info(f"Copying {secondary_file} to the current working directory")
+        shutil.copy(secondary_file, ".")
+    return True
 
 
 def get_run_event_numbers(
@@ -230,7 +290,7 @@ def build_gaudi_extra_options(
     gaudi_options: list,
     application_name: ApplicationName,
     number_of_events: int,
-    pool_xml_catalog_name: str,
+    pool_xml_catalog: str,
     run_number: int | None,
     first_event_number: int | None,
     inputs: list[str] | None,
@@ -238,7 +298,7 @@ def build_gaudi_extra_options(
     """
     Build the Gaudi extra options
     """
-    input_data_options = get_data_options(inputs, pool_xml_catalog_name)
+    input_data_options = get_data_options(inputs, pool_xml_catalog)
     projectOpts = get_module_options(
         application_name=application_name,
         number_of_events=number_of_events,
@@ -255,7 +315,7 @@ def build_gaudi_extra_options(
     return generated_options_file
 
 
-def get_data_options(inputs: list[str] | None, pool_xml_catalog_name: str) -> list[str]:
+def get_data_options(inputs: list[str] | None, pool_xml_catalog: str) -> list[str]:
     """Given a list of input data and a specified input data type this function
     will return the correctly formatted EventSelector options for Gaudi
     applications specified by name.
@@ -269,7 +329,7 @@ def get_data_options(inputs: list[str] | None, pool_xml_catalog_name: str) -> li
         options.append(event_selector_options)
 
     pool_options = (
-        f"""\nFileCatalog().Catalogs= ["xmlcatalog_file:{pool_xml_catalog_name}"]\n"""
+        f"""\nFileCatalog().Catalogs= ["xmlcatalog_file:{pool_xml_catalog}"]\n"""
     )
     options.append(pool_options)
     return options
@@ -354,71 +414,50 @@ def get_module_options(
 
 
 def build_prodconf_json(
-    application_name: ApplicationName,
-    application_version: str,
-    pool_xml_catalog_name: str,
-    event_timeout: int,
+    configuration: Configuration,
     output_file_prefix: str,
-    number_of_processors: int,
-    run_number_gauss: int,
-    first_event_number_gauss: int,
-    output_types: list[str],
-    system_config: str | None,
-    nightly: str | None,
-    inputs: list[str] | None,
-    extra_packages: list[str] | None,
-    command_options: dict | list[str],
-    options_format: str | None,
-    gaudi_extra_options: str | None,
-    processing_pass: str | None,
-    run_number: int | None,
-    tck: str | None,
-    mc_tck: str | None,
-    dddb_tag: str | None,
-    online_ddb_tag: str | None,
-    conddb_tag: str | None,
-    online_conddb_tag: str | None,
-    dq_tag: str | None,
-    number_of_events: int | None,
-    histogram: bool = False,
+    computed_run_number: int | None = None,
+    first_event_number: int | None = None,
 ) -> str:
     """Build the prodconf.json file"""
-    histo_name = f"{output_file_prefix}.Hist.root"
-
     # application
     application = JobSpecV1.ReleaseApplication(
-        name=application_name,
-        version=application_version,
-        event_timeout=event_timeout,
-        number_of_processors=number_of_processors,
-        data_pkgs=extra_packages if extra_packages else [],
-        binary_tag=system_config
-        if system_config and system_config.lower() != "any"
-        else "best",
-        nightly=nightly if nightly else None,
+        name=configuration.application.name,
+        version=configuration.application.version,
+        event_timeout=configuration.application.event_timeout,
+        number_of_processors=configuration.application.number_of_processors,
+        data_pkgs=configuration.application.extra_packages,
+        binary_tag=configuration.application.system_config,
+        nightly=configuration.application.nightly,
     )
 
     # inputs
+    files = configuration.input.files
+    tck = configuration.input.tck
+    run_number = configuration.input.run_number
     inputs = JobSpecV1.Input(
-        files=[f"LFN:{sid}" for sid in inputs] if inputs else None,
+        files=files if files else None,
         xml_summary_file=f"summary_{output_file_prefix}.xml",
-        xml_file_catalog=pool_xml_catalog_name,
+        xml_file_catalog=configuration.input.pool_xml_catalog,
         run_number=run_number
         if run_number and run_number not in ("Unknown", "Multiple")
-        else run_number_gauss,
-        tck=tck if tck else mc_tck,
-        n_of_events=number_of_events,
-        first_event_number=first_event_number_gauss,
+        else computed_run_number,
+        tck=tck if tck else configuration.input.mc_tck,
+        n_of_events=configuration.input.number_of_events,
+        first_event_number=first_event_number,
     )
 
     # outputs
     outputs = JobSpecV1.Output(
         prefix=output_file_prefix,
-        types=output_types,
-        histogram_file=histo_name if histogram else None,
+        types=configuration.output.types,
+        histogram_file=f"{output_file_prefix}.Hist.root"
+        if configuration.output.histogram
+        else None,
     )
 
     # options
+    command_options = configuration.options.options
     if isinstance(command_options, dict):
         # This is an lbexec style application
         options = JobSpecV1.LbExecOptions(
@@ -430,20 +469,22 @@ def build_prodconf_json(
         # This is a legacy style application
         options = JobSpecV1.LegacyOptions(
             files=command_options,
-            format=options_format,
-            gaudi_extra_options=gaudi_extra_options,
-            processing_pass=processing_pass,
+            format=configuration.options.format,
+            gaudi_extra_options=configuration.options.gaudi_extra_options,
+            processing_pass=configuration.options.processing_pass,
         )
 
     # db_tags
+    dddb_tag = configuration.db_tags.dddb_tag
+    conddb_tag = configuration.db_tags.conddb_tag
     db_tags = JobSpecV1.DBTags(
-        dddb_tag=online_ddb_tag
+        dddb_tag=configuration.db_tags.online_ddb_tag
         if dddb_tag and dddb_tag.lower() == "online"
         else dddb_tag,
-        conddb_tag=online_conddb_tag
+        conddb_tag=configuration.db_tags.online_conddb_tag
         if conddb_tag and conddb_tag.lower() == "online"
         else conddb_tag,
-        dq_tag=dq_tag,
+        dq_tag=configuration.db_tags.dq_tag,
     )
 
     # Initialise the prodInfo object
@@ -456,6 +497,7 @@ def build_prodconf_json(
     )
     prod_info_dict = prod_info.model_dump()
     prod_info_dict["spec_version"] = 1
+    logging.info(f"prodConf content: {prod_info_dict}")
 
     # Write the prodconf.json file
     prodconf_file = f"prodConf_{output_file_prefix}.json"
@@ -467,30 +509,7 @@ def build_prodconf_json(
 # ------------------------------------------------------------------------------
 
 
-def run_lbprodrun(
-    application_name: ApplicationName,
-    output_file_prefix: str,
-    prodconf_file: str,
-    use_prmon: bool = False,
-):
-    """Invokes lb-prod-run (what you call after having setup the object)"""
-    returncode, stdout, stderr = asyncio.get_event_loop().run_until_complete(
-        run_app(
-            application_name=application_name,
-            output_file_prefix=output_file_prefix,
-            prodconf_file=prodconf_file,
-            use_prmon=use_prmon,
-        )
-    )
-    if returncode != 0:
-        logging.error(f"lb-run or its application exited with status {returncode}")
-        logging.error(stderr)
-        raise RuntimeError(f"Application exited with status {returncode}")
-
-    return (returncode, stdout, stderr)
-
-
-async def run_app(
+async def run_lbprodrun(
     application_name: ApplicationName,
     output_file_prefix: str,
     prodconf_file: str,
