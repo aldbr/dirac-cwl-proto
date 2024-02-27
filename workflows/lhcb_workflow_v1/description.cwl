@@ -12,6 +12,7 @@ inputs:
     type: string
   task-id:
     type: string
+  # Theoretically, the parameters of all the steps should be defined here, it would generate a lot of parameters
 
 # Define the outputs of the workflow
 outputs:

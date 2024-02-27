@@ -7,18 +7,19 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from threading import Lock
-from typing import Dict, List
 
 import typer
 import yaml
 from cwl_utils.parser import load_document_by_uri, save
 from cwl_utils.parser.cwl_v1_2 import CommandLineTool, File, Workflow, WorkflowStep
 from pydantic import BaseModel, PrivateAttr, ValidationError, model_validator, validator
+from rich.console import Console
 from rich.text import Text
 
-from .utils import console, dash_to_snake_case, snake_case_to_dash, validate_cwl
+from .metadata_models import BasicMetadataModel, IMetadataModel, LHCbMetadataModelV1
 
 app = typer.Typer()
+console = Console()
 
 
 @app.command()
@@ -26,6 +27,9 @@ def run(
     workflow_path: str = typer.Argument(..., help="Path to the CWL file"),
     metadata_path: str = typer.Argument(
         ..., help="Path to the file containing the metadata"
+    ),
+    metadata_type: str = typer.Argument(
+        ..., help="Type of metadata to use", case_sensitive=False
     ),
 ):
     """
@@ -47,7 +51,7 @@ def run(
         f"[blue]:information_source:[/blue] [bold]Creating new production based on {workflow_path}...[/bold]"
     )
     try:
-        production = create_production(workflow_path, metadata_path)
+        production = create_production(workflow_path, metadata_path, metadata_type)
     except (ValueError, RuntimeError) as ex:
         console.print(f"[red]:heavy_multiplication_x:[/red] {ex}")
         return typer.Exit(code=1)
@@ -72,14 +76,6 @@ def run(
 # -----------------------------------------------------------------------------
 
 
-class MetadataModel(BaseModel):
-    """Metadata for a transformation."""
-
-    max_random: int
-    min_random: int
-    input_data: List[Dict[str, str]] | None = None
-
-
 class CWLBaseModel(BaseModel):
     """Base class for CWL models."""
 
@@ -87,7 +83,8 @@ class CWLBaseModel(BaseModel):
     workflow: CommandLineTool | Workflow | None = None
 
     metadata_path: str
-    metadata: MetadataModel | None = None
+    metadata_type: str
+    metadata: IMetadataModel | None = None
 
     id: int | None = None
     _id_counter = 0  # Class variable to keep track of the last assigned ID
@@ -116,12 +113,17 @@ class CWLBaseModel(BaseModel):
     @model_validator(mode="after")
     def load_workflow_metadata(self):
         """Load the workflow and metadata files."""
+        metadata_models = {
+            "basic": BasicMetadataModel,
+            "lhcb": LHCbMetadataModelV1,
+        }
         try:
             self.workflow = load_document_by_uri(self.workflow_path)
 
             with open(self.metadata_path, "r") as file:
                 metadata = yaml.safe_load(file)
-            self.metadata = MetadataModel(
+            # Dynamically create a metadata model based on the metadata type
+            self.metadata = metadata_models[self.metadata_type](  # noqa
                 **{dash_to_snake_case(k): v for k, v in metadata.items()}
             )
         except Exception as e:
@@ -141,16 +143,16 @@ class JobModel(CWLBaseModel):
 class TransformationModel(CWLBaseModel):
     """A transformation is a step in a production."""
 
-    jobs: List[JobModel] | None = None
+    jobs: list[JobModel] | None = None
     # Needs to be set to True if the transformation is waiting
     # for an input from another transformation
-    external_inputs: Dict[str, str]
+    external_inputs: dict[str, str]
 
 
 class ProductionModel(CWLBaseModel):
     """A production is a set of transformations that are executed in parallel."""
 
-    transformations: List[TransformationModel] | None = None
+    transformations: list[TransformationModel] | None = None
 
 
 # -----------------------------------------------------------------------------
@@ -158,7 +160,9 @@ class ProductionModel(CWLBaseModel):
 # -----------------------------------------------------------------------------
 
 
-def create_production(workflow_path: str, metadata_path: str) -> ProductionModel:
+def create_production(
+    workflow_path: str, metadata_path: str, metadata_type: str
+) -> ProductionModel:
     """Validate a CWL workflow and create transformations from them.
 
     :param workflow_path: Path to the CWL workflow
@@ -170,10 +174,12 @@ def create_production(workflow_path: str, metadata_path: str) -> ProductionModel
     logging.info(f"Creating production from workflow: {workflow_path}...")
     # Validate the main workflow
     production = ProductionModel(
-        workflow_path=workflow_path, metadata_path=metadata_path
+        workflow_path=workflow_path,
+        metadata_path=metadata_path,
+        metadata_type=metadata_type,
     )
 
-    if not production.workflow.steps:
+    if not production.workflow or production.workflow.steps:
         raise RuntimeError("No steps found in the workflow.")
 
     logging.info("Production validated and created!")
@@ -187,7 +193,7 @@ def create_production(workflow_path: str, metadata_path: str) -> ProductionModel
         external_inputs = _get_external_inputs(step, production.workflow.steps)
 
         output_dir = Path(workflow_path).parent / "subworkflows" / step_name
-        output_dir.mkdir(exist_ok=True)
+        output_dir.mkdir(parents=True, exist_ok=True)
 
         # Write the step in the step directory
         subworkflow_dict = save(subworkflow)
@@ -204,6 +210,7 @@ def create_production(workflow_path: str, metadata_path: str) -> ProductionModel
             TransformationModel(
                 workflow_path=str(output_path),
                 metadata_path=str(transformation_metadata_path),
+                metadata_type=metadata_type,
                 external_inputs=external_inputs,
             )
         )
@@ -245,7 +252,7 @@ def _create_subworkflow(
     return new_workflow
 
 
-def _get_external_inputs(step: WorkflowStep, steps: List[WorkflowStep]) -> Dict:
+def _get_external_inputs(step: WorkflowStep, steps: list[WorkflowStep]) -> dict:
     """Get the external inputs of a step.
 
     :param step: The step to get the external inputs for
@@ -316,6 +323,9 @@ def start_transformation(transformation: TransformationModel) -> bool:
 
     :return: True if the transformation executed successfully, False otherwise
     """
+    if not transformation.metadata:
+        raise RuntimeError("Transformation metadata is not set.")
+
     # If there is an input data, wait for it to be available in the "bookkeeping"
     if transformation.external_inputs:
         while not (inputs := _get_inputs(transformation)):
@@ -332,36 +342,39 @@ def start_transformation(transformation: TransformationModel) -> bool:
         # Update the metadata with the input data
         metadata = transformation.metadata.model_dump()
         metadata.update({dash_to_snake_case(k): v for k, v in cwl_inputs.items()})
-        transformation.metadata = MetadataModel(**metadata)
-
         with open(transformation.metadata_path, "w") as file:
             yaml.dump({snake_case_to_dash(k): v for k, v in metadata.items()}, file)
 
+        transformation = TransformationModel(
+            workflow_path=transformation.workflow_path,
+            metadata_path=transformation.metadata_path,
+            metadata_type=transformation.metadata_type,
+            external_inputs=transformation.external_inputs,
+        )
+
     logging.info("Submitting jobs")
-    return submit_job(transformation.workflow_path, transformation.metadata_path)
+    return submit_job(
+        workflow_path=transformation.workflow_path,
+        metadata_path=transformation.metadata_path,
+        metadata_type=transformation.metadata_type,
+    )
 
 
-def _get_inputs(transformation: TransformationModel) -> Dict[str, List[str]] | None:
+def _get_inputs(transformation: TransformationModel) -> dict[str, list[str]] | None:
     """Get the input data from the "bookkeeping".
-
-    The input data is stored in the following format:
-    bookkeeping/max_random/min_random/result.sim
 
     :param transformation: The transformation that needs the input
 
     :return: The paths to the input data
     """
-    # Search for the max_random and min_random in the metadata
-    max_random = transformation.metadata.max_random
-    min_random = transformation.metadata.min_random
+    if not transformation.metadata:
+        raise RuntimeError("Transformation metadata is not set.")
 
     # Check if the input is available in the "bookkeeping"
     inputs = {}
     for metadata_name, expected_input in transformation.external_inputs.items():
         input_paths = glob.glob(
-            str(
-                Path("bookkeeping") / str(max_random) / str(min_random) / expected_input
-            )
+            str(transformation.metadata.get_bk_path() / expected_input)
         )
         if not input_paths:
             continue
@@ -374,7 +387,7 @@ def _get_inputs(transformation: TransformationModel) -> Dict[str, List[str]] | N
     return inputs
 
 
-def _is_ready(inputs: Dict[str, List[str]]) -> bool:
+def _is_ready(inputs: dict[str, list[str]]) -> bool:
     """Check if the input is ready.
 
     :param inputs: The input to check
@@ -389,17 +402,22 @@ def _is_ready(inputs: Dict[str, List[str]]) -> bool:
 # -----------------------------------------------------------------------------
 
 
-def submit_job(workflow_path: str, metadata_path: str) -> bool:
+def submit_job(workflow_path: str, metadata_path: str, metadata_type: str) -> bool:
     """
     Executes a given CWL workflow using cwltool.
     This is the equivalent of the DIRAC JobWrapper.
 
     :param workflow_path: Path to the CWL workflow
     :param metadata_path: Path to the metadata file
+    :param metadata_type: Type of metadata to use
 
     :return: True if the workflow executed successfully, False otherwise
     """
-    job = JobModel(workflow_path=workflow_path, metadata_path=metadata_path)
+    job = JobModel(
+        workflow_path=workflow_path,
+        metadata_path=metadata_path,
+        metadata_type=metadata_type,
+    )
 
     try:
         console.print(f"Executing workflow: [yellow]{workflow_path}[/yellow]")
@@ -413,10 +431,10 @@ def submit_job(workflow_path: str, metadata_path: str) -> bool:
             )
             return False
 
-        # Post process the output: store the sim in the "bookkeeping"
-        outputs = glob.glob("result.sim")
-        if outputs:
-            _store_sim_output(job, outputs[0])
+        # Post process the output: store the output in the "bookkeeping"
+        outputs = glob.glob("*.sim")
+        if outputs and job.metadata:
+            _store_output(job, outputs[0])
 
         console.print(
             "[green]:heavy_check_mark: Workflow executed successfully.[/green]"
@@ -428,27 +446,44 @@ def submit_job(workflow_path: str, metadata_path: str) -> bool:
         return False
 
 
-def _store_sim_output(job: JobModel, output: str):
-    """Store the output of a job in the bookkeeping.
-
-    The output is stored in the following format:
-    bookkeeping/max_random/min_random/job_id_result.sim
-
-    :param job: The job that produced the output
-    :param output: The path to the output file
-    """
-    # Search for the max_random and min_random in the inputs
-    max_random = job.metadata.max_random
-    min_random = job.metadata.min_random
-
+def _store_output(job: JobModel, output: str):
+    """Store the output in the "bookkeeping" directory."""
+    if not job.metadata:
+        raise RuntimeError("Job metadata is not set.")
     # Create the "bookkeeping" path
-    output_path = Path("bookkeeping") / str(max_random) / str(min_random)
-    output_path.mkdir(exist_ok=True, parents=True)
+    output_path = job.metadata.get_bk_path()
 
-    # Send the sim output to the "bookkeeping"
+    # Send the output to the "bookkeeping"
     bk_output = output_path / f"{job.id}_{output}"
     os.rename(output, bk_output)
     logging.info(f"Output stored in {bk_output}")
+
+
+# -----------------------------------------------------------------------------
+# Utils
+# -----------------------------------------------------------------------------
+
+
+def validate_cwl(cwl_file: str):
+    """Validates a CWL file."""
+    result = subprocess.run(
+        ["cwltool", "--validate", cwl_file], capture_output=True, text=True
+    )
+    if result.returncode == 0:
+        return True
+
+    logging.error(Text.from_ansi(result.stderr))
+    return False
+
+
+def dash_to_snake_case(name):
+    """Converts a string from dash-case to snake_case."""
+    return name.replace("-", "_")
+
+
+def snake_case_to_dash(name):
+    """Converts a string from snake_case to dash-case."""
+    return name.replace("_", "-")
 
 
 if __name__ == "__main__":
