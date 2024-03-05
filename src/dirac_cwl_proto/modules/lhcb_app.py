@@ -143,6 +143,8 @@ def run_application(
         help="List of input data files that should be present in the working directory during the execution",
         show_default=False,
     ),
+    run_id: Optional[int] = typer.Option(None, help="Simulation ID"),
+    task_id: Optional[int] = typer.Option(None, help="Task ID"),
 ):
     """
     LHCb application: generates a prodconf.json file and runs the application.
@@ -159,6 +161,10 @@ def run_application(
         app_config["input"]["pool_xml_catalog"] = pool_xml_catalog
     if secondary_files:
         app_config["input"]["secondary_files"] = secondary_files
+    if run_id:
+        app_config["run_id"] = run_id
+    if task_id:
+        app_config["task_id"] = task_id
 
     configuration = Configuration.model_validate(app_config)
 
