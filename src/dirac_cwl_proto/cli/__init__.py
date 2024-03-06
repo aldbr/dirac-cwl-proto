@@ -1,3 +1,6 @@
+"""
+CLI interface to run a CWL workflow from end to end (production/transformation/job).
+"""
 import glob
 import logging
 import os
@@ -7,14 +10,15 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from threading import Lock
+from typing import Any
 
 import typer
-import yaml
 from cwl_utils.parser import load_document_by_uri, save
 from cwl_utils.parser.cwl_v1_2 import CommandLineTool, File, Workflow, WorkflowStep
 from pydantic import BaseModel, PrivateAttr, ValidationError, model_validator, validator
 from rich.console import Console
 from rich.text import Text
+from ruamel.yaml import YAML
 
 from .metadata_models import BasicMetadataModel, IMetadataModel, LHCbMetadataModel
 
@@ -121,7 +125,7 @@ class CWLBaseModel(BaseModel):
             self.workflow = load_document_by_uri(self.workflow_path)
 
             with open(self.metadata_path, "r") as file:
-                metadata = yaml.safe_load(file)
+                metadata = YAML(typ="safe").load(file)
             # Dynamically create a metadata model based on the metadata type
             self.metadata = metadata_models[self.metadata_type](  # noqa
                 **{dash_to_snake_case(k): v for k, v in metadata.items()}
@@ -140,13 +144,18 @@ class JobModel(CWLBaseModel):
     pass
 
 
+class ExternalInputModel(BaseModel):
+    """An external input is a file that is produced by another transformation."""
+
+    path: str
+    class_: Any
+
+
 class TransformationModel(CWLBaseModel):
     """A transformation is a step in a production."""
 
     jobs: list[JobModel] | None = None
-    # Needs to be set to True if the transformation is waiting
-    # for an input from another transformation
-    external_inputs: dict[str, str]
+    external_inputs: dict[str, ExternalInputModel]
 
 
 class ProductionModel(CWLBaseModel):
@@ -179,7 +188,7 @@ def create_production(
         metadata_type=metadata_type,
     )
 
-    if not production.workflow or production.workflow.steps:
+    if not (production.workflow and production.workflow.steps):
         raise RuntimeError("No steps found in the workflow.")
 
     logging.info("Production validated and created!")
@@ -200,7 +209,7 @@ def create_production(
 
         output_path = output_dir / f"{step_name}.cwl"
         with open(output_path, "w") as file:
-            yaml.dump(subworkflow_dict, file)
+            YAML().dump(subworkflow_dict, file)
 
         # Copy the metadata in the step directory
         transformation_metadata_path = output_dir / "inputs.yml"
@@ -244,6 +253,7 @@ def _create_subworkflow(
         # Handle command line tools
         new_workflow = CommandLineTool(
             cwlVersion=cwlVersion,
+            arguments=step.run.arguments,
             baseCommand=step.run.baseCommand,
             inputs=step.run.inputs,
             outputs=step.run.outputs,
@@ -252,7 +262,9 @@ def _create_subworkflow(
     return new_workflow
 
 
-def _get_external_inputs(step: WorkflowStep, steps: list[WorkflowStep]) -> dict:
+def _get_external_inputs(
+    step: WorkflowStep, steps: list[WorkflowStep]
+) -> dict[str, ExternalInputModel]:
     """Get the external inputs of a step.
 
     :param step: The step to get the external inputs for
@@ -263,7 +275,7 @@ def _get_external_inputs(step: WorkflowStep, steps: list[WorkflowStep]) -> dict:
     external_inputs = {}
     for input in step.in_:
         # Check if the input is connected to an output of another step
-        # input_.source is in the format:
+        # input.source is in the format:
         # - file://workflow.cwl#step_id/output_id: if the input is from another step
         # - file://workflow.cwl#output_id: if the input is from the main workflow
         external_input = input.source.split("#")[-1].split("/")
@@ -278,16 +290,23 @@ def _get_external_inputs(step: WorkflowStep, steps: list[WorkflowStep]) -> dict:
             # Theoretically, this should never happen as the workflow is validated
             continue
 
-        output_binding = next(
+        output = next(
             (
-                o.outputBinding.glob
+                o
                 for o in source_step.run.outputs
                 if o.id.split("/")[-1] == source_output_id
             ),
             None,
         )
+        if not output:
+            # Theoretically, this should never happen as the workflow is validated
+            continue
+
         input_id = input.id.split("#")[-1].split("/")[-1]
-        external_inputs[input_id] = output_binding
+        external_inputs[input_id] = ExternalInputModel(
+            path=output.outputBinding.glob,
+            class_=output.type_,
+        )
     return external_inputs
 
 
@@ -333,17 +352,14 @@ def start_transformation(transformation: TransformationModel) -> bool:
 
         # Update the input data in the metadata
         cwl_inputs = {}
-        for input_id, input_paths in inputs.items():
-            cwl_input_paths = []
-            for input_path in input_paths:
-                cwl_input_paths.append(File(path=input_path))
+        for input_id, cwl_input_paths in inputs.items():
             cwl_inputs[input_id] = save(cwl_input_paths, relative_uris=False)
 
         # Update the metadata with the input data
         metadata = transformation.metadata.model_dump()
         metadata.update({dash_to_snake_case(k): v for k, v in cwl_inputs.items()})
         with open(transformation.metadata_path, "w") as file:
-            yaml.dump({snake_case_to_dash(k): v for k, v in metadata.items()}, file)
+            YAML().dump({snake_case_to_dash(k): v for k, v in metadata.items()}, file)
 
         transformation = TransformationModel(
             workflow_path=transformation.workflow_path,
@@ -360,7 +376,7 @@ def start_transformation(transformation: TransformationModel) -> bool:
     )
 
 
-def _get_inputs(transformation: TransformationModel) -> dict[str, list[str]] | None:
+def _get_inputs(transformation: TransformationModel) -> dict | None:
     """Get the input data from the "bookkeeping".
 
     :param transformation: The transformation that needs the input
@@ -371,15 +387,24 @@ def _get_inputs(transformation: TransformationModel) -> dict[str, list[str]] | N
         raise RuntimeError("Transformation metadata is not set.")
 
     # Check if the input is available in the "bookkeeping"
-    inputs = {}
-    for metadata_name, expected_input in transformation.external_inputs.items():
+    inputs: dict = {}
+    for metadata_name, metadata_value in transformation.external_inputs.items():
         input_paths = glob.glob(
-            str(transformation.metadata.get_bk_path() / expected_input)
+            str(transformation.metadata.get_bk_path() / metadata_value.path)
         )
         if not input_paths:
+            inputs[metadata_name] = None
             continue
 
-        inputs[metadata_name] = [str(Path(path).resolve()) for path in input_paths]
+        # If the input should be a single file, return the path
+        if "File" in metadata_value.class_:
+            inputs[metadata_name] = File(path=str(Path(input_paths[0]).resolve()))
+            continue
+
+        # If the input should be an array of files, return the paths
+        inputs[metadata_name] = [
+            File(str(Path(path).resolve())) for path in input_paths
+        ]
 
     if not _is_ready(inputs):
         return None
@@ -435,6 +460,9 @@ def submit_job(workflow_path: str, metadata_path: str, metadata_type: str) -> bo
         outputs = glob.glob("*.sim")
         if outputs and job.metadata:
             _store_output(job, outputs[0])
+        outputs = glob.glob("pool_xml_catalog.xml")
+        if outputs and job.metadata:
+            _store_output(job, outputs[0])
 
         console.print(
             "[green]:heavy_check_mark: Workflow executed successfully.[/green]"
@@ -454,7 +482,7 @@ def _store_output(job: JobModel, output: str):
     output_path = job.metadata.get_bk_path()
 
     # Send the output to the "bookkeeping"
-    bk_output = output_path / f"{job.id}_{output}"
+    bk_output = output_path / f"{output}"
     os.rename(output, bk_output)
     logging.info(f"Output stored in {bk_output}")
 
