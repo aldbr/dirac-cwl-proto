@@ -397,7 +397,11 @@ def _get_inputs(transformation: TransformationModel) -> dict | None:
             continue
 
         # If the input should be a single file, return the path
-        if "File" in metadata_value.class_:
+        if (
+            isinstance(metadata_value.class_, str) and metadata_value.class_ == "File"
+        ) or (
+            isinstance(metadata_value.class_, list) and "File" in metadata_value.class_
+        ):
             inputs[metadata_name] = File(path=str(Path(input_paths[0]).resolve()))
             continue
 
