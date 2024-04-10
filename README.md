@@ -35,3 +35,10 @@ This package contains modules and tools to manage CWL workflows:
 - `src/modules`: Python scripts for individual steps in workflows.
 - `src/cli`: Utility scripts for managing and executing CWL workflows.
 - `workflows`: CWL workflow definitions.
+
+To use the workflows and inputs directly with `cwltool`, you need to add the `modules` directory to the `$PATH`:
+
+```bash
+export PATH=$PATH:</path/to/dirac-cwl-proto/src/dirac_cwl_proto/modules>
+cwltool <workflow_path> <inputs>
+```
