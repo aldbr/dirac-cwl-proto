@@ -20,7 +20,12 @@ from rich.console import Console
 from rich.text import Text
 from ruamel.yaml import YAML
 
-from .metadata_models import BasicMetadataModel, IMetadataModel, LHCbMetadataModel
+from .metadata_models import (
+    BasicMetadataModel,
+    IMetadataModel,
+    LHCbMetadataModel,
+    MacobacMetadataModel,
+)
 
 app = typer.Typer()
 console = Console()
@@ -119,6 +124,7 @@ class CWLBaseModel(BaseModel):
         """Load the workflow and metadata files."""
         metadata_models = {
             "basic": BasicMetadataModel,
+            "macobac": MacobacMetadataModel,
             "lhcb": LHCbMetadataModel,
         }
         try:
@@ -126,6 +132,14 @@ class CWLBaseModel(BaseModel):
 
             with open(self.metadata_path, "r") as file:
                 metadata = YAML(typ="safe").load(file)
+
+            # Adapt the metadata to the expected format if needed
+            for key, value in metadata.items():
+                if isinstance(value, dict) and (
+                    value["class"] == "File" or value["class"] == "Directory"
+                ):
+                    metadata[key] = value["path"]
+
             # Dynamically create a metadata model based on the metadata type
             self.metadata = metadata_models[self.metadata_type](  # noqa
                 **{dash_to_snake_case(k): v for k, v in metadata.items()}

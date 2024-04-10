@@ -29,6 +29,17 @@ class BasicMetadataModel(IMetadataModel):
         return output_path
 
 
+class MacobacMetadataModel(IMetadataModel):
+    """Very basic metadata model."""
+
+    configuration: Path
+    input_data: list[dict[str, str]] | None = None
+
+    def get_bk_path(self) -> Path:
+        """Get the bk path."""
+        return Path("bookkeeping")
+
+
 class LHCbMetadataModel(IMetadataModel):
     """LHCb metadata model version 1."""
 

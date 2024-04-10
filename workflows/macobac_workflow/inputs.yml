@@ -1,0 +1,5 @@
+log-level: INFO
+# You need to change the path to the configuration file: it should be an absolute path.
+configuration:
+    class: File
+    path: ./calculate_macobac.yaml
