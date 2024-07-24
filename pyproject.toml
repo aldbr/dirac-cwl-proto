@@ -20,5 +20,5 @@ allow_redefinition = true
 enable_error_code = ["import", "attr-defined"]
 
 [tool.pytest.ini_options]
-addopts = ["-v", "--cov=diracx", "--cov-report=term-missing"]
+addopts = ["-v"]
 asyncio_mode = "auto"

@@ -25,6 +25,7 @@ from .metadata_models import (
     IMetadataModel,
     LHCbMetadataModel,
     MacobacMetadataModel,
+    MandelBrotMetadataModel,
 )
 
 app = typer.Typer()
@@ -74,10 +75,10 @@ def run(
     )
     if not start_production(production):
         console.print(
-            "[red]:heavy_multiplication_x:[/red] [bold]Failed to start production.[/bold]"
+            "[red]:heavy_multiplication_x:[/red] [bold]Failed to run production.[/bold]"
         )
         return typer.Exit(code=1)
-    console.print("[green]:heavy_check_mark:[/green] [bold]Production started.[/bold]")
+    console.print("[green]:heavy_check_mark:[/green] [bold]Production done.[/bold]")
 
 
 # -----------------------------------------------------------------------------
@@ -126,6 +127,7 @@ class CWLBaseModel(BaseModel):
             "basic": BasicMetadataModel,
             "macobac": MacobacMetadataModel,
             "lhcb": LHCbMetadataModel,
+            "mandelbrot": MandelBrotMetadataModel,
         }
         try:
             self.workflow = load_document_by_uri(self.workflow_path)
@@ -316,11 +318,45 @@ def _get_external_inputs(
             # Theoretically, this should never happen as the workflow is validated
             continue
 
-        input_id = input.id.split("#")[-1].split("/")[-1]
-        external_inputs[input_id] = ExternalInputModel(
-            path=output.outputBinding.glob,
-            class_=output.type_,
-        )
+        if source_step.run.class_ == "CommandLineTool":
+            input_id = input.id.split("#")[-1].split("/")[-1]
+            external_inputs[input_id] = ExternalInputModel(
+                path=output.outputBinding.glob, class_=output.type_
+            )
+        else:
+            _, subsource_output_id = output.outputSource.split("#")
+            subsource_step_id = os.path.dirname(subsource_output_id)
+
+            # If the source step is a workflow, the output is available in one of the substeps of source_step
+            subsource_step = next(
+                (
+                    s
+                    for s in source_step.run.steps
+                    if s.id.split("#")[-1] == subsource_step_id
+                ),
+                None,
+            )
+            if not subsource_step:
+                # Theoretically, this should never happen as the workflow is validated
+                continue
+
+            subsource_step_output = next(
+                (
+                    o
+                    for o in subsource_step.run.outputs
+                    if o.id.split("/")[-1] == os.path.basename(subsource_output_id)
+                ),
+                None,
+            )
+            if not subsource_step_output:
+                # Theoretically, this should never happen as the workflow is validated
+                continue
+
+            input_id = input.id.split("#")[-1].split("/")[-1]
+            external_inputs[input_id] = ExternalInputModel(
+                path=subsource_step_output.outputBinding.glob,
+                class_=subsource_step_output.type_,
+            )
     return external_inputs
 
 
@@ -404,7 +440,9 @@ def _get_inputs(transformation: TransformationModel) -> dict | None:
     inputs: dict = {}
     for metadata_name, metadata_value in transformation.external_inputs.items():
         input_paths = glob.glob(
-            str(transformation.metadata.get_bk_path() / metadata_value.path)
+            str(
+                transformation.metadata.get_bk_path(metadata_name) / metadata_value.path
+            )
         )
         if not input_paths:
             inputs[metadata_name] = None
@@ -474,13 +512,7 @@ def submit_job(workflow_path: str, metadata_path: str, metadata_type: str) -> bo
             )
             return False
 
-        # Post process the output: store the output in the "bookkeeping"
-        outputs = glob.glob("*.sim")
-        if outputs and job.metadata:
-            _store_output(job, outputs[0])
-        outputs = glob.glob("pool_xml_catalog.xml")
-        if outputs and job.metadata:
-            _store_output(job, outputs[0])
+        job.metadata.post_process()
 
         console.print(
             "[green]:heavy_check_mark: Workflow executed successfully.[/green]"
@@ -490,19 +522,6 @@ def submit_job(workflow_path: str, metadata_path: str, metadata_type: str) -> bo
     except Exception as e:
         console.print(f":x: [red]Failed to execute workflow: {e}[/red]")
         return False
-
-
-def _store_output(job: JobModel, output: str):
-    """Store the output in the "bookkeeping" directory."""
-    if not job.metadata:
-        raise RuntimeError("Job metadata is not set.")
-    # Create the "bookkeeping" path
-    output_path = job.metadata.get_bk_path()
-
-    # Send the output to the "bookkeeping"
-    bk_output = output_path / f"{output}"
-    os.rename(output, bk_output)
-    logging.info(f"Output stored in {bk_output}")
 
 
 # -----------------------------------------------------------------------------

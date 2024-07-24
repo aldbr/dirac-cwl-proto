@@ -2,7 +2,7 @@ cwlVersion: v1.2
 class: Workflow
 label: "Macobac Workflow"
 doc: >
-  This workflow is composed of two independent steps that can be executed in parallel.
+  This workflow is composed of two independent CommandLineTool steps that can be executed in parallel.
 
 # Define the inputs of the workflow
 inputs:

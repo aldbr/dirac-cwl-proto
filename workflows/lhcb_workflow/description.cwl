@@ -3,8 +3,8 @@ class: Workflow
 label: "LHCb MC workflow"
 doc: >
   This workflow is composed of 2 main steps that should generate 2 types of jobs:
-  * MCSimulation: Gauss execution
-  * MCReconstruction: Boole, Moore, Brunel and DaVinci executions based on Gauss outputs
+  * MCSimulation (CommandLineTool): Gauss execution
+  * MCReconstruction (Workflow): Boole, Moore, Brunel and DaVinci executions based on Gauss outputs
 
 # Define the inputs of the workflow
 inputs:

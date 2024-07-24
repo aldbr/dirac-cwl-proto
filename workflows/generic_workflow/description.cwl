@@ -2,9 +2,9 @@ cwlVersion: v1.2
 class: Workflow
 label: "My Analysis Workflow"
 doc: >
-  This workflow processes data through several steps including
-  simulation, data resolution, and processing. It's designed for
-  XYZ analysis.
+  This workflow processes data through 2 CommandLineTool steps:
+  - simulation: generate some data
+  - processing: use the generated data to produce some results
 
 # Define the inputs of the workflow
 inputs:
