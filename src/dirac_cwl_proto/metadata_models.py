@@ -49,9 +49,11 @@ class BasicMetadataModel(IMetadataModel):
     def post_process(self) -> bool:
         """Post process the outputs of a job."""
         outputs = glob.glob("*.sim")
-        if not outputs:
-            return False
-        self._store_output("sim", outputs[0])
+        if outputs:
+            self._store_output("sim", outputs[0])
+        outputs = glob.glob("output.dst")
+        if outputs:
+            self._store_output("result", outputs[0])
         return True
 
 

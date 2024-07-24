@@ -3,7 +3,7 @@ import shutil
 import pytest
 from typer.testing import CliRunner
 
-from dirac_cwl_proto.cli import app
+from dirac_cwl_proto import app
 
 
 @pytest.fixture()
@@ -30,5 +30,7 @@ def cli_runner():
 def test_run_success(cli_runner, cwl_file, inputs, metadata_model):
     shutil.rmtree("bookkeeping", ignore_errors=True)
 
-    result = cli_runner.invoke(app, [cwl_file, inputs, metadata_model])
+    result = cli_runner.invoke(
+        app, ["production", "submit", cwl_file, inputs, metadata_model]
+    )
     assert "Workflow executed successfully" in result.stdout

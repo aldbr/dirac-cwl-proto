@@ -71,5 +71,5 @@ steps:
         results:
           type: File[]
           outputBinding:
-            glob: "*"
+            glob: "output.dst"
       baseCommand: [generic_process.py]

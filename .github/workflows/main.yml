@@ -25,21 +25,18 @@ jobs:
         with:
           environment-name: test-env
           create-args: >-
-            python=3.11
+            python=3.12
             mypy
             pip
           init-shell: bash
           post-cleanup: 'all'
       - name: Set up environment
         run: |
-          pip install pytest-github-actions-annotate-failures
+          pip install .
       - name: Run mypy
         run: |
-          mypy /src
+          mypy src
       - name: Run pytest
         run: |
-          cd
           pip install .[testing]
-          pytest --cov-report=xml:coverage.xml --junitxml=report.xml
-      - name: Upload coverage report
-        uses: codecov/codecov-action@v4.5.0
+          pytest

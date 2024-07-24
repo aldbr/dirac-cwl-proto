@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Optional
 
 import typer
-from LbProdRun.models import JobSpecV1
+from LbProdRun.models import JobSpecV1  # type: ignore
 from pydantic import BaseModel, model_validator
 from rich.console import Console
 

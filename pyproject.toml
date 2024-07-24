@@ -2,8 +2,44 @@
 requires = ["setuptools>=42", "wheel", "setuptools_scm[toml]>=3.4"]
 build-backend = "setuptools.build_meta"
 
-# Enable setuptools_scm to compute the version number from the most recent tag
-# https://github.com/pypa/setuptools_scm/#pyprojecttoml-usage
+[project]
+name = "dirac_cwl_proto"
+version = "0.1.0"
+description = "Prototype of CWL used as a production/job workflow language"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {file = "LICENSE"}
+authors = [
+    { name="DIRAC consortium" }
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering",
+    "Topic :: System :: Distributed Computing"
+]
+dependencies = [
+    "cwl-utils",
+    "cwlformat",
+    "cwltool",
+    "lbprodrun",
+    "mypy",
+    "pydantic",
+    "pyyaml",
+    "typer",
+    "rich",
+    "ruamel.yaml"
+]
+
+[project.optional-dependencies]
+testing = ["pytest>=6"]
+
+[project.scripts]
+dirac-cwl = "dirac_cwl_proto:app"
+
 [tool.setuptools_scm]
 
 [tool.ruff]
@@ -16,7 +52,6 @@ src = ["src", "tests"]
 plugins = ["pydantic.mypy"]
 exclude = ["^tests/", "^build/"]
 allow_redefinition = true
-# strict = true
 enable_error_code = ["import", "attr-defined"]
 
 [tool.pytest.ini_options]
