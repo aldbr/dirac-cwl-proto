@@ -7,7 +7,7 @@ name = "dirac_cwl_proto"
 version = "0.1.0"
 description = "Prototype of CWL used as a production/job workflow language"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 license = {file = "LICENSE"}
 authors = [
     { name="DIRAC consortium" }
@@ -17,7 +17,7 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Topic :: Scientific/Engineering",
     "Topic :: System :: Distributed Computing"
 ]
@@ -39,6 +39,10 @@ testing = ["pytest>=6"]
 
 [project.scripts]
 dirac-cwl = "dirac_cwl_proto:app"
+generic-simulate = "dirac_cwl_proto.modules.generic_simulate:app"
+generic-process = "dirac_cwl_proto.modules.generic_process:app"
+calculate-macobac = "dirac_cwl_proto.modules.calculate_macobac:app"
+lhcb-app = "dirac_cwl_proto.modules.lhcb_app:app"
 
 [tool.setuptools_scm]
 

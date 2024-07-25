@@ -45,10 +45,6 @@ def run(
     - Start the transformations
     - Start the jobs
     """
-    # Add the modules directory to the PATH
-    modules_path = Path(__file__).resolve().parent.parent / "modules"
-    os.environ["PATH"] += os.pathsep + str(modules_path)
-
     # Generate a production
     console.print(
         f"[blue]:information_source:[/blue] [bold]Creating new production based on {workflow_path}...[/bold]"

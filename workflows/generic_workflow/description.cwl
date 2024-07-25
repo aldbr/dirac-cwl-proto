@@ -48,7 +48,7 @@ steps:
           type: File[]
           outputBinding:
             glob: "*result.sim"
-      baseCommand: [generic_simulate.py]
+      baseCommand: [generic-simulate]
 
   # Processing step
   processing:
@@ -72,4 +72,4 @@ steps:
           type: File[]
           outputBinding:
             glob: "output.dst"
-      baseCommand: [generic_process.py]
+      baseCommand: [generic-process]

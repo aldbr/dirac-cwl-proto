@@ -42,7 +42,7 @@ steps:
     out: [sim, pool_xml_catalog, others]
     run:
       class: CommandLineTool
-      baseCommand: [lhcb_app.py]
+      baseCommand: [lhcb-app]
 
       requirements:
         InitialWorkDirRequirement:
@@ -180,7 +180,7 @@ steps:
           out: [digi, others]
           run:
             class: CommandLineTool
-            baseCommand: [lhcb_app.py]
+            baseCommand: [lhcb-app]
 
             requirements:
               InitialWorkDirRequirement:
@@ -257,7 +257,7 @@ steps:
           out: [digi, others]
           run:
             class: CommandLineTool
-            baseCommand: [lhcb_app.py]
+            baseCommand: [lhcb-app]
 
             requirements:
               InitialWorkDirRequirement:
@@ -335,7 +335,7 @@ steps:
           out: [digi, others]
           run:
             class: CommandLineTool
-            baseCommand: [lhcb_app.py]
+            baseCommand: [lhcb-app]
 
             requirements:
               InitialWorkDirRequirement:
@@ -412,7 +412,7 @@ steps:
           out: [digi, others]
           run:
             class: CommandLineTool
-            baseCommand: [lhcb_app.py]
+            baseCommand: [lhcb-app]
 
             requirements:
               InitialWorkDirRequirement:
@@ -489,7 +489,7 @@ steps:
           out: [dst, others]
           run:
             class: CommandLineTool
-            baseCommand: [lhcb_app.py]
+            baseCommand: [lhcb-app]
 
             requirements:
               InitialWorkDirRequirement:
@@ -567,7 +567,7 @@ steps:
           out: [dst, others]
           run:
             class: CommandLineTool
-            baseCommand: [lhcb_app.py]
+            baseCommand: [lhcb-app]
 
             requirements:
               InitialWorkDirRequirement:
@@ -647,7 +647,7 @@ steps:
           out: [dst, others]
           run:
             class: CommandLineTool
-            baseCommand: [lhcb_app.py]
+            baseCommand: [lhcb-app]
 
             requirements:
               InitialWorkDirRequirement:

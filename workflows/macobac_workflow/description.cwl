@@ -37,7 +37,7 @@ steps:
           inputBinding:
             prefix: --log-level
       outputs: []
-      baseCommand: [calculate_macobac.py]
+      baseCommand: [calculate-macobac]
 
   macobac2:
     in:
@@ -60,4 +60,4 @@ steps:
           inputBinding:
             prefix: --log-level
       outputs: []
-      baseCommand: [calculate_macobac.py]
+      baseCommand: [calculate-macobac]
