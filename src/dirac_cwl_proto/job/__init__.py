@@ -1,6 +1,7 @@
 """
 CLI interface to run a workflow as a job.
 """
+import logging
 import subprocess
 
 import typer
@@ -11,6 +12,33 @@ from dirac_cwl_proto.utils import CWLBaseModel
 
 app = typer.Typer()
 console = Console()
+
+
+@app.command("submit")
+def run(
+    workflow_path: str = typer.Argument(..., help="Path to the CWL file"),
+    metadata_path: str = typer.Argument(
+        ..., help="Path to the file containing the metadata"
+    ),
+    metadata_type: str = typer.Argument(
+        ..., help="Type of metadata to use", case_sensitive=False
+    ),
+):
+    """
+    Run a workflow from end to end (production/transformation/job).
+
+    This command will:
+    - Validate the workflow
+    - Start the jobs
+    """
+    # Start the production
+    console.print("[blue]:information_source:[/blue] [bold]Starting the job...[/bold]")
+    if not submit_job(workflow_path, metadata_path, metadata_type):
+        console.print(
+            "[red]:heavy_multiplication_x:[/red] [bold]Failed to run production.[/bold]"
+        )
+        return typer.Exit(code=1)
+    console.print("[green]:heavy_check_mark:[/green] [bold]Job done.[/bold]")
 
 
 # -----------------------------------------------------------------------------
@@ -47,31 +75,29 @@ def submit_job(workflow_path: str, metadata_path: str, metadata_type: str) -> bo
     )
 
     try:
-        console.print(f"Executing workflow: [yellow]{workflow_path}[/yellow]")
+        logging.info(f"Executing workflow: {workflow_path}")
         result = subprocess.run(
             ["cwltool", workflow_path, metadata_path], capture_output=True, text=True
         )
 
         if result.returncode != 0:
-            console.print(
-                f":x: [red]Error in executing workflow:[/red] \n{Text.from_ansi(result.stderr)}"
+            logging.error(
+                f"Error in executing workflow:\n{Text.from_ansi(result.stderr)}"
             )
             return False
 
         if not job.metadata:
             # This should never happen
-            console.print(
-                ":x: [red]Error in executing workflow:[/red] \nNo metadata attached to the job"
+            logging.error(
+                "Error in executing workflow:\nNo metadata attached to the job"
             )
             return False
 
         job.metadata.post_process()
 
-        console.print(
-            "[green]:heavy_check_mark: Workflow executed successfully.[/green]"
-        )
+        logging.info("Workflow executed successfully.")
         return True
 
-    except Exception as e:
-        console.print(f":x: [red]Failed to execute workflow: {e}[/red]")
+    except Exception:
+        logging.exception("Failed to execute workflow")
         return False
