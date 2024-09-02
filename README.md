@@ -34,7 +34,7 @@ This package contains modules and tools to manage CWL workflows:
 
 - `src/modules`: Python scripts for individual steps in workflows.
 - `src/cli`: Utility scripts for managing and executing CWL workflows.
-- `workflows`: CWL workflow definitions.
+- `test/workflows`: CWL workflow definitions.
 
 To use the workflows and inputs directly with `cwltool`, you need to add the `modules` directory to the `$PATH`:
 
@@ -106,4 +106,13 @@ generic-command = "dirac_cwl_proto.modules.generic_command:app"
 
 ```yaml
 baseCommand: [generic-command]
+```
+
+### Test your changes
+
+- Add your test in `test/test_workflows`.
+- Run `pytest`:
+
+```bash
+pytest test/test_workflows.py
 ```

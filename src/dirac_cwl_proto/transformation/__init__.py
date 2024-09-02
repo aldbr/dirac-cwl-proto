@@ -14,7 +14,8 @@ from pydantic import BaseModel
 from rich.console import Console
 from ruamel.yaml import YAML
 
-from dirac_cwl_proto.job import JobModel, submit_job
+from dirac_cwl_proto.job import OldJobModel as JobModel
+from dirac_cwl_proto.job import run_job as submit_job
 from dirac_cwl_proto.utils import CWLBaseModel, dash_to_snake_case, snake_case_to_dash
 
 app = typer.Typer()

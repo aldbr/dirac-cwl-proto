@@ -2,31 +2,47 @@ import glob
 import logging
 import os
 from pathlib import Path
+from typing import List
 
 from pydantic import BaseModel
+
+from dirac_cwl_proto.utils import JobSubmissionModel
+
+# -----------------------------------------------------------------------------
+# Metadata models (Job Type)
+# -----------------------------------------------------------------------------
 
 
 class IMetadataModel(BaseModel):
     """Metadata for a transformation."""
 
-    def get_bk_path(self, output_name: str) -> Path:
+    def get_bk_path(self, output_name: str) -> Path | None:
         """
         Template method for getting the output path to store results of a job/get results of a previous job.
         Should be overridden by subclasses.
         """
-        raise NotImplementedError("Subclasses must implement this method.")
+        return None
 
-    def post_process(self) -> bool:
+    def pre_process(self, command: List[str]) -> List[str]:
+        """
+        Template method for process the inputs of a job.
+        Should be overriden by subclasses.
+        """
+        return command
+
+    def post_process(self):
         """
         Template method for processing the outputs of a job.
         Should be overridden by subclasses.
         """
-        raise NotImplementedError("Subclasses must implement this method.")
+        pass
 
     def _store_output(self, output_name: str, output_value: str):
         """Store the output in the "bookkeeping" directory."""
         # Create the "bookkeeping" path
         output_path = self.get_bk_path(output_name)
+        if output_path is None:
+            raise RuntimeError("No output path defined.")
 
         # Send the output to the "bookkeeping"
         bk_output = output_path / f"{output_value}"
@@ -46,7 +62,7 @@ class BasicMetadataModel(IMetadataModel):
         output_path.mkdir(exist_ok=True, parents=True)
         return output_path
 
-    def post_process(self) -> bool:
+    def post_process(self):
         """Post process the outputs of a job."""
         outputs = glob.glob("*.sim")
         if outputs:
@@ -54,7 +70,6 @@ class BasicMetadataModel(IMetadataModel):
         outputs = glob.glob("output.dst")
         if outputs:
             self._store_output("result", outputs[0])
-        return True
 
 
 class LHCbMetadataModel(IMetadataModel):
@@ -70,7 +85,7 @@ class LHCbMetadataModel(IMetadataModel):
         output_path.mkdir(exist_ok=True, parents=True)
         return output_path
 
-    def post_process(self) -> bool:
+    def post_process(self):
         """Post process the outputs of a job."""
         outputs = glob.glob("*.sim")
         if outputs:
@@ -78,7 +93,6 @@ class LHCbMetadataModel(IMetadataModel):
         outputs = glob.glob("pool_xml_catalog.xml")
         if outputs:
             self._store_output("pool_xml_catalog", outputs[0])
-        return True
 
 
 class MacobacMetadataModel(IMetadataModel):
@@ -92,9 +106,9 @@ class MacobacMetadataModel(IMetadataModel):
         output_path.mkdir(exist_ok=True, parents=True)
         return output_path
 
-    def post_process(self) -> bool:
+    def post_process(self):
         """Post process the outputs of a job."""
-        return True
+        pass
 
 
 class MandelBrotMetadataModel(IMetadataModel):
@@ -119,7 +133,7 @@ class MandelBrotMetadataModel(IMetadataModel):
         output_path.mkdir(exist_ok=True, parents=True)
         return output_path
 
-    def post_process(self) -> bool:
+    def post_process(self):
         """Post process the outputs of a job."""
         outputs = glob.glob("data_merged*txt")
         if outputs:
@@ -128,4 +142,33 @@ class MandelBrotMetadataModel(IMetadataModel):
         outputs = glob.glob("data*txt")
         if outputs:
             self._store_output("data", outputs[0])
+
+
+# -----------------------------------------------------------------------------
+# Job Execution Coordinator
+# -----------------------------------------------------------------------------
+
+
+class JobExecutionCoordinator:
+    """Reproduction of the JobExecutionCoordinator.
+
+    In Dirac, you would inherit from it to define your pre/post-processing strategy.
+    In this context, we assume that these stages depend on the JobType.
+    """
+
+    def __init__(self, job: JobSubmissionModel):
+        self.metadata_class = globals().get(job.description.type)
+
+    def pre_process(self, command: List[str]) -> List[str]:
+        """Pre process a job according to its type."""
+        if self.metadata_class:
+            return self.metadata_class().pre_process(command)
+
+        return command
+
+    def post_process(self) -> bool:
+        """Post process a job according to its type."""
+        if self.metadata_class:
+            return self.metadata_class().post_process()
+
         return True

@@ -1,0 +1,6 @@
+max-random: 100
+min-random: 0
+input-data:
+- class: File
+  location:
+    /home/aldbr/Documents/CERN/engineering/projects/dirac-cwl-proto/bookkeeping/100/0/result.sim

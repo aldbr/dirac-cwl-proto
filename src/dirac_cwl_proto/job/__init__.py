@@ -2,102 +2,265 @@
 CLI interface to run a workflow as a job.
 """
 import logging
+import os
 import subprocess
+from typing import List, Optional
 
 import typer
+from cwl_utils.parser import load_document_by_uri, save
+from cwl_utils.parser.cwl_v1_2 import (
+    CommandLineTool,
+    Workflow,
+)
+from cwl_utils.parser.cwl_v1_2_utils import load_inputfile
 from rich.console import Console
 from rich.text import Text
+from ruamel.yaml import YAML
+from schema_salad.exceptions import ValidationException
 
-from dirac_cwl_proto.utils import CWLBaseModel
+from dirac_cwl_proto.metadata_models import JobExecutionCoordinator
+from dirac_cwl_proto.utils import (
+    JobModelDescription,
+    JobModelParameter,
+    JobSubmissionModel,
+)
 
 app = typer.Typer()
 console = Console()
 
+# -----------------------------------------------------------------------------
+# dirac-cli commands
+# -----------------------------------------------------------------------------
+
 
 @app.command("submit")
-def run(
-    workflow_path: str = typer.Argument(..., help="Path to the CWL file"),
-    metadata_path: str = typer.Argument(
-        ..., help="Path to the file containing the metadata"
+def submit_job_client_local(
+    task_path: str = typer.Argument(..., help="Path to the CWL file"),
+    parameter_path: Optional[List[str]] = typer.Option(
+        None, help="Path to the files containing the metadata"
     ),
-    metadata_type: str = typer.Argument(
-        ..., help="Type of metadata to use", case_sensitive=False
+    platform: Optional[str] = typer.Option(
+        None, help="The platform required to run the job"
+    ),
+    priority: Optional[int] = typer.Option(10, help="The priority of the job"),
+    sites: Optional[List[str]] = typer.Option(None, help="The site to run the job"),
+    type: Optional[str] = typer.Option(
+        "User", help="Job type (type of metadata to use)"
+    ),
+    # Specific parameter for the purpose of the prototype
+    local: Optional[bool] = typer.Option(
+        True, help="Run the job locally instead of submitting it to the router"
     ),
 ):
     """
-    Run a workflow from end to end (production/transformation/job).
+    Correspond to the dirac-cli command to submit jobs
 
     This command will:
     - Validate the workflow
     - Start the jobs
     """
-    # Start the production
-    console.print("[blue]:information_source:[/blue] [bold]Starting the job...[/bold]")
-    if not submit_job(workflow_path, metadata_path, metadata_type):
+    # Validate the workflow
+    console.print(
+        "[blue]:information_source:[/blue] [bold]CLI:[/bold] Validating the job(s)..."
+    )
+    try:
+        task = load_document_by_uri(task_path)
+    except ValidationException as ex:
         console.print(
-            "[red]:heavy_multiplication_x:[/red] [bold]Failed to run production.[/bold]"
+            f"[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to validate the task:\n{ex}"
         )
         return typer.Exit(code=1)
-    console.print("[green]:heavy_check_mark:[/green] [bold]Job done.[/bold]")
+
+    console.print(f"\t[green]:heavy_check_mark:[/green] Task {task_path}")
+
+    job_description = JobModelDescription(
+        platform=platform,
+        priority=priority,
+        sites=sites,
+        type=type,
+    )
+
+    console.print("\t[green]:heavy_check_mark:[/green] Description")
+
+    parameters = []
+    if parameter_path:
+        for parameter_p in parameter_path:
+            parameter = load_inputfile(parameter_p)
+
+            parameters.append(
+                JobModelParameter(
+                    sandbox=None,
+                    cwl=parameter,
+                )
+            )
+            console.print(
+                f"\t[green]:heavy_check_mark:[/green] Parameter {parameter_p}"
+            )
+
+    job = JobSubmissionModel(
+        task=task,
+        parameters=parameters,
+        description=job_description,
+    )
+    console.print(
+        "[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Job(s) validated."
+    )
+
+    # Submit the job
+    if local:
+        console.print(
+            "[blue]:information_source:[/blue] [bold]CLI:[/bold] Running the job(s)..."
+        )
+        if not submit_job_router_local(job):
+            console.print(
+                "[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to run job(s)."
+            )
+            return typer.Exit(code=1)
+        console.print(
+            "[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Job(s) done."
+        )
+    else:
+        console.print(
+            "[blue]:information_source:[/blue] [bold]CLI:[/bold] Submitting the job(s)..."
+        )
+        # TODO: Should submit the job to a fake router which should submit it to a Dirac instance
+        if not submit_job_router_local(job):
+            console.print(
+                "[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to submit job(s)."
+            )
+            return typer.Exit(code=1)
+        console.print(
+            "[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Job(s) submitted."
+        )
 
 
 # -----------------------------------------------------------------------------
-# Pydantic models
+# dirac-router commands
 # -----------------------------------------------------------------------------
 
 
-class JobModel(CWLBaseModel):
-    """A job is a single execution of a transformation."""
+def submit_job_router_local(job: JobSubmissionModel) -> bool:
+    """
+    Execute a job using the router.
 
-    pass
+    :param task: The task to execute
+
+    :return: True if the job executed successfully, False otherwise
+    """
+    # Validate the job
+
+    # Initiate 1 job per parameter
+    jobs = []
+    if not job.parameters:
+        jobs.append(job)
+    else:
+        for parameter in job.parameters:
+            jobs.append(
+                JobSubmissionModel(
+                    task=job.task,
+                    parameters=[parameter],
+                    description=job.description,
+                )
+            )
+
+    # Simulate the submission of the job (just execute the job locally)
+    results = []
+    for job in jobs:
+        results.append(run_job(job))
+
+    return all(results)
 
 
 # -----------------------------------------------------------------------------
-# Job management
+# JobWrapper
 # -----------------------------------------------------------------------------
 
 
-def submit_job(workflow_path: str, metadata_path: str, metadata_type: str) -> bool:
+def _pre_process(
+    executable: CommandLineTool | Workflow,
+    arguments: List[JobModelParameter] | None,
+    job_exec_coordinator: JobExecutionCoordinator,
+) -> List[str]:
+    """
+    Pre-process the job before execution.
+
+    :return: True if the job is pre-processed successfully, False otherwise
+    """
+    # Prepare the task for cwltool
+    command = ["cwltool"]
+
+    task_dict = save(executable)
+    with open("task.cwl", "w") as task_file:
+        YAML().dump(task_dict, task_file)
+    command.append("task.cwl")
+
+    if arguments and len(arguments) == 1:
+        parameter_dict = save(arguments[0].cwl)
+        with open("parameter.cwl", "w") as parameter_file:
+            YAML().dump(parameter_dict, parameter_file)
+        command.append("parameter.cwl")
+
+    return job_exec_coordinator.pre_process(command)
+
+
+def _post_process(
+    status: int, stdout: str, stderr: str, job_exec_coordinator: JobExecutionCoordinator
+):
+    """
+    Post-process the job after execution.
+
+    :return: True if the job is post-processed successfully, False otherwise
+    """
+    if status != 0:
+        raise RuntimeError(f"Error {status} during the task execution.")
+
+    logging.info(stdout)
+    logging.info(stderr)
+
+    job_exec_coordinator.post_process()
+
+
+def run_job(job: JobSubmissionModel) -> bool:
     """
     Executes a given CWL workflow using cwltool.
     This is the equivalent of the DIRAC JobWrapper.
 
-    :param workflow_path: Path to the CWL workflow
-    :param metadata_path: Path to the metadata file
-    :param metadata_type: Type of metadata to use
-
-    :return: True if the workflow executed successfully, False otherwise
+    :return: True if the job is executed successfully, False otherwise
     """
-    job = JobModel(
-        workflow_path=workflow_path,
-        metadata_path=metadata_path,
-        metadata_type=metadata_type,
-    )
-
+    logger = logging.getLogger("JobWrapper")
+    job_exec_coordinator = JobExecutionCoordinator(job)
     try:
-        logging.info(f"Executing workflow: {workflow_path}")
-        result = subprocess.run(
-            ["cwltool", workflow_path, metadata_path], capture_output=True, text=True
-        )
+        # Pre-process the job
+        logger.info("Pre-processing Task...")
+        command = _pre_process(job.task, job.parameters, job_exec_coordinator)
+        logger.info("Task pre-processed successfully.")
+
+        # Execute the task
+        logger.info(f"Executing Task: {command}")
+        result = subprocess.run(command, capture_output=True, text=True)
 
         if result.returncode != 0:
             logging.error(
                 f"Error in executing workflow:\n{Text.from_ansi(result.stderr)}"
             )
             return False
+        logger.info("Task executed successfully.")
 
-        if not job.metadata:
-            # This should never happen
-            logging.error(
-                "Error in executing workflow:\nNo metadata attached to the job"
-            )
-            return False
-
-        job.metadata.post_process()
-
-        logging.info("Workflow executed successfully.")
+        # Post-process the job
+        logger.info("Post-processing Task...")
+        _post_process(
+            result.returncode, result.stdout, result.stderr, job_exec_coordinator
+        )
+        logger.info("Task post-processed successfully.")
         return True
 
     except Exception:
-        logging.exception("Failed to execute workflow")
+        logger.exception("JobWrapper: Failed to execute workflow")
         return False
+    finally:
+        # Clean up
+        for file in ["task.cwl", "parameter.cwl"]:
+            try:
+                os.remove(file)
+            except FileNotFoundError:
+                pass
