@@ -102,8 +102,13 @@ class MandelBrotMetadataModel(IMetadataModel):
 
     precision: float
     max_iterations: int
-    start_line: int
-    number_of_lines: int
+    start_x: float
+    start_y: float
+    step: int
+    split: int
+    width: int
+    height: int
+    output_name: str
 
     def get_bk_path(self, output_name: str) -> Path:
         """Get the bk path."""
