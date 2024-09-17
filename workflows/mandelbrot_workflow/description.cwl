@@ -12,10 +12,20 @@ inputs:
     type: float
   max-iterations:
     type: int
-  start-line:
+  start_x:
+    type: float
+  start_y:
+    type: float
+  step:
     type: int
-  number-of-lines:
+  split:
     type: int
+  width:
+    type: int
+  height:
+    type: int
+  output_name:
+    type: string
 
 # Define the outputs of the workflow
 outputs:
@@ -42,8 +52,13 @@ steps:
     in:
       precision: precision
       max-iterations: max-iterations
-      start-line: start-line
-      number-of-lines: number-of-lines
+      start_x: start_x
+      start_y: start_y
+      step: step
+      split: split
+      width: width
+      height: height
+      output_name: output_name
     out:
       - data
       - log
@@ -61,11 +76,20 @@ steps:
           type: float
         max-iterations:
           type: int
-        start-line:
+        start_x:
+          type: float
+        start_y:
+          type: float
+        step:
           type: int
-        number-of-lines:
+        split:
           type: int
-
+        width:
+          type: int
+        height:
+          type: int
+        output_name:
+          type: string
       outputs:
         data:
           type: File[]?
@@ -94,13 +118,18 @@ steps:
           in:
             precision: precision
             max-iterations: max-iterations
-            start-line: start-line
-            number-of-lines: number-of-lines
+            start_x: start_x
+            start_y: start_y
+            step: step
+            split: split
+            width: width
+            height: height
+            output_name: output_name
             repo: get-mandelbrot/repo
           out: [data, log]
           run:
             class: CommandLineTool
-            baseCommand: ["python", "mandel4ts/mandelbrot.py"]
+            baseCommand: ["python", "mandel4ts/src/mandel4ts/mandelbrot_generator.py"]
             requirements:
               InitialWorkDirRequirement:
                 listing:
@@ -110,19 +139,39 @@ steps:
               precision:
                 type: float
                 inputBinding:
-                  prefix: "-P"
+                  prefix: "--precision"
               max-iterations:
                 type: int
                 inputBinding:
-                  prefix: "-M"
-              start-line:
+                  prefix: "--max-iterations"
+              step:
                 type: int
                 inputBinding:
-                  prefix: "-L"
-              number-of-lines:
+                  prefix: "--step"
+              split:
                 type: int
                 inputBinding:
-                  prefix: "-N"
+                  prefix: "--split"
+              start_x:
+                type: float
+                inputBinding:
+                  prefix: "--cx"
+              start_y:
+                type: float
+                inputBinding:
+                  prefix: "--cy"
+              width:
+                type: int
+                inputBinding:
+                  prefix: "--width"
+              height:
+                type: int
+                inputBinding:
+                  prefix: "--height" 
+              output_name:
+                type: string
+                inputBinding:
+                  position: 9
               repo:
                 type: Directory
 
@@ -186,7 +235,7 @@ steps:
           out: [data-merged, log]
           run:
             class: CommandLineTool
-            baseCommand: ["python", "./mandel4ts/merge_data.py"]
+            baseCommand: ["python", "./mandel4ts/src/mandel4ts/create_bitmap_image.py"]
             requirements:
               InitialWorkDirRequirement:
                 listing:
@@ -202,7 +251,7 @@ steps:
               data-merged:
                 type: File[]?
                 outputBinding:
-                  glob: ["data_merged*txt"]
+                  glob: ["mandelbrot_image*.bmp"]
               log:
                 type: File[]?
                 outputBinding:
