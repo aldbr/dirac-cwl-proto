@@ -27,6 +27,10 @@ pip install -e .
 ## Usage
 
 ```bash
+dirac-cwl job submit <workflow_path> [--parameter-path <input_path>] [--type <type>] [--metadata-path <metadata_path>]
+
+dirac-cwl transformation submit <workflow_path> [--type <type>] [--metadata-path <metadata_path>]
+
 dirac-cwl production submit <workflow_path> <input_path> <metadata model>
 ```
 

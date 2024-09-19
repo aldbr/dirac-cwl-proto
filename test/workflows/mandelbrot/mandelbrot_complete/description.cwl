@@ -10,7 +10,7 @@ doc: >
 inputs:
   precision:
     type: float
-  max-iterations:
+  max_iterations:
     type: int
   start_x:
     type: float
@@ -51,7 +51,7 @@ steps:
   image-prod:
     in:
       precision: precision
-      max-iterations: max-iterations
+      max_iterations: max_iterations
       start_x: start_x
       start_y: start_y
       step: step
@@ -74,7 +74,7 @@ steps:
       inputs:
         precision:
           type: float
-        max-iterations:
+        max_iterations:
           type: int
         start_x:
           type: float
@@ -117,7 +117,7 @@ steps:
         run-mandelbrot:
           in:
             precision: precision
-            max-iterations: max-iterations
+            max_iterations: max_iterations
             start_x: start_x
             start_y: start_y
             step: step
@@ -140,7 +140,7 @@ steps:
                 type: float
                 inputBinding:
                   prefix: "--precision"
-              max-iterations:
+              max_iterations:
                 type: int
                 inputBinding:
                   prefix: "--max-iterations"
@@ -167,7 +167,7 @@ steps:
               height:
                 type: int
                 inputBinding:
-                  prefix: "--height" 
+                  prefix: "--height"
               output_name:
                 type: string
                 inputBinding:

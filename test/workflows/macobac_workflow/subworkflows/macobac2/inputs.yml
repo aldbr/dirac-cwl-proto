@@ -1,5 +1,0 @@
-log-level: INFO
-# You need to change the path of the configuration file: it should be an absolute path.
-configuration:
-    class: File
-    path: /home/aldbr/Documents/CERN/engineering/projects/dirac-cwl-proto/workflows/macobac_workflow/calculate_macobac.yaml

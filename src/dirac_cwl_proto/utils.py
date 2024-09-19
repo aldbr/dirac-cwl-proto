@@ -1,21 +1,13 @@
 """
 CLI interface to run a CWL workflow from end to end (production/transformation/job).
 """
-import logging
-import subprocess
-from typing import Any, Dict, List
+import importlib
 
-from cwl_utils.parser.cwl_v1_2 import (
-    CommandLineTool,
-    Workflow,
+from dirac_cwl_proto.metadata_models import IMetadataModel
+from dirac_cwl_proto.submission_models import (
+    JobSubmissionModel,
+    TransformationSubmissionModel,
 )
-from pydantic import BaseModel, ConfigDict
-from rich.text import Text
-
-# -----------------------------------------------------------------------------
-# Pydantic models
-# -----------------------------------------------------------------------------
-
 
 # class CWLBaseModel(BaseModel):
 #     """Base class for CWL models."""
@@ -91,51 +83,9 @@ from rich.text import Text
 #         arbitrary_types_allowed = True
 
 
-class JobModelDescription(BaseModel):
-    """Description of a job."""
-
-    platform: str | None = None
-    priority: int = 10
-    sites: List[str] | None
-    type: str = "User"
-
-
-class JobModelParameter(BaseModel):
-    """Parameter of a job."""
-
-    # Allow arbitrary types to be passed to the model
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
-    sandbox: List[str] | None
-    cwl: Dict[str, Any]
-
-
-class JobSubmissionModel(BaseModel):
-    """Job definition sent to the router."""
-
-    # Allow arbitrary types to be passed to the model
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
-    task: CommandLineTool | Workflow
-    parameters: List[JobModelParameter] | None = None
-    description: JobModelDescription
-
-
 # -----------------------------------------------------------------------------
 # Utils
 # -----------------------------------------------------------------------------
-
-
-def validate_cwl(cwl_file: str):
-    """Validates a CWL file."""
-    result = subprocess.run(
-        ["cwltool", "--validate", cwl_file], capture_output=True, text=True
-    )
-    if result.returncode == 0:
-        return True
-
-    logging.error(Text.from_ansi(result.stderr))
-    return False
 
 
 def dash_to_snake_case(name):
@@ -146,3 +96,45 @@ def dash_to_snake_case(name):
 def snake_case_to_dash(name):
     """Converts a string from snake_case to dash-case."""
     return name.replace("_", "-")
+
+
+def _get_metadata(
+    submitted: JobSubmissionModel | TransformationSubmissionModel,
+) -> IMetadataModel:
+    """Get the metadata class for the transformation.
+
+    :param transformation: The transformation to get the metadata for
+
+    :return: The metadata class
+    """
+    if not submitted.metadata:
+        raise RuntimeError("Transformation metadata is not set.")
+
+    # Get the inputs
+    inputs = {}
+    for input in submitted.task.inputs:
+        input_name = input.id.split("#")[1]
+
+        input_value = input.default
+        if (
+            hasattr(submitted, "parameters")
+            and submitted.parameters
+            and submitted.parameters[0]
+        ):
+            input_value = submitted.parameters[0].cwl.get(input_name, input_value)
+
+        inputs[input_name] = input_value
+
+    # Merge the inputs with the query params
+    if submitted.metadata.query_params:
+        inputs.update(submitted.metadata.query_params)
+
+    # Get the metadata class
+    try:
+        module = importlib.import_module("dirac_cwl_proto.metadata_models")
+        metadata_class = getattr(module, submitted.metadata.type)
+    except AttributeError:
+        raise RuntimeError(
+            f"Metadata class {submitted.metadata.type} not found."
+        ) from None
+    return metadata_class(**inputs)

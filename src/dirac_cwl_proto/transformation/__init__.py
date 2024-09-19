@@ -5,50 +5,126 @@ import glob
 import logging
 import time
 from pathlib import Path
-from typing import Any
+from typing import Dict, List, Optional
 
 import typer
-from cwl_utils.parser import save
+from cwl_utils.parser import load_document_by_uri, save
 from cwl_utils.parser.cwl_v1_2 import File
-from pydantic import BaseModel
+from rich import print_json
 from rich.console import Console
 from ruamel.yaml import YAML
+from schema_salad.exceptions import ValidationException
 
-from dirac_cwl_proto.job import OldJobModel as JobModel
-from dirac_cwl_proto.job import run_job as submit_job
-from dirac_cwl_proto.utils import CWLBaseModel, dash_to_snake_case, snake_case_to_dash
+from dirac_cwl_proto.job import submit_job_router
+from dirac_cwl_proto.submission_models import (
+    JobDescriptionModel,
+    JobParameterModel,
+    JobSubmissionModel,
+    TransformationMetadataModel,
+    TransformationSubmissionModel,
+)
+from dirac_cwl_proto.utils import _get_metadata
 
 app = typer.Typer()
 console = Console()
 
 
 # -----------------------------------------------------------------------------
-# Pydantic models
+# dirac-cli commands
 # -----------------------------------------------------------------------------
 
 
-class ExternalInputModel(BaseModel):
-    """An external input is a file that is produced by another transformation."""
+@app.command("submit")
+def submit_transformation_client(
+    task_path: str = typer.Argument(..., help="Path to the CWL file"),
+    metadata_path: Optional[str] = typer.Option(
+        None, help="Path to metadata file used to generate the input query"
+    ),
+    # Dirac-specific parameters that are used by the jobs
+    platform: Optional[str] = typer.Option(
+        None, help="The platform required to run the transformation"
+    ),
+    priority: Optional[int] = typer.Option(
+        10, help="The priority of the transformation"
+    ),
+    sites: Optional[List[str]] = typer.Option(
+        None, help="The site to run the transformation"
+    ),
+    # Specific parameter for the purpose of the prototype
+    local: Optional[bool] = typer.Option(
+        True, help="Run the jobs locally instead of submitting them to the router"
+    ),
+):
+    """
+    Correspond to the dirac-cli command to submit transformations
 
-    path: str
-    class_: Any
+    This command will:
+    - Validate the workflow
+    - Start the transformation
+    """
+    # Validate the workflow
+    console.print(
+        "[blue]:information_source:[/blue] [bold]CLI:[/bold] Validating the transformation..."
+    )
+    try:
+        task = load_document_by_uri(task_path)
+    except ValidationException as ex:
+        console.print(
+            f"[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to validate the task:\n{ex}"
+        )
+        return typer.Exit(code=1)
 
+    console.print(f"\t[green]:heavy_check_mark:[/green] Task {task_path}")
 
-class TransformationModel(CWLBaseModel):
-    """A transformation is a step in a production."""
+    # Load the metadata: at this stage, only the structure is validated, not the content
+    metadata_model = None
+    if metadata_path:
+        with open(metadata_path, "r") as file:
+            metadata = YAML(typ="safe").load(file)
+        metadata_model = TransformationMetadataModel(**metadata)
+    else:
+        metadata_model = TransformationMetadataModel(type="User")
+    console.print("\t[green]:heavy_check_mark:[/green] Metadata")
 
-    jobs: list[JobModel] | None = None
-    external_inputs: dict[str, ExternalInputModel]
+    transformation_description = JobDescriptionModel(
+        platform=platform,
+        priority=priority,
+        sites=sites,
+    )
+    console.print("\t[green]:heavy_check_mark:[/green] Description")
+
+    transformation = TransformationSubmissionModel(
+        task=task,
+        metadata=metadata_model,
+        description=transformation_description,
+    )
+    console.print(
+        "[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Transformation validated."
+    )
+
+    # Submit the tranaformation
+    console.print(
+        "[blue]:information_source:[/blue] [bold]CLI:[/bold] Submitting the transformation..."
+    )
+    print_json(transformation.model_dump_json(indent=4))
+    if not submit_transformation_router(transformation):
+        console.print(
+            "[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to run transformation."
+        )
+        return typer.Exit(code=1)
+    console.print(
+        "[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Transformation done."
+    )
 
 
 # -----------------------------------------------------------------------------
-# Transformation management
+# dirac-router commands
 # -----------------------------------------------------------------------------
 
 
-def start_transformation(transformation: TransformationModel) -> bool:
-    """Start a transformation.
-
+def submit_transformation_router(transformation: TransformationSubmissionModel) -> bool:
+    """
+    Execute a transformation using the router.
     If the transformation is waiting for an input from another transformation,
     it will wait for the input to be available in the "bookkeeping".
 
@@ -56,87 +132,120 @@ def start_transformation(transformation: TransformationModel) -> bool:
 
     :return: True if the transformation executed successfully, False otherwise
     """
-    if not transformation.metadata:
-        raise RuntimeError("Transformation metadata is not set.")
+    logger = logging.getLogger("TransformationRouter")
 
-    # If there is an input data, wait for it to be available in the "bookkeeping"
-    if transformation.external_inputs:
-        while not (inputs := _get_inputs(transformation)):
-            time.sleep(5)
+    # Validate the transformation
+    logger.info("Validating the transformation...")
+    # TODO: Validate the transformation
+    logger.info("Transformation validated!")
 
-        # Update the input data in the metadata
-        cwl_inputs = {}
-        for input_id, cwl_input_paths in inputs.items():
-            cwl_inputs[input_id] = save(cwl_input_paths, relative_uris=False)
+    # Check if the transformation is waiting for an input
+    # - if there is no metadata, the transformation is not waiting for an input and can go on
+    # - if there is metadata, the transformation is waiting for an input
+    job_model_params = []
+    if transformation.metadata.query_params and transformation.metadata.group_size:
+        # Get the metadata class
+        transformation_metadata = _get_metadata(transformation)
 
-        # Update the metadata with the input data
-        metadata = transformation.metadata.model_dump()
-        metadata.update({dash_to_snake_case(k): v for k, v in cwl_inputs.items()})
-        with open(transformation.metadata_path, "w") as file:
-            YAML().dump({snake_case_to_dash(k): v for k, v in metadata.items()}, file)
+        # Build the input cwl for the jobs to submit
+        logger.info("Getting the input data for the transformation...")
+        input_data_dict = {}
+        min_length = None
+        for input_name, group_size in transformation.metadata.group_size.items():
+            # Get input query
+            logger.info(f"\t- Getting input query for {input_name}...")
+            input_query = transformation_metadata.get_input_query(input_name)
+            if not input_query:
+                raise RuntimeError("Input query not found.")
 
-        transformation = TransformationModel(
-            workflow_path=transformation.workflow_path,
-            metadata_path=transformation.metadata_path,
-            metadata_type=transformation.metadata_type,
-            external_inputs=transformation.external_inputs,
-        )
+            # Wait for the input to be available
+            logger.info(f"\t- Waiting for input data for {input_name}...")
+            logger.debug(f"\t\t- Query: {input_query}")
+            logger.debug(f"\t\t- Group Size: {group_size}")
+            while not (inputs := _get_inputs(input_query, group_size)):
+                logger.debug(f"\t\t- Result: {inputs}")
+                time.sleep(5)
+            logger.info(f"\t- Input data for {input_name} available.")
+            if not min_length or len(inputs) < min_length:
+                min_length = len(inputs)
 
-    logging.info("Submitting jobs")
-    return submit_job(
-        workflow_path=transformation.workflow_path,
-        metadata_path=transformation.metadata_path,
-        metadata_type=transformation.metadata_type,
+            # Update the input data in the metadata
+            # Only keep the first min_length inputs
+            input_data_dict[input_name] = inputs[:min_length]
+
+        # Get the JobModelParameter for each input
+        job_model_params = _generate_job_model_parameter(input_data_dict)
+        logger.info("Input data for the transformation retrieved!")
+
+    logger.info("Building the jobs...")
+    jobs = JobSubmissionModel(
+        task=transformation.task,
+        parameters=job_model_params,
+        description=transformation.description,
+        metadata=transformation.metadata,
     )
+    logger.info("Jobs built!")
+
+    logger.info("Submitting jobs")
+    return submit_job_router(jobs)
 
 
-def _get_inputs(transformation: TransformationModel) -> dict | None:
-    """Get the input data from the "bookkeeping".
+# -----------------------------------------------------------------------------
+# Transformation management
+# -----------------------------------------------------------------------------
 
-    :param transformation: The transformation that needs the input
 
-    :return: The paths to the input data
+def _get_inputs(input_query: Path, group_size: int) -> List[List[str]]:
+    """Get the input data from the input query.
+
+    :param input_query: The input query to get the input data
+    :param group_size: The number of jobs to group together in a transformation
+    :return: A list of lists of paths to the input data, each inner list has length group_size
     """
-    if not transformation.metadata:
-        raise RuntimeError("Transformation metadata is not set.")
+    # TODO: how do we know whether a given input has already been processed?
 
-    # Check if the input is available in the "bookkeeping"
-    inputs: dict = {}
-    for metadata_name, metadata_value in transformation.external_inputs.items():
-        input_paths = glob.glob(
-            str(
-                transformation.metadata.get_bk_path(metadata_name) / metadata_value.path
-            )
-        )
-        if not input_paths:
-            inputs[metadata_name] = None
-            continue
+    # Retrieve all input paths matching the query
+    input_paths = glob.glob(str(input_query / "*"))
+    len_input_paths = len(input_paths)
 
-        # If the input should be a single file, return the path
-        if (
-            isinstance(metadata_value.class_, str) and metadata_value.class_ == "File"
-        ) or (
-            isinstance(metadata_value.class_, list) and "File" in metadata_value.class_
-        ):
-            inputs[metadata_name] = File(path=str(Path(input_paths[0]).resolve()))
-            continue
+    # Ensure there are enough inputs to form at least one group
+    if len_input_paths < group_size:
+        return []
 
-        # If the input should be an array of files, return the paths
-        inputs[metadata_name] = [
-            File(str(Path(path).resolve())) for path in input_paths
-        ]
+    # Calculate the number of full groups
+    num_full_groups = len_input_paths // group_size
 
-    if not _is_ready(inputs):
-        return None
+    # Group the input paths into lists of size group_size
+    input_groups = [
+        input_paths[i * group_size : (i + 1) * group_size]
+        for i in range(num_full_groups)
+    ]
 
-    return inputs
+    return input_groups
 
 
-def _is_ready(inputs: dict[str, list[str]]) -> bool:
-    """Check if the input is ready.
+def _generate_job_model_parameter(
+    input_data_dict: Dict[str, List[List[str]]]
+) -> List[JobParameterModel]:
+    """Generate job model parameters from input data provided."""
+    job_model_params = []
 
-    :param inputs: The input to check
+    input_names = list(input_data_dict.keys())
+    input_data_lists = [input_data_dict[input_name] for input_name in input_names]
+    grouped_input_data = [
+        dict(zip(input_names, elements)) for elements in zip(*input_data_lists)
+    ]
+    for group in grouped_input_data:
+        cwl_inputs = {}
+        for input_name, input_data in group.items():
+            if len(input_data) == 1:
+                cwl_inputs[input_name] = File(path=str(Path(input_data[0]).resolve()))
+            else:
+                cwl_inputs[input_name] = [
+                    File(str(Path(path).resolve())) for path in input_data
+                ]
 
-    :return: True if the input is ready, False otherwise
-    """
-    return all(inputs.values())
+        cwl_parameters = save(cwl_inputs, relative_uris=False)
+        job_model_params.append(JobParameterModel(sandbox=None, cwl=cwl_parameters))
+
+    return job_model_params

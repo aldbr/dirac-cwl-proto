@@ -13,17 +13,19 @@ from cwl_utils.parser.cwl_v1_2 import (
     Workflow,
 )
 from cwl_utils.parser.cwl_v1_2_utils import load_inputfile
+from rich import print_json
 from rich.console import Console
 from rich.text import Text
 from ruamel.yaml import YAML
 from schema_salad.exceptions import ValidationException
 
-from dirac_cwl_proto.metadata_models import JobExecutionCoordinator
-from dirac_cwl_proto.utils import (
-    JobModelDescription,
-    JobModelParameter,
+from dirac_cwl_proto.submission_models import (
+    JobDescriptionModel,
+    JobMetadataModel,
+    JobParameterModel,
     JobSubmissionModel,
 )
+from dirac_cwl_proto.utils import _get_metadata
 
 app = typer.Typer()
 console = Console()
@@ -34,19 +36,19 @@ console = Console()
 
 
 @app.command("submit")
-def submit_job_client_local(
+def submit_job_client(
     task_path: str = typer.Argument(..., help="Path to the CWL file"),
     parameter_path: Optional[List[str]] = typer.Option(
         None, help="Path to the files containing the metadata"
+    ),
+    metadata_path: Optional[str] = typer.Option(
+        None, help="Path to metadata file used to generate the input query"
     ),
     platform: Optional[str] = typer.Option(
         None, help="The platform required to run the job"
     ),
     priority: Optional[int] = typer.Option(10, help="The priority of the job"),
     sites: Optional[List[str]] = typer.Option(None, help="The site to run the job"),
-    type: Optional[str] = typer.Option(
-        "User", help="Job type (type of metadata to use)"
-    ),
     # Specific parameter for the purpose of the prototype
     local: Optional[bool] = typer.Option(
         True, help="Run the job locally instead of submitting it to the router"
@@ -73,11 +75,18 @@ def submit_job_client_local(
 
     console.print(f"\t[green]:heavy_check_mark:[/green] Task {task_path}")
 
-    job_description = JobModelDescription(
+    if metadata_path:
+        # Load the metadata (yaml fiel)
+        with open(metadata_path, "r") as file:
+            job_metadata = YAML(typ="safe").load(file)
+    else:
+        job_metadata = JobMetadataModel(type="User")
+    console.print("\t[green]:heavy_check_mark:[/green] Metadata")
+
+    job_description = JobDescriptionModel(
         platform=platform,
         priority=priority,
         sites=sites,
-        type=type,
     )
 
     console.print("\t[green]:heavy_check_mark:[/green] Description")
@@ -88,7 +97,7 @@ def submit_job_client_local(
             parameter = load_inputfile(parameter_p)
 
             parameters.append(
-                JobModelParameter(
+                JobParameterModel(
                     sandbox=None,
                     cwl=parameter,
                 )
@@ -101,37 +110,23 @@ def submit_job_client_local(
         task=task,
         parameters=parameters,
         description=job_description,
+        metadata=job_metadata,
     )
     console.print(
         "[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Job(s) validated."
     )
 
     # Submit the job
-    if local:
+    console.print(
+        "[blue]:information_source:[/blue] [bold]CLI:[/bold] Submitting the job(s) to service..."
+    )
+    print_json(job.model_dump_json(indent=4))
+    if not submit_job_router(job):
         console.print(
-            "[blue]:information_source:[/blue] [bold]CLI:[/bold] Running the job(s)..."
+            "[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to run job(s)."
         )
-        if not submit_job_router_local(job):
-            console.print(
-                "[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to run job(s)."
-            )
-            return typer.Exit(code=1)
-        console.print(
-            "[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Job(s) done."
-        )
-    else:
-        console.print(
-            "[blue]:information_source:[/blue] [bold]CLI:[/bold] Submitting the job(s)..."
-        )
-        # TODO: Should submit the job to a fake router which should submit it to a Dirac instance
-        if not submit_job_router_local(job):
-            console.print(
-                "[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to submit job(s)."
-            )
-            return typer.Exit(code=1)
-        console.print(
-            "[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Job(s) submitted."
-        )
+        return typer.Exit(code=1)
+    console.print("[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Job(s) done.")
 
 
 # -----------------------------------------------------------------------------
@@ -139,15 +134,19 @@ def submit_job_client_local(
 # -----------------------------------------------------------------------------
 
 
-def submit_job_router_local(job: JobSubmissionModel) -> bool:
+def submit_job_router(job: JobSubmissionModel) -> bool:
     """
     Execute a job using the router.
 
-    :param task: The task to execute
+    :param job: The task to execute
 
     :return: True if the job executed successfully, False otherwise
     """
+    logger = logging.getLogger("JobRouter")
+
     # Validate the job
+    logger.info("Validating the job(s)...")
+    # TODO: Validate the job
 
     # Initiate 1 job per parameter
     jobs = []
@@ -160,15 +159,52 @@ def submit_job_router_local(job: JobSubmissionModel) -> bool:
                     task=job.task,
                     parameters=[parameter],
                     description=job.description,
+                    metadata=job.metadata,
                 )
             )
+    logger.info("Job(s) validated!")
 
     # Simulate the submission of the job (just execute the job locally)
+    logger.info("Running jobs...")
     results = []
     for job in jobs:
+        logger.info("Running job:\n")
+        print_json(job.model_dump_json(indent=4))
         results.append(run_job(job))
+    logger.info("Jobs done.")
 
     return all(results)
+
+
+# -----------------------------------------------------------------------------
+# Job Execution Coordinator
+# -----------------------------------------------------------------------------
+
+
+class JobExecutionCoordinator:
+    """Reproduction of the JobExecutionCoordinator.
+
+    In Dirac, you would inherit from it to define your pre/post-processing strategy.
+    In this context, we assume that these stages depend on the JobType.
+    """
+
+    def __init__(self, job: JobSubmissionModel):
+        # Get a metadata instance
+        self.metadata = _get_metadata(job)
+
+    def pre_process(self, command: List[str]) -> List[str]:
+        """Pre process a job according to its type."""
+        if self.metadata:
+            return self.metadata.pre_process(command)
+
+        return command
+
+    def post_process(self) -> bool:
+        """Post process a job according to its type."""
+        if self.metadata:
+            return self.metadata.post_process()
+
+        return True
 
 
 # -----------------------------------------------------------------------------
@@ -178,7 +214,7 @@ def submit_job_router_local(job: JobSubmissionModel) -> bool:
 
 def _pre_process(
     executable: CommandLineTool | Workflow,
-    arguments: List[JobModelParameter] | None,
+    arguments: List[JobParameterModel] | None,
     job_exec_coordinator: JobExecutionCoordinator,
 ) -> List[str]:
     """

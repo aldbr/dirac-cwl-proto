@@ -1,5 +1,5 @@
 precision: 0.0005
-max-iterations: 1000
+max_iterations: 1000
 start_x: -0.5
 start_y: 0.0
 step: 1

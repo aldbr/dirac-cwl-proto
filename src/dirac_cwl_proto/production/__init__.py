@@ -6,7 +6,7 @@ import os
 import shutil
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import cast
+from typing import List, Optional, cast
 
 import typer
 from cwl_utils.parser import save
@@ -14,25 +14,40 @@ from cwl_utils.parser.cwl_v1_2 import CommandLineTool, Workflow, WorkflowStep
 from rich.console import Console
 from ruamel.yaml import YAML
 
+from dirac_cwl_proto.submission_models import ProductionSubmissionModel
 from dirac_cwl_proto.transformation import (
     ExternalInputModel,
     TransformationModel,
     start_transformation,
 )
-from dirac_cwl_proto.utils import CWLBaseModel
 
 app = typer.Typer()
 console = Console()
 
 
+# -----------------------------------------------------------------------------
+# dirac-cli commands
+# -----------------------------------------------------------------------------
+
+
 @app.command("submit")
-def run(
-    workflow_path: str = typer.Argument(..., help="Path to the CWL file"),
-    metadata_path: str = typer.Argument(
-        ..., help="Path to the file containing the metadata"
+def submit_production_client(
+    task_path: str = typer.Argument(..., help="Path to the CWL file"),
+    metadata_path: str = typer.Option(
+        None, help="Path to metadata file used to generate the input query"
     ),
-    metadata_type: str = typer.Argument(
-        ..., help="Type of metadata to use", case_sensitive=False
+    # Dirac-specific parameters that are used by the jobs
+    platform: Optional[str] = typer.Option(
+        None, help="The platform required to run the job"
+    ),
+    priority: Optional[int] = typer.Option(10, help="The priority of the job"),
+    sites: Optional[List[str]] = typer.Option(None, help="The site to run the job"),
+    type: Optional[str] = typer.Option(
+        "User", help="Job type (type of metadata to use)"
+    ),
+    # Specific parameter for the purpose of the prototype
+    local: Optional[bool] = typer.Option(
+        True, help="Run the job locally instead of submitting it to the router"
     ),
 ):
     """
@@ -47,10 +62,10 @@ def run(
     """
     # Generate a production
     console.print(
-        f"[blue]:information_source:[/blue] [bold]Creating new production based on {workflow_path}...[/bold]"
+        f"[blue]:information_source:[/blue] [bold]Creating new production based on {task_path}...[/bold]"
     )
     try:
-        production = create_production(workflow_path, metadata_path, metadata_type)
+        production = create_production(task_path, metadata_path, type)
     except (ValueError, RuntimeError) as ex:
         console.print(f"[red]:heavy_multiplication_x:[/red] {ex}")
         return typer.Exit(code=1)
@@ -71,16 +86,8 @@ def run(
 
 
 # -----------------------------------------------------------------------------
-# Pydantic models
+# dirac-router commands
 # -----------------------------------------------------------------------------
-
-
-# TODO: workflow should be a Workflow, not a CommandLineTool
-# TODO: inputs should not be composed of relative path(?)
-class ProductionModel(CWLBaseModel):
-    """A production is a set of transformations that are executed in parallel."""
-
-    transformations: list[TransformationModel] | None = None
 
 
 # -----------------------------------------------------------------------------
@@ -90,7 +97,7 @@ class ProductionModel(CWLBaseModel):
 
 def create_production(
     workflow_path: str, metadata_path: str, metadata_type: str
-) -> ProductionModel:
+) -> ProductionSubmissionModel:
     """Validate a CWL workflow and create transformations from them.
 
     :param workflow_path: Path to the CWL workflow
@@ -101,7 +108,7 @@ def create_production(
 
     logging.info(f"Creating production from workflow: {workflow_path}...")
     # Validate the main workflow
-    production = ProductionModel(
+    production = ProductionSubmissionModel(
         workflow_path=workflow_path,
         metadata_path=metadata_path,
         metadata_type=metadata_type,
@@ -265,7 +272,7 @@ def _get_external_inputs(
     return external_inputs
 
 
-def start_production(production: ProductionModel) -> bool:
+def start_production(production: ProductionSubmissionModel) -> bool:
     """Start a production.
 
     A production is a set of transformations that are executed in parallel.

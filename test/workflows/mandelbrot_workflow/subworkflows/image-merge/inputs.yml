@@ -1,8 +1,0 @@
-precision: 0.0005
-max-iterations: 1000
-start-line: 1
-number-of-lines: 200
-data:
-- class: File
-  location:
-    /home/aldbr/Documents/CERN/engineering/projects/dirac-cwl-proto/bookkeeping/mandelbrot/images/raw/data_200.txt
