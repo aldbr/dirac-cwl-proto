@@ -122,7 +122,7 @@ def submit_production_router(production: ProductionSubmissionModel) -> bool:
 
     # Validate the transformation
     logger.info("Validating the production...")
-    # TODO: Validate the transformation
+    # Already validated by the pydantic model
     logger.info("Production validated!")
 
     # Split the production into transformations

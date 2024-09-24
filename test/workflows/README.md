@@ -44,6 +44,8 @@ o
 
 # Not tested yet
 
+- 1 `Workflow` with 2 dependent `Workflow`, where each of them is composed of 2 independent `CommandLineTools`
+
 ```
 (o  o)
   |

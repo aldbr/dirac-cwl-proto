@@ -135,7 +135,7 @@ def submit_transformation_router(transformation: TransformationSubmissionModel) 
 
     # Validate the transformation
     logger.info("Validating the transformation...")
-    # TODO: Validate the transformation
+    # Already validated by the pydantic model
     logger.info("Transformation validated!")
 
     # Check if the transformation is waiting for an input

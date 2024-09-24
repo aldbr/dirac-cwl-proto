@@ -143,10 +143,8 @@ def submit_job_router(job: JobSubmissionModel) -> bool:
     """
     logger = logging.getLogger("JobRouter")
 
-    # Validate the job
+    # Validate the jobs
     logger.info("Validating the job(s)...")
-    # TODO: Validate the job
-
     # Initiate 1 job per parameter
     jobs = []
     if not job.parameters:
