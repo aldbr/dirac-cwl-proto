@@ -238,3 +238,51 @@ def test_run_transformation_validation_failure(
     assert expected_error in re.sub(
         r"\s+", "", result.stdout
     ), "The expected error was not found."
+
+
+# -----------------------------------------------------------------------------
+# Production tests
+# -----------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "cwl_file, metadata, expected_error",
+    [
+        # The description file is malformed: class attribute is unknown
+        (
+            "test/workflows/malformed_description/description_malformed_class.cwl",
+            None,
+            "`class`containsundefinedreferenceto",
+        ),
+        # The description file is malformed: baseCommand is unknown
+        (
+            "test/workflows/malformed_description/description_malformed_command.cwl",
+            None,
+            "invalidfield`baseComand`",
+        ),
+        # The workflow is a CommandLineTool instead of a Workflow
+        (
+            "test/workflows/helloworld/helloworld_basic/description.cwl",
+            None,
+            "InputshouldbeaninstanceofWorkflow",
+        ),
+    ],
+)
+def test_run_production_validation_failure(
+    cli_runner, cwl_file, metadata, expected_error
+):
+    shutil.rmtree("filecatalog", ignore_errors=True)
+
+    command = ["production", "submit", cwl_file]
+    if metadata:
+        command.extend(["--metadata-path", metadata])
+    result = cli_runner.invoke(app, command)
+
+    assert (
+        "Transformation done" not in result.stdout
+    ), "The transformation did complete successfully."
+    assert expected_error in re.sub(
+        r"\s+", "", f"{result.stdout}"
+    ) or expected_error in re.sub(
+        r"\s+", "", f"{result.exception}"
+    ), "The expected error was not found."

@@ -8,7 +8,13 @@ from cwl_utils.parser.cwl_v1_2 import (
     CommandLineTool,
     Workflow,
 )
-from pydantic import BaseModel, ConfigDict, field_serializer, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    field_serializer,
+    field_validator,
+    model_validator,
+)
 
 from dirac_cwl_proto.metadata_models import IMetadataModel
 
@@ -22,7 +28,7 @@ class JobDescriptionModel(BaseModel):
 
     platform: str | None = None
     priority: int = 10
-    sites: List[str] | None
+    sites: List[str] | None = None
 
 
 class JobParameterModel(BaseModel):
@@ -38,7 +44,7 @@ class JobParameterModel(BaseModel):
 class JobMetadataModel(BaseModel):
     """Job metadata."""
 
-    type: str
+    type: str = "User"
     # Parameters used to build input/output queries
     # Generally correspond to the inputs of the previous transformations
     query_params: Dict[str, Any] | None = None
@@ -113,15 +119,13 @@ class TransformationSubmissionModel(BaseModel):
 # -----------------------------------------------------------------------------
 
 
-class ProductionMetadataModel(BaseModel):
-    """Transformation Input Metadata for a transformation."""
+class ProductionStepMetadataModel(BaseModel):
+    """Step metadata for a transformation."""
 
-    # Number of data to group together in a transformation
-    # Key: input name, Value: group size
-    group_size: Dict[str, int]
+    description: JobDescriptionModel
+    metadata: TransformationMetadataModel
 
 
-# TODO: workflow should be a Workflow, not a CommandLineTool
 # TODO: inputs should not be composed of relative path(?)
 class ProductionSubmissionModel(BaseModel):
     """Production definition sent to the router."""
@@ -129,10 +133,28 @@ class ProductionSubmissionModel(BaseModel):
     # Allow arbitrary types to be passed to the model
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    task: CommandLineTool | Workflow
-    # Key: step name, Value: metadata
-    metadata: Dict[str, ProductionMetadataModel] | None = None
-    description: JobDescriptionModel
+    task: Workflow
+    # Key: step name, Value: description & metadata of a transformation
+    steps_metadata: Dict[str, ProductionStepMetadataModel]
+
+    @model_validator(mode="before")
+    def validate_steps_metadata(cls, values):
+        task = values.get("task")
+        steps_metadata = values.get("steps_metadata")
+
+        if task and steps_metadata:
+            # Extract the available steps in the task
+            task_steps = set([step.id.split("#")[-1] for step in task.steps])
+            metadata_keys = set(steps_metadata.keys())
+
+            # Check if all metadata keys exist in the task's workflow steps
+            missing_steps = metadata_keys - task_steps
+            if missing_steps:
+                raise ValueError(
+                    f"The following steps are missing from the task workflow: {missing_steps}"
+                )
+
+        return values
 
     @field_serializer("task")
     def serialize_task(self, value):

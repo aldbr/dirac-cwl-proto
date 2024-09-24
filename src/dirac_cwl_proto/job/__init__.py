@@ -72,7 +72,6 @@ def submit_job_client(
             f"[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to validate the task:\n{ex}"
         )
         return typer.Exit(code=1)
-
     console.print(f"\t[green]:heavy_check_mark:[/green] Task {task_path}")
 
     if metadata_path:
@@ -80,7 +79,7 @@ def submit_job_client(
         with open(metadata_path, "r") as file:
             job_metadata = YAML(typ="safe").load(file)
     else:
-        job_metadata = JobMetadataModel(type="User")
+        job_metadata = JobMetadataModel()
     console.print("\t[green]:heavy_check_mark:[/green] Metadata")
 
     job_description = JobDescriptionModel(
@@ -276,7 +275,7 @@ def run_job(job: JobSubmissionModel) -> bool:
         result = subprocess.run(command, capture_output=True, text=True)
 
         if result.returncode != 0:
-            logging.error(
+            logger.error(
                 f"Error in executing workflow:\n{Text.from_ansi(result.stderr)}"
             )
             return False

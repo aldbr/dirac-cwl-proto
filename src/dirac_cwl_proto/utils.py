@@ -113,7 +113,7 @@ def _get_metadata(
     # Get the inputs
     inputs = {}
     for input in submitted.task.inputs:
-        input_name = input.id.split("#")[1]
+        input_name = input.id.split("#")[-1].split("/")[-1]
 
         input_value = input.default
         if (

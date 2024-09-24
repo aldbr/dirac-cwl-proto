@@ -73,7 +73,6 @@ def submit_transformation_client(
             f"[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to validate the task:\n{ex}"
         )
         return typer.Exit(code=1)
-
     console.print(f"\t[green]:heavy_check_mark:[/green] Task {task_path}")
 
     # Load the metadata: at this stage, only the structure is validated, not the content
@@ -83,7 +82,7 @@ def submit_transformation_client(
             metadata = YAML(typ="safe").load(file)
         metadata_model = TransformationMetadataModel(**metadata)
     else:
-        metadata_model = TransformationMetadataModel(type="User")
+        metadata_model = TransformationMetadataModel()
     console.print("\t[green]:heavy_check_mark:[/green] Metadata")
 
     transformation_description = JobDescriptionModel(
@@ -102,7 +101,7 @@ def submit_transformation_client(
         "[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Transformation validated."
     )
 
-    # Submit the tranaformation
+    # Submit the transformation
     console.print(
         "[blue]:information_source:[/blue] [bold]CLI:[/bold] Submitting the transformation..."
     )
@@ -186,7 +185,7 @@ def submit_transformation_router(transformation: TransformationSubmissionModel) 
     )
     logger.info("Jobs built!")
 
-    logger.info("Submitting jobs")
+    logger.info("Submitting jobs...")
     return submit_job_router(jobs)
 
 

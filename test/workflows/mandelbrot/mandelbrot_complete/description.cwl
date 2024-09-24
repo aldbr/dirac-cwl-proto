@@ -10,22 +10,31 @@ doc: >
 inputs:
   precision:
     type: float
+    default: 0.0005
   max_iterations:
     type: int
+    default: 1000
   start_x:
     type: float
+    default: -0.5
   start_y:
     type: float
+    default: 0.0
   step:
     type: int
+    default: 1
   split:
     type: int
+    default: 1
   width:
     type: int
+    default: 7680
   height:
     type: int
+    default: 4320
   output_name:
     type: string
+    default: "data"
 
 # Define the outputs of the workflow
 outputs:
