@@ -2,7 +2,7 @@ import glob
 import logging
 import os
 from pathlib import Path
-from typing import Dict, List
+from typing import List
 
 from pydantic import BaseModel
 
@@ -89,7 +89,7 @@ class PiGather(IMetadataModel):
     # Query parameters
     num_points: int
     # Input data
-    input_data: List[Dict[str, str]] | None
+    input_data: List | None
 
     def get_input_query(self, input_name: str) -> Path | None:
         if input_name == "input-data":
@@ -183,7 +183,7 @@ class MandelBrotMerging(IMetadataModel):
     height: int
     output_name: str
     # Input data
-    data: List[Dict[str, str]] | None
+    data: List | None
 
     def get_input_query(self, input_name: str) -> Path | None:
         return MandelBrotGeneration(

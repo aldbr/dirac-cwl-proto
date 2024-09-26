@@ -1,3 +1,5 @@
 type: PiGather
 group_size:
-  data: 5
+  input-data: 5
+query_params:
+  num_points: 100

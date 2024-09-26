@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 import typer
-from cwl_utils.parser import load_document_by_uri, save
+from cwl_utils.parser import load_document_by_uri
 from cwl_utils.parser.cwl_v1_2 import File
 from rich import print_json
 from rich.console import Console
@@ -238,10 +238,9 @@ def _generate_job_model_parameter(
         cwl_inputs = {}
         for input_name, input_data in group.items():
             cwl_inputs[input_name] = [
-                File(str(Path(path).resolve())) for path in input_data
+                File(path=str(Path(path).resolve())) for path in input_data
             ]
 
-        cwl_parameters = save(cwl_inputs, relative_uris=False)
-        job_model_params.append(JobParameterModel(sandbox=None, cwl=cwl_parameters))
+        job_model_params.append(JobParameterModel(sandbox=None, cwl=cwl_inputs))
 
     return job_model_params

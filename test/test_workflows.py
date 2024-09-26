@@ -5,7 +5,6 @@ import time
 from pathlib import Path
 
 import pytest
-from ruamel.yaml import YAML
 from typer.testing import CliRunner
 
 from dirac_cwl_proto import app
@@ -18,17 +17,19 @@ def cli_runner():
 
 @pytest.fixture()
 def cleanup():
-    shutil.rmtree("filecatalog", ignore_errors=True)
-    shutil.rmtree("sandboxstore", ignore_errors=True)
-    # crypto results
-    Path("base64_result.txt").unlink(missing_ok=True)
-    Path("caesar_result.txt").unlink(missing_ok=True)
-    Path("md5_result.txt").unlink(missing_ok=True)
-    Path("rot13_result.txt").unlink(missing_ok=True)
+    def _cleanup():
+        shutil.rmtree("filecatalog", ignore_errors=True)
+        shutil.rmtree("sandboxstore", ignore_errors=True)
+        shutil.rmtree("workernode", ignore_errors=True)
+        # crypto results
+        Path("base64_result.txt").unlink(missing_ok=True)
+        Path("caesar_result.txt").unlink(missing_ok=True)
+        Path("md5_result.txt").unlink(missing_ok=True)
+        Path("rot13_result.txt").unlink(missing_ok=True)
 
+    _cleanup()
     yield
-    shutil.rmtree("filecatalog", ignore_errors=True)
-    shutil.rmtree("sandboxstore", ignore_errors=True)
+    _cleanup()
 
 
 # -----------------------------------------------------------------------------
@@ -195,7 +196,9 @@ def test_run_job_validation_failure(
         ),
     ],
 )
-def test_run_simple_transformation_success(cli_runner, cleanup, cwl_file, metadata):
+def test_run_nonblocking_transformation_success(
+    cli_runner, cleanup, cwl_file, metadata
+):
     # CWL file is the first argument
     command = ["transformation", "submit", cwl_file]
     # Add the metadata file
@@ -209,26 +212,36 @@ def test_run_simple_transformation_success(cli_runner, cleanup, cwl_file, metada
 
 
 @pytest.mark.parametrize(
-    "input_transformations, cwl_file, metadata",
+    "cwl_file, metadata, source_input_data, destination_input_data",
     [
+        # --- Pi example ---
+        (
+            "test/workflows/pi/pi_gather/pigather.cwl",
+            "test/workflows/pi/type_dependencies/transformation/metadata-pi_gather.yaml",
+            [
+                "test/workflows/pi/type_dependencies/job/result_1.sim",
+                "test/workflows/pi/type_dependencies/job/result_2.sim",
+                "test/workflows/pi/type_dependencies/job/result_3.sim",
+                "test/workflows/pi/type_dependencies/job/result_4.sim",
+                "test/workflows/pi/type_dependencies/job/result_5.sim",
+            ],
+            "filecatalog/pi/100",
+        ),
         # --- Mandelbrot example ---
         (
-            {
-                "data": {
-                    "task": "test/workflows/mandelbrot/mandelbrot_imageprod/image-prod.cwl",
-                    "metadata": (
-                        "test/workflows/mandelbrot/type_dependencies/"
-                        "transformation/metadata-mandelbrot_imageprod.yaml"
-                    ),
-                }
-            },
             "test/workflows/mandelbrot/mandelbrot_imagemerge/image-merge.cwl",
             "test/workflows/mandelbrot/type_dependencies/transformation/metadata-mandelbrot_imagemerge.yaml",
+            [
+                "test/workflows/mandelbrot/type_dependencies/transformation/data_1.txt",
+                "test/workflows/mandelbrot/type_dependencies/transformation/data_2.txt",
+                "test/workflows/mandelbrot/type_dependencies/transformation/data_3.txt",
+            ],
+            "filecatalog/mandelbrot/images/raw/1920x1080/",
         ),
     ],
 )
 def test_run_blocking_transformation_success(
-    cli_runner, input_transformations, cwl_file, metadata
+    cli_runner, cleanup, cwl_file, metadata, source_input_data, destination_input_data
 ):
     # Define a function to run the transformation command and return the result
     def run_transformation():
@@ -255,27 +268,14 @@ def test_run_blocking_transformation_success(
         transformation_thread.is_alive()
     ), "The transformation should be waiting for files."
 
-    # Add the n required files to the expected input query
-    for input_name, transformation_details_ in input_transformations.items():
-        # Load the metadata yaml file
-        with open(metadata, "r") as file:
-            content = YAML(typ="safe").load(file)
-
-        number_of_input_data = content["group_size"][input_name]
-        previous_task = transformation_details_["task"]
-        previous_metadata = transformation_details_["metadata"]
-        for _ in range(number_of_input_data):
-            command = [
-                "transformation",
-                "submit",
-                previous_task,
-                "--metadata-path",
-                previous_metadata,
-            ]
-            cli_runner.invoke(app, command)
+    for input in source_input_data:
+        # Copy the input data to the destination
+        destination = Path(destination_input_data)
+        destination.mkdir(parents=True, exist_ok=True)
+        shutil.copy(input, destination)
 
     # Wait for the thread to finish
-    transformation_thread.join(timeout=30)
+    transformation_thread.join(timeout=60)
 
     # Check if the transformation completed successfully
     assert (

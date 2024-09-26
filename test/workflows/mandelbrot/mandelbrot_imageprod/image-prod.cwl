@@ -18,10 +18,10 @@ inputs:
     default: 0.0
   step:
     type: int
-    default: 1
+    default: 3
   split:
     type: int
-    default: 1
+    default: 3
   width:
     type: int
     default: 1920

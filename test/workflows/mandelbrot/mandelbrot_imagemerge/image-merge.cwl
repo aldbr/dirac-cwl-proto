@@ -41,6 +41,7 @@ steps:
         InitialWorkDirRequirement:
           listing:
             - $(inputs.repo)  # Stage the repo directory
+            - $(inputs.data)  # Stage the data files
 
       inputs:
         data:

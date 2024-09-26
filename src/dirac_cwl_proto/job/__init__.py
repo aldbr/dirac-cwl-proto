@@ -295,6 +295,27 @@ def _pre_process(
                     tar.extractall(job_path)
             logger.info("Files downloaded successfully!")
 
+        # Download input data from the file catalog
+        logger.info("Downloading input data from the file catalog...")
+        input_data = []
+        for _, input_value in arguments.cwl.items():
+            input = input_value
+            if not isinstance(input_value, list):
+                input = [input_value]
+
+            for item in input:
+                if not isinstance(item, File):
+                    continue
+                input_path = Path(item.path)
+                if "filecatalog" in input_path.parts:
+                    input_data.append(item)
+
+        for file in input_data:
+            input_path = Path(file.path)
+            shutil.copy(input_path, job_path / input_path.name)
+            file.path = file.path.split("/")[-1]
+        logger.info("Input data downloaded successfully!")
+
         # Prepare the parameters for cwltool
         logger.info("Preparing the parameters for cwltool...")
         parameter_dict = save(arguments.cwl)
@@ -371,7 +392,6 @@ def run_job(job: JobSubmissionModel) -> bool:
         logger.exception("JobWrapper: Failed to execute workflow")
         return False
     finally:
-        pass
         # Clean up
         if job_path.exists():
             shutil.rmtree(job_path)
