@@ -1,0 +1,3 @@
+type: PiGather
+group_size:
+  data: 5

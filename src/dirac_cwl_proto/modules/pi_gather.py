@@ -30,11 +30,12 @@ def process(files: List[str] = typer.Argument(..., help="Paths to the input file
     pi_estimate = 4 * (inside_circle / total_points)
 
     # Write the result to a file
-    with open("output.pi", "w") as f:
+    output_name = "result_final.sim"
+    with open(output_name, "w") as f:
         f.write(f"Approximation of Pi: {pi_estimate}\n")
 
     console.print(f"Pi approximation: [bold yellow]{pi_estimate}[/bold yellow]")
-    return "output.pi"
+    return output_name
 
 
 if __name__ == "__main__":

@@ -6,13 +6,13 @@
 o
 ```
 
-- **macobac**: 1 `Workflow` with 2 independent `CommandLineTools`
+- **crypto**: 1 `Workflow` with 4 independent `CommandLineTools`
 
 ```
-o  o
+o  o  o  o
 ```
 
-- **generic**: 1 linear `Workflow` with 2 dependent `CommandLineTools`
+- **pi**: 1 linear `Workflow` with 2 dependent `CommandLineTools`
 
 ```
 o

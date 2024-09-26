@@ -66,23 +66,48 @@ class User(IMetadataModel):
 # -----------------------------------------------------------------------------
 
 
-class Basic(IMetadataModel):
-    """Very basic metadata model."""
+class PiSimulate(IMetadataModel):
+    """Pi simulation metadata model."""
 
-    max_random: int
-    min_random: int
+    num_points: int
 
     def get_output_query(self, output_name: str) -> Path | None:
-        return Path("filecatalog") / str(self.max_random) / str(self.min_random)
+        if output_name == "sim":
+            return Path("filecatalog") / "pi" / str(self.num_points)
+        return None
 
     def post_process(self):
         """Post process the outputs of a job."""
         outputs = glob.glob("*.sim")
         if outputs:
             self._store_output("sim", outputs[0])
-        outputs = glob.glob("output.dst")
+
+
+class PiGather(IMetadataModel):
+    """Pi gathering metadata model."""
+
+    # Query parameters
+    num_points: int
+    # Input data
+    input_data: List[Dict[str, str]] | None
+
+    def get_input_query(self, input_name: str) -> Path | None:
+        if input_name == "input-data":
+            return PiSimulate(num_points=self.num_points).get_output_query("sim")
+        return None
+
+    def get_output_query(self, output_name: str) -> Path | None:
+        if output_name == "pi_result" and self.input_data:
+            return (
+                Path("filecatalog") / "pi" / str(self.num_points * len(self.input_data))
+            )
+        return None
+
+    def post_process(self):
+        """Post process the outputs of a job."""
+        outputs = glob.glob("*sim")
         if outputs:
-            self._store_output("result", outputs[0])
+            self._store_output("pi_result", outputs[0])
 
 
 # -----------------------------------------------------------------------------
@@ -108,22 +133,6 @@ class LHCb(IMetadataModel):
         outputs = glob.glob("pool_xml_catalog.xml")
         if outputs:
             self._store_output("pool_xml_catalog", outputs[0])
-
-
-# -----------------------------------------------------------------------------
-
-
-class Macobac(IMetadataModel):
-    """Macobac metadata model."""
-
-    configuration: Path
-
-    def get_output_query(self, output_name: str) -> Path | None:
-        return Path("filecatalog") / "macobac"
-
-    def post_process(self):
-        """Post process the outputs of a job."""
-        pass
 
 
 # -----------------------------------------------------------------------------

@@ -2,14 +2,18 @@
 CLI interface to run a workflow as a job.
 """
 import logging
-import os
+import random
+import shutil
 import subprocess
-from typing import List, Optional
+import tarfile
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 import typer
 from cwl_utils.parser import load_document_by_uri, save
 from cwl_utils.parser.cwl_v1_2 import (
     CommandLineTool,
+    File,
     Workflow,
 )
 from cwl_utils.parser.cwl_v1_2_utils import load_inputfile
@@ -95,9 +99,12 @@ def submit_job_client(
         for parameter_p in parameter_path:
             parameter = load_inputfile(parameter_p)
 
+            # Upload the local files to the sandbox store
+            sandbox_id = upload_local_input_files(parameter)
+
             parameters.append(
                 JobParameterModel(
-                    sandbox=None,
+                    sandbox=[sandbox_id] if sandbox_id else None,
                     cwl=parameter,
                 )
             )
@@ -126,6 +133,52 @@ def submit_job_client(
         )
         return typer.Exit(code=1)
     console.print("[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Job(s) done.")
+
+
+def upload_local_input_files(input_data: Dict[str, Any]) -> str | None:
+    """
+    Extract the files from the parameters.
+
+    :param parameters: The parameters of the job
+
+    :return: The list of files
+    """
+    Path("sandboxstore").mkdir(exist_ok=True)
+
+    # Get the files from the input data
+    files = []
+    for _, input_value in input_data.items():
+        if isinstance(input_value, list):
+            for item in input_value:
+                if isinstance(item, File):
+                    files.append(item)
+        elif isinstance(input_value, File):
+            files.append(input_value)
+
+    if not files:
+        return None
+
+    # Tar the files and upload them to the file catalog
+    sandbox_path = (
+        Path("sandboxstore") / f"input_sandbox_{random.randint(1000, 9999)}.tar.gz"
+    )
+    with tarfile.open(sandbox_path, "w:gz") as tar:
+        for file in files:
+            file_path = Path(file.path.replace("file://", ""))
+            console.print(
+                f"\t\t[blue]:information_source:[/blue] Found {file_path} locally, uploading it to the sandbox store..."
+            )
+            tar.add(file_path, arcname=file_path.name)
+    console.print(
+        f"\t\t[blue]:information_source:[/blue] File(s) will be available through {sandbox_path}"
+    )
+
+    # Modify the location of the files to point to the future location on the worker node
+    for file in files:
+        file.path = str(Path(".") / file.path.split("/")[-1])
+
+    sandbox_id = sandbox_path.name.replace(".tar.gz", "")
+    return sandbox_id
 
 
 # -----------------------------------------------------------------------------
@@ -211,28 +264,44 @@ class JobExecutionCoordinator:
 
 def _pre_process(
     executable: CommandLineTool | Workflow,
-    arguments: List[JobParameterModel] | None,
+    arguments: JobParameterModel | None,
     job_exec_coordinator: JobExecutionCoordinator,
+    job_path: Path,
 ) -> List[str]:
     """
     Pre-process the job before execution.
 
     :return: True if the job is pre-processed successfully, False otherwise
     """
+    logger = logging.getLogger("JobWrapper - Pre-process")
+
     # Prepare the task for cwltool
+    logger.info("Preparing the task for cwltool...")
     command = ["cwltool"]
 
     task_dict = save(executable)
-    with open("task.cwl", "w") as task_file:
+    task_path = job_path / "task.cwl"
+    with open(task_path, "w") as task_file:
         YAML().dump(task_dict, task_file)
-    command.append("task.cwl")
+    command.append(str(task_path))
 
-    if arguments and len(arguments) == 1:
-        parameter_dict = save(arguments[0].cwl)
-        with open("parameter.cwl", "w") as parameter_file:
+    if arguments:
+        if arguments.sandbox:
+            # Download the files from the sandbox store
+            logger.info("Downloading the files from the sandbox store...")
+            for sandbox in arguments.sandbox:
+                sandbox_path = Path("sandboxstore") / f"{sandbox}.tar.gz"
+                with tarfile.open(sandbox_path, "r:gz") as tar:
+                    tar.extractall(job_path)
+            logger.info("Files downloaded successfully!")
+
+        # Prepare the parameters for cwltool
+        logger.info("Preparing the parameters for cwltool...")
+        parameter_dict = save(arguments.cwl)
+        parameter_path = job_path / "parameter.cwl"
+        with open(parameter_path, "w") as parameter_file:
             YAML().dump(parameter_dict, parameter_file)
-        command.append("parameter.cwl")
-
+        command.append(str(parameter_path))
     return job_exec_coordinator.pre_process(command)
 
 
@@ -244,11 +313,12 @@ def _post_process(
 
     :return: True if the job is post-processed successfully, False otherwise
     """
+    logger = logging.getLogger("JobWrapper - Post-process")
     if status != 0:
         raise RuntimeError(f"Error {status} during the task execution.")
 
-    logging.info(stdout)
-    logging.info(stderr)
+    logger.info(stdout)
+    logger.info(stderr)
 
     job_exec_coordinator.post_process()
 
@@ -262,11 +332,21 @@ def run_job(job: JobSubmissionModel) -> bool:
     """
     logger = logging.getLogger("JobWrapper")
     job_exec_coordinator = JobExecutionCoordinator(job)
+
+    # Isolate the job in a specific directory
+    job_path = Path(".") / "workernode" / f"{random.randint(1000, 9999)}"
+    job_path.mkdir(parents=True, exist_ok=True)
+
     try:
         # Pre-process the job
         logger.info("Pre-processing Task...")
-        command = _pre_process(job.task, job.parameters, job_exec_coordinator)
-        logger.info("Task pre-processed successfully.")
+        command = _pre_process(
+            job.task,
+            job.parameters[0] if job.parameters else None,
+            job_exec_coordinator,
+            job_path,
+        )
+        logger.info("Task pre-processed successfully!")
 
         # Execute the task
         logger.info(f"Executing Task: {command}")
@@ -277,23 +357,21 @@ def run_job(job: JobSubmissionModel) -> bool:
                 f"Error in executing workflow:\n{Text.from_ansi(result.stderr)}"
             )
             return False
-        logger.info("Task executed successfully.")
+        logger.info("Task executed successfully!")
 
         # Post-process the job
         logger.info("Post-processing Task...")
         _post_process(
             result.returncode, result.stdout, result.stderr, job_exec_coordinator
         )
-        logger.info("Task post-processed successfully.")
+        logger.info("Task post-processed successfully!")
         return True
 
     except Exception:
         logger.exception("JobWrapper: Failed to execute workflow")
         return False
     finally:
+        pass
         # Clean up
-        for file in ["task.cwl", "parameter.cwl"]:
-            try:
-                os.remove(file)
-            except FileNotFoundError:
-                pass
+        if job_path.exists():
+            shutil.rmtree(job_path)

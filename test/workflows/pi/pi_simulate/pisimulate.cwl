@@ -9,6 +9,7 @@ requirements:
 inputs:
   num-points:
     type: int
+    default: 1000
     inputBinding:
       position: 1
 
@@ -16,6 +17,6 @@ outputs:
   result_sim:
     type: File
     outputBinding:
-      glob: "*result.sim"
+      glob: "result*.sim"
 
-baseCommand: [pi_simulate]
+baseCommand: [pi-simulate]

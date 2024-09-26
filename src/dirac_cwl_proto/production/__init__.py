@@ -19,8 +19,10 @@ from ruamel.yaml import YAML
 from schema_salad.exceptions import ValidationException
 
 from dirac_cwl_proto.submission_models import (
+    JobDescriptionModel,
     ProductionStepMetadataModel,
     ProductionSubmissionModel,
+    TransformationMetadataModel,
     TransformationSubmissionModel,
 )
 from dirac_cwl_proto.transformation import (
@@ -57,7 +59,7 @@ def submit_production_client(
     """
     # Validate the workflow
     console.print(
-        "[blue]:information_source:[/blue] [bold]CLI:[/bold] Validating the transformation..."
+        "[blue]:information_source:[/blue] [bold]CLI:[/bold] Validating the production..."
     )
     try:
         task = load_document_by_uri(task_path)
@@ -134,6 +136,7 @@ def submit_production_router(production: ProductionSubmissionModel) -> bool:
     logger.info("Submitting transformations...")
     with ThreadPoolExecutor() as executor:
         results = list(executor.map(submit_transformation_router, transformations))
+
     return all(results)
 
 
@@ -159,7 +162,13 @@ def _get_transformations(
 
         # Get the metadata & description for the step
         step_id = step.id.split("#")[-1]
-        step_data: ProductionStepMetadataModel = production.steps_metadata[step_id]
+        step_data: ProductionStepMetadataModel = production.steps_metadata.get(
+            step_id,
+            ProductionStepMetadataModel(
+                description=JobDescriptionModel(),
+                metadata=TransformationMetadataModel(),
+            ),
+        )
         step_data.metadata.query_params = query_params
 
         transformations.append(

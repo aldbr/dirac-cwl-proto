@@ -24,10 +24,10 @@ inputs:
     default: 1
   width:
     type: int
-    default: 7680
+    default: 1920
   height:
     type: int
-    default: 4320
+    default: 1080
   output_name:
     type: string
     default: data_

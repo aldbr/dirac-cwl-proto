@@ -1,4 +1,4 @@
-cwlVersion: v1.1
+cwlVersion: v1.2
 class: CommandLineTool
 
 requirements:
@@ -8,7 +8,7 @@ requirements:
 
 inputs:
   input-data:
-    type: File
+    type: File[]
     inputBinding:
       separate: true
 
@@ -16,6 +16,6 @@ outputs:
   pi_result:
     type: File
     outputBinding:
-      glob: "output.pi"
+      glob: "result*.sim"
 
-baseCommand: [pi_gather]
+baseCommand: [pi-gather]

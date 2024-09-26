@@ -1,5 +1,5 @@
 """
-CLI interface to run a CWL workflow from end to end (production/transformation/job).
+Utils.
 """
 import importlib
 
@@ -8,10 +8,6 @@ from dirac_cwl_proto.submission_models import (
     JobSubmissionModel,
     TransformationSubmissionModel,
 )
-
-# -----------------------------------------------------------------------------
-# Utils
-# -----------------------------------------------------------------------------
 
 
 def dash_to_snake_case(name):
@@ -63,4 +59,7 @@ def _get_metadata(
         raise RuntimeError(
             f"Metadata class {submitted.metadata.type} not found."
         ) from None
-    return metadata_class(**inputs)
+
+    # Convert the inputs to snake case
+    params = {dash_to_snake_case(key): value for key, value in inputs.items()}
+    return metadata_class(**params)

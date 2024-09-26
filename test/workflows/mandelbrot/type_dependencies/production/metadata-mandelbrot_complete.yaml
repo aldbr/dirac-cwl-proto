@@ -5,4 +5,4 @@ image-merge:
   metadata:
     type: MandelBrotMerging
     group_size:
-      data: 5
+      data: 1

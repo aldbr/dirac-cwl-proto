@@ -11,12 +11,13 @@ inputs:
   num-points:
     type: int
     doc: "Number of random points to generate for the simulation"
+    default: 1000
 
 # Define the outputs of the workflow
 outputs:
   pi_approximation:
     type: File
-    outputSource: processing/pi_result
+    outputSource: gathering/pi_result
 
 # Define the steps of the workflow
 steps:
@@ -24,7 +25,7 @@ steps:
   simulate:
     in:
       num-points: num-points
-    out: [result_sim]
+    out: [sim]
     run:
       class: CommandLineTool
       requirements:
@@ -37,17 +38,17 @@ steps:
           inputBinding:
             position: 1
       outputs:
-        result_sim:
-          type: File
+        sim:
+          type: File[]
           outputBinding:
-            glob: "*result.sim"
-      baseCommand: [pi_simulate]
+            glob: "result*.sim"
+      baseCommand: [pi-simulate]
 
-  # Processing step
-  processing:
+  # Gathering step
+  gathering:
     in:
       input-data:
-        source: simulate/result_sim
+        source: simulate/sim
     out: [pi_result]
     run:
       class: CommandLineTool
@@ -57,12 +58,12 @@ steps:
           ramMin: 1024
       inputs:
         input-data:
-          type: File
+          type: File[]
           inputBinding:
             separate: true
       outputs:
         pi_result:
           type: File
           outputBinding:
-            glob: "output.pi"
-      baseCommand: [pi_gather]
+            glob: "result*.sim"
+      baseCommand: [pi-gather]

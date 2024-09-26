@@ -237,12 +237,9 @@ def _generate_job_model_parameter(
     for group in grouped_input_data:
         cwl_inputs = {}
         for input_name, input_data in group.items():
-            if len(input_data) == 1:
-                cwl_inputs[input_name] = File(path=str(Path(input_data[0]).resolve()))
-            else:
-                cwl_inputs[input_name] = [
-                    File(str(Path(path).resolve())) for path in input_data
-                ]
+            cwl_inputs[input_name] = [
+                File(str(Path(path).resolve())) for path in input_data
+            ]
 
         cwl_parameters = save(cwl_inputs, relative_uris=False)
         job_model_params.append(JobParameterModel(sandbox=None, cwl=cwl_parameters))

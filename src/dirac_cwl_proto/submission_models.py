@@ -40,6 +40,10 @@ class JobParameterModel(BaseModel):
     sandbox: List[str] | None
     cwl: Dict[str, Any]
 
+    @field_serializer("cwl")
+    def serialize_cwl(self, value):
+        return save(value)
+
 
 class JobMetadataModel(BaseModel):
     """Job metadata."""
@@ -126,7 +130,6 @@ class ProductionStepMetadataModel(BaseModel):
     metadata: TransformationMetadataModel
 
 
-# TODO: inputs should not be composed of relative path(?)
 class ProductionSubmissionModel(BaseModel):
     """Production definition sent to the router."""
 
