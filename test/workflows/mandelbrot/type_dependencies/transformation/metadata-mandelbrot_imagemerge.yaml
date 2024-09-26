@@ -1,0 +1,13 @@
+type: MandelBrotMerging
+group_size:
+  data: 3
+query_params:
+  precision: 0.0005
+  max_iterations: 1000
+  start_x: -0.5
+  start_y: 0.0
+  step: 1
+  split: 1
+  width: 1920
+  height: 1080
+  output_name: "data_"

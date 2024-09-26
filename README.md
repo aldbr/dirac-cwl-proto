@@ -1,13 +1,46 @@
-# dirac cwl prototype
 
-This Python prototype provides a command-line interface (CLI) for the end-to-end execution of Common Workflow Language (CWL) workflows. It enables users to locally test CWL workflows, submit them as jobs to the DIRAC Workload Management System (WMS) for execution on remote computing resources, and manage large-scale productions by splitting a workflow into multiple transformations.
+<p align="center">
+  <img alt="Dirac CWL Logo" src="public/CWLDiracX.png" width="300" >
+</p>
+
+# Dirac CWL Prototype
+![Workflow tests](https://github.com/aldbr/dirac-cwl-proto/actions/workflows/main.yml/badge.svg?branch=main)
 
 
-- Local Workflow Testing: Initially, the user tests the CWL workflow locally using `cwltool`. This step involves validating the workflow's structure and ensuring that it executes correctly with the provided inputs.
+This Python prototype introduces a command-line interface (CLI) designed for the end-to-end execution of Common Workflow Language (CWL) workflows at different scales. It enables users to locally test CWL workflows, and then run them as jobs, transformations and/or productions.
 
-- Submission as "DIRAC" Jobs: Once the workflow passes local testing, it can be submitted to "DIRAC" WMS as a job. This allows the workflow to be executed on remote computing resources, leveraging DIRAC's distributed computing capabilities. The application automates the process of job creation, submission, and monitoring.
+## Prototype Workflow
 
-- Submission as "DIRAC" Productions: For workflows requiring large-scale execution, such as those involving Monte Carlo simulations, the application provides a mechanism to split the workflow into multiple transformations. Each transformation represents a discrete step in the workflow and is capable of executing one or more jobs. This approach facilitates parallel processing, significantly reducing the overall execution time and improving resource efficiency.
+### Local testing
+
+Initially, the user tests the CWL workflow locally using `cwltool`. This step involves validating the workflow's structure and ensuring that it executes correctly with the provided inputs.
+
+  > - CWL task: workflow structure
+  > - inputs of the task
+
+Once the workflow passes local testing, the user can choose from 3 options for submission depending on the requirements.
+
+### Submission methods
+
+1. **Submission as Dirac Jobs**: For simple workflows with a limited number of inputs, CWL tasks can be submitted as individual jobs. In this context, they are run locally as if they were run on distributed computing resources. Additionally, users can submit the same workflow with different sets of inputs in a single request, generating multiple jobs at once.
+
+  > - CWL task
+  > - [inputs1, inputs2, ...]
+  > - Dirac description (site, priority):  Dirac-specific attributes related to scheduling
+  > - Metadata (job type): Dirac-specific attributes related to scheduling + execution
+
+2. **Submission as Dirac Transformation**: For workflows requiring continuous, real-time input data or large-scale execution, CWL tasks can be submitted as transformations. As new input data becomes available, jobs are automatically generated and executed as jobs. This method is ideal for ongoing data processing and scalable operations.
+
+  > - CWL task (inputs already described within it)
+  > - Dirac description (site, priority)
+  > - Metadata (job type, group size, query parameters)
+
+3. **Submission as Dirac Productions**: For complex workflows that require multiple steps with different requirements, CWL tasks can be submitted as productions. This method allows the workflow to be split into multiple transformations, with each transformation handling a distinct step in the process. Each transformation can manage one or more jobs, enabling large-scale, multi-step execution.
+
+  > - CWL task (inputs already described within it)
+  > - Step Metadata (per step):
+  >   - Dirac description (site, priority)
+  >   - Metadata (job type, group size, query parameters)
 
 ## Installation
 
@@ -27,14 +60,18 @@ pip install -e .
 ## Usage
 
 ```bash
-dirac-cwl production submit <workflow_path> <input_path> <metadata model>
+dirac-cwl job submit <workflow_path> [--parameter-path <input_path>] [--metadata-path <metadata_path>]
+
+dirac-cwl transformation submit <workflow_path> [--metadata-path <metadata_path>]
+
+dirac-cwl production submit <workflow_path> [--steps-metadata-path <steps_metadata_path>]
 ```
 
 This package contains modules and tools to manage CWL workflows:
 
 - `src/modules`: Python scripts for individual steps in workflows.
 - `src/cli`: Utility scripts for managing and executing CWL workflows.
-- `workflows`: CWL workflow definitions.
+- `test/workflows`: CWL workflow definitions.
 
 To use the workflows and inputs directly with `cwltool`, you need to add the `modules` directory to the `$PATH`:
 
@@ -49,18 +86,31 @@ cwltool <workflow_path> <inputs>
 
 To add a new workflow to the project, follow these steps:
 
-- Create a new directory under `workflows`
-- Add required files: Ensure that the directory contains at least the following two files:
-    - `description.cwl`: This is the CWL (Common Workflow Language) file that describes the workflow.
-    - `inputs.yml`: This YAML file contains the inputs that will be provided to the CWL workflow.
+- Create a new directory under `workflows` (e.g. `workflows/helloworld`)
+- Add one or more variants of a workflow under different directory (e.g. `helloworld/helloworld_basic/description.cwl` and `helloworld/helloworld_with_inputs/description.cwl`)
+- In a `type_dependencies` subdirectory, add the required files to submit a job/transformation/production from a given variant.
 
 Directory Structure Example:
 
 ```
 workflows/
-├── my_new_workflow/
-│   ├── description.cwl
-│   └── inputs.yml
+└── my_new_workflow/
+    |
+    ├── my_new_workflow_complete/
+    |   └── description.cwl
+    ├── my_new_workflow_step1/
+    |   └── description.cwl
+    ├── my_new_workflow_step2/
+    |   └── description.cwl
+    |
+    └── type_dependencies/
+        ├── production/
+        |   └── steps_metadata.yaml
+        ├── transformation/
+        |   └── metadata.yaml
+        └── job/
+            ├── inputs1.yaml
+            └── inputs2.yaml
 ```
 
 ### Add a module
@@ -106,4 +156,13 @@ generic-command = "dirac_cwl_proto.modules.generic_command:app"
 
 ```yaml
 baseCommand: [generic-command]
+```
+
+### Test your changes
+
+- Add your test in `test/test_workflows`.
+- Run `pytest`:
+
+```bash
+pytest test/test_workflows.py
 ```

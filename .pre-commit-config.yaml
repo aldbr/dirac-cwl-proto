@@ -32,4 +32,4 @@ repos:
           - types-PyYAML
           - types-cachetools
           - types-requests
-        exclude: ^(/tests/|/workflows/|/bookkeeping)
+        exclude: ^(/tests/|/workflows/|/filecatalog/|/sandboxstore/)

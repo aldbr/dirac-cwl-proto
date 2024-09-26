@@ -39,9 +39,9 @@ testing = ["pytest>=6"]
 
 [project.scripts]
 dirac-cwl = "dirac_cwl_proto:app"
-generic-simulate = "dirac_cwl_proto.modules.generic_simulate:app"
-generic-process = "dirac_cwl_proto.modules.generic_process:app"
-calculate-macobac = "dirac_cwl_proto.modules.calculate_macobac:app"
+pi-simulate = "dirac_cwl_proto.modules.pi_simulate:app"
+pi-gather = "dirac_cwl_proto.modules.pi_gather:app"
+crypto = "dirac_cwl_proto.modules.crypto:app"
 lhcb-app = "dirac_cwl_proto.modules.lhcb_app:app"
 
 [tool.setuptools_scm]

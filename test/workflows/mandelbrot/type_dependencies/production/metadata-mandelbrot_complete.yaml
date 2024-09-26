@@ -1,0 +1,8 @@
+image-prod:
+  metadata:
+    type: MandelBrotGeneration
+image-merge:
+  metadata:
+    type: MandelBrotMerging
+    group_size:
+      data: 1

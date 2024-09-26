@@ -2,85 +2,142 @@
 CLI interface to run a workflow as a production.
 """
 import logging
-import os
-import shutil
 from concurrent.futures import ThreadPoolExecutor
-from pathlib import Path
-from typing import cast
+from typing import Any, List, Optional
 
 import typer
-from cwl_utils.parser import save
-from cwl_utils.parser.cwl_v1_2 import CommandLineTool, Workflow, WorkflowStep
+from cwl_utils.parser import load_document_by_uri
+from cwl_utils.parser.cwl_v1_2 import (
+    CommandLineTool,
+    Workflow,
+    WorkflowInputParameter,
+    WorkflowStep,
+)
+from rich import print_json
 from rich.console import Console
 from ruamel.yaml import YAML
+from schema_salad.exceptions import ValidationException
 
-from dirac_cwl_proto.transformation import (
-    ExternalInputModel,
-    TransformationModel,
-    start_transformation,
+from dirac_cwl_proto.submission_models import (
+    JobDescriptionModel,
+    ProductionStepMetadataModel,
+    ProductionSubmissionModel,
+    TransformationMetadataModel,
+    TransformationSubmissionModel,
 )
-from dirac_cwl_proto.utils import CWLBaseModel
+from dirac_cwl_proto.transformation import (
+    submit_transformation_router,
+)
 
 app = typer.Typer()
 console = Console()
 
 
+# -----------------------------------------------------------------------------
+# dirac-cli commands
+# -----------------------------------------------------------------------------
+
+
 @app.command("submit")
-def run(
-    workflow_path: str = typer.Argument(..., help="Path to the CWL file"),
-    metadata_path: str = typer.Argument(
-        ..., help="Path to the file containing the metadata"
+def submit_production_client(
+    task_path: str = typer.Argument(..., help="Path to the CWL file"),
+    steps_metadata_path: str = typer.Option(
+        None,
+        help="Path to metadata file used to generate the transformations (one entry per step)",
     ),
-    metadata_type: str = typer.Argument(
-        ..., help="Type of metadata to use", case_sensitive=False
+    # Specific parameter for the purpose of the prototype
+    local: Optional[bool] = typer.Option(
+        True, help="Run the job locally instead of submitting it to the router"
     ),
 ):
     """
-    Run a workflow from end to end (production/transformation/job).
+    Correspond to the dirac-cli command to submit productions
 
     This command will:
     - Validate the workflow
-    - Create a production from the workflow
     - Start the production
-    - Start the transformations
-    - Start the jobs
     """
-    # Generate a production
+    # Validate the workflow
     console.print(
-        f"[blue]:information_source:[/blue] [bold]Creating new production based on {workflow_path}...[/bold]"
+        "[blue]:information_source:[/blue] [bold]CLI:[/bold] Validating the production..."
     )
     try:
-        production = create_production(workflow_path, metadata_path, metadata_type)
-    except (ValueError, RuntimeError) as ex:
-        console.print(f"[red]:heavy_multiplication_x:[/red] {ex}")
-        return typer.Exit(code=1)
-    console.print(
-        "[green]:heavy_check_mark:[/green] [bold]Production created: ready to start.[/bold]"
-    )
-
-    # Start the production
-    console.print(
-        "[blue]:information_source:[/blue] [bold]Starting the production...[/bold]"
-    )
-    if not start_production(production):
+        task = load_document_by_uri(task_path)
+    except ValidationException as ex:
         console.print(
-            "[red]:heavy_multiplication_x:[/red] [bold]Failed to run production.[/bold]"
+            f"[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to validate the task:\n{ex}"
         )
         return typer.Exit(code=1)
-    console.print("[green]:heavy_check_mark:[/green] [bold]Production done.[/bold]")
+    console.print(f"\t[green]:heavy_check_mark:[/green] Task {task_path}")
+
+    # Load the metadata: at this stage, only the structure is validated, not the content
+    steps_metadata = {}
+    if steps_metadata_path:
+        with open(steps_metadata_path, "r") as file:
+            steps_metadata = YAML(typ="safe").load(file)
+
+    production_step_metadata = {}
+    for step_name, step_data in steps_metadata.items():
+        production_step_metadata[step_name] = ProductionStepMetadataModel(
+            description=step_data.get("description", {}),
+            metadata=step_data.get("metadata", {}),
+        )
+    console.print("\t[green]:heavy_check_mark:[/green] Metadata")
+
+    # Create the production
+    transformation = ProductionSubmissionModel(
+        task=task,
+        steps_metadata=production_step_metadata,
+    )
+    console.print(
+        "[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Production validated."
+    )
+
+    # Submit the tranaformation
+    console.print(
+        "[blue]:information_source:[/blue] [bold]CLI:[/bold] Submitting the production..."
+    )
+    print_json(transformation.model_dump_json(indent=4))
+    if not submit_production_router(transformation):
+        console.print(
+            "[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to run production."
+        )
+        return typer.Exit(code=1)
+    console.print(
+        "[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Production done."
+    )
 
 
 # -----------------------------------------------------------------------------
-# Pydantic models
+# dirac-router commands
 # -----------------------------------------------------------------------------
 
 
-# TODO: workflow should be a Workflow, not a CommandLineTool
-# TODO: inputs should not be composed of relative path(?)
-class ProductionModel(CWLBaseModel):
-    """A production is a set of transformations that are executed in parallel."""
+def submit_production_router(production: ProductionSubmissionModel) -> bool:
+    """Submit a production to the router.
 
-    transformations: list[TransformationModel] | None = None
+    :param production: The production to submit
+
+    :return: True if the production was submitted successfully, False otherwise
+    """
+    logger = logging.getLogger("ProductionRouter")
+
+    # Validate the transformation
+    logger.info("Validating the production...")
+    # Already validated by the pydantic model
+    logger.info("Production validated!")
+
+    # Split the production into transformations
+    logger.info("Creating transformations from production...")
+    transformations = _get_transformations(production)
+    logger.info(f"{len(transformations)} transformations created!")
+
+    # Submit the transformations
+    logger.info("Submitting transformations...")
+    with ThreadPoolExecutor() as executor:
+        results = list(executor.map(submit_transformation_router, transformations))
+
+    return all(results)
 
 
 # -----------------------------------------------------------------------------
@@ -88,67 +145,44 @@ class ProductionModel(CWLBaseModel):
 # -----------------------------------------------------------------------------
 
 
-def create_production(
-    workflow_path: str, metadata_path: str, metadata_type: str
-) -> ProductionModel:
-    """Validate a CWL workflow and create transformations from them.
+def _get_transformations(
+    production: ProductionSubmissionModel,
+) -> List[TransformationSubmissionModel]:
+    """Create transformations from a given production.
 
-    :param workflow_path: Path to the CWL workflow
-    :param metadata_path: Path to the metadata file
-
-    :return: The production
+    :param production: The production to create transformations from
     """
-
-    logging.info(f"Creating production from workflow: {workflow_path}...")
-    # Validate the main workflow
-    production = ProductionModel(
-        workflow_path=workflow_path,
-        metadata_path=metadata_path,
-        metadata_type=metadata_type,
-    )
-
-    workflow = cast(Workflow, production.workflow)
-    if not (workflow and workflow.steps):
-        raise RuntimeError("No steps found in the workflow.")
-
-    logging.info("Production validated and created!")
-    logging.info(f"Creating transformations from workflow: {workflow_path}...")
-
     # Create a subworkflow and a transformation for each step
     transformations = []
-    for step in workflow.steps:
-        step_name = step.id.split("#")[-1]
-        subworkflow = _create_subworkflow(step, str(workflow.cwlVersion))
-        external_inputs = _get_external_inputs(step, workflow.steps)
+    for step in production.task.steps:
+        step_task = _create_subworkflow(
+            step, str(production.task.cwlVersion), production.task.inputs
+        )
+        query_params = _get_query_params(production.task)
 
-        output_dir = Path(workflow_path).parent / "subworkflows" / step_name
-        output_dir.mkdir(parents=True, exist_ok=True)
-
-        # Write the step in the step directory
-        subworkflow_dict = save(subworkflow)
-
-        output_path = output_dir / f"{step_name}.cwl"
-        with open(output_path, "w") as file:
-            YAML().dump(subworkflow_dict, file)
-
-        # Copy the metadata in the step directory
-        transformation_metadata_path = output_dir / "inputs.yml"
-        shutil.copyfile(metadata_path, transformation_metadata_path)
+        # Get the metadata & description for the step
+        step_id = step.id.split("#")[-1]
+        step_data: ProductionStepMetadataModel = production.steps_metadata.get(
+            step_id,
+            ProductionStepMetadataModel(
+                description=JobDescriptionModel(),
+                metadata=TransformationMetadataModel(),
+            ),
+        )
+        step_data.metadata.query_params = query_params
 
         transformations.append(
-            TransformationModel(
-                workflow_path=str(output_path),
-                metadata_path=str(transformation_metadata_path),
-                metadata_type=metadata_type,
-                external_inputs=external_inputs,
+            TransformationSubmissionModel(
+                task=step_task,
+                metadata=step_data.metadata,
+                description=step_data.description,
             )
         )
-    production.transformations = transformations
-    return production
+    return transformations
 
 
 def _create_subworkflow(
-    step: WorkflowStep, cwlVersion: str
+    step: WorkflowStep, cwlVersion: str, inputs: List[WorkflowInputParameter]
 ) -> Workflow | CommandLineTool:
     """Create a CWL file for a given step.
 
@@ -180,103 +214,34 @@ def _create_subworkflow(
             outputs=step.run.outputs,
             requirements=step.run.requirements,
         )
+
+    # Add the default value to the inputs if any
+    for new_workflow_input in new_workflow.inputs:
+        for workflow_input in inputs:
+            # Skip if the input is not set: this should never happen
+            if not workflow_input.id:
+                continue
+            if not new_workflow_input.id:
+                continue
+
+            new_workflow_input_name = new_workflow_input.id.split("#")[-1].split("/")[
+                -1
+            ]
+            workflow_input_name = workflow_input.id.split("#")[-1].split("/")[-1]
+            if new_workflow_input_name == workflow_input_name:
+                new_workflow_input.default = workflow_input.default
+                break
     return new_workflow
 
 
-def _get_external_inputs(
-    step: WorkflowStep, steps: list[WorkflowStep]
-) -> dict[str, ExternalInputModel]:
+def _get_query_params(task: Workflow) -> dict[str, Any]:
     """Get the external inputs of a step.
 
-    :param step: The step to get the external inputs for
-    :param steps: The list of all steps in the workflow
+    :param task: The task to get the query params for
 
-    :return: A dictionary of external inputs
+    :return: A dictionary of query params
     """
-    external_inputs = {}
-    for input in step.in_:
-        # Check if the input is connected to an output of another step
-        # input.source is in the format:
-        # - file://workflow.cwl#step_id/output_id: if the input is from another step
-        # - file://workflow.cwl#output_id: if the input is from the main workflow
-        external_input = input.source.split("#")[-1].split("/")
-        if len(external_input) == 1:
-            continue
-
-        source_step_name, source_output_id = external_input
-        source_step = next(
-            (s for s in steps if s.id and s.id.split("#")[-1] == source_step_name), None
-        )
-        if not source_step:
-            # Theoretically, this should never happen as the workflow is validated
-            continue
-
-        output = next(
-            (
-                o
-                for o in source_step.run.outputs
-                if o.id.split("/")[-1] == source_output_id
-            ),
-            None,
-        )
-        if not output:
-            # Theoretically, this should never happen as the workflow is validated
-            continue
-
-        if source_step.run.class_ == "CommandLineTool":
-            input_id = input.id.split("#")[-1].split("/")[-1]
-            external_inputs[input_id] = ExternalInputModel(
-                path=output.outputBinding.glob, class_=output.type_
-            )
-        else:
-            _, subsource_output_id = output.outputSource.split("#")
-            subsource_step_id = os.path.dirname(subsource_output_id)
-
-            # If the source step is a workflow, the output is available in one of the substeps of source_step
-            subsource_step = next(
-                (
-                    s
-                    for s in source_step.run.steps
-                    if s.id.split("#")[-1] == subsource_step_id
-                ),
-                None,
-            )
-            if not subsource_step:
-                # Theoretically, this should never happen as the workflow is validated
-                continue
-
-            subsource_step_output = next(
-                (
-                    o
-                    for o in subsource_step.run.outputs
-                    if o.id.split("/")[-1] == os.path.basename(subsource_output_id)
-                ),
-                None,
-            )
-            if not subsource_step_output:
-                # Theoretically, this should never happen as the workflow is validated
-                continue
-
-            input_id = input.id.split("#")[-1].split("/")[-1]
-            external_inputs[input_id] = ExternalInputModel(
-                path=subsource_step_output.outputBinding.glob,
-                class_=subsource_step_output.type_,
-            )
-    return external_inputs
-
-
-def start_production(production: ProductionModel) -> bool:
-    """Start a production.
-
-    A production is a set of transformations that are executed in parallel.
-
-    :param production: The production to start
-
-    :return: True if the production executed successfully, False otherwise
-    """
-    logging.info("Starting transformations")
-
-    with ThreadPoolExecutor() as executor:
-        transformations = production.transformations or []  # Handle None case
-        results = list(executor.map(start_transformation, transformations))
-    return all(results)
+    query_params = {}
+    for input in task.inputs:
+        query_params[input.id.split("#")[-1]] = input.default
+    return query_params

@@ -1,0 +1,8 @@
+simulate:
+  metadata:
+    type: PiSimulate
+gathering:
+  metadata:
+    type: PiGather
+    group_size:
+      input-data: 1
