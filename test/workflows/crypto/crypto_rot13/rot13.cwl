@@ -11,6 +11,7 @@ baseCommand: ["crypto", "rot13"]
 inputs:
   input_string:
     type: string
+    default: "Hello, World!"
     inputBinding:
       position: 1
 

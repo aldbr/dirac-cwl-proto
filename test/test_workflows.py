@@ -75,17 +75,17 @@ def cleanup():
         # ROT13 only
         (
             "test/workflows/crypto/crypto_rot13/rot13.cwl",
-            [],
+            ["test/workflows/crypto/type_dependencies/job/inputs-crypto_complete.yaml"],
         ),
         # Base64 only
         (
             "test/workflows/crypto/crypto_base64/base64.cwl",
-            [],
+            ["test/workflows/crypto/type_dependencies/job/inputs-crypto_complete.yaml"],
         ),
         # MD5 only
         (
             "test/workflows/crypto/crypto_md5/md5.cwl",
-            [],
+            ["test/workflows/crypto/type_dependencies/job/inputs-crypto_complete.yaml"],
         ),
         # --- Pi example ---
         # Complete

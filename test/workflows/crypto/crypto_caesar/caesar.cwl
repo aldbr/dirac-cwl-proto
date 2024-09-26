@@ -11,10 +11,12 @@ baseCommand: ["crypto", "caesar"]
 inputs:
   input_string:
     type: string
+    default: "Hello, World!"
     inputBinding:
       position: 1
   shift_value:
     type: int
+    default: 3
     inputBinding:
       position: 2
 

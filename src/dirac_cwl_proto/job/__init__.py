@@ -7,13 +7,14 @@ import shutil
 import subprocess
 import tarfile
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 import typer
 from cwl_utils.parser import load_document_by_uri, save
 from cwl_utils.parser.cwl_v1_2 import (
     CommandLineTool,
     File,
+    Saveable,
     Workflow,
 )
 from cwl_utils.parser.cwl_v1_2_utils import load_inputfile
@@ -164,6 +165,10 @@ def upload_local_input_files(input_data: Dict[str, Any]) -> str | None:
     )
     with tarfile.open(sandbox_path, "w:gz") as tar:
         for file in files:
+            # TODO: path is not the only attribute to consider, but so far it is the only one used
+            if not file.path:
+                raise NotImplementedError("File path is not defined.")
+
             file_path = Path(file.path.replace("file://", ""))
             console.print(
                 f"\t\t[blue]:information_source:[/blue] Found {file_path} locally, uploading it to the sandbox store..."
@@ -175,6 +180,10 @@ def upload_local_input_files(input_data: Dict[str, Any]) -> str | None:
 
     # Modify the location of the files to point to the future location on the worker node
     for file in files:
+        # TODO: path is not the only attribute to consider, but so far it is the only one used
+        if not file.path:
+            raise NotImplementedError("File path is not defined.")
+
         file.path = str(Path(".") / file.path.split("/")[-1])
 
     sandbox_id = sandbox_path.name.replace(".tar.gz", "")
@@ -306,11 +315,20 @@ def _pre_process(
             for item in input:
                 if not isinstance(item, File):
                     continue
+
+                # TODO: path is not the only attribute to consider, but so far it is the only one used
+                if not item.path:
+                    raise NotImplementedError("File path is not defined.")
+
                 input_path = Path(item.path)
                 if "filecatalog" in input_path.parts:
                     input_data.append(item)
 
         for file in input_data:
+            # TODO: path is not the only attribute to consider, but so far it is the only one used
+            if not file.path:
+                raise NotImplementedError("File path is not defined.")
+
             input_path = Path(file.path)
             shutil.copy(input_path, job_path / input_path.name)
             file.path = file.path.split("/")[-1]
@@ -318,7 +336,7 @@ def _pre_process(
 
         # Prepare the parameters for cwltool
         logger.info("Preparing the parameters for cwltool...")
-        parameter_dict = save(arguments.cwl)
+        parameter_dict = save(cast(Saveable, arguments.cwl))
         parameter_path = job_path / "parameter.cwl"
         with open(parameter_path, "w") as parameter_file:
             YAML().dump(parameter_dict, parameter_file)

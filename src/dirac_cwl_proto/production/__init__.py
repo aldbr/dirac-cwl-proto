@@ -218,6 +218,12 @@ def _create_subworkflow(
     # Add the default value to the inputs if any
     for new_workflow_input in new_workflow.inputs:
         for workflow_input in inputs:
+            # Skip if the input is not set: this should never happen
+            if not workflow_input.id:
+                continue
+            if not new_workflow_input.id:
+                continue
+
             new_workflow_input_name = new_workflow_input.id.split("#")[-1].split("/")[
                 -1
             ]
