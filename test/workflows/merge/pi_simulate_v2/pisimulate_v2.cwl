@@ -9,7 +9,7 @@ requirements:
 inputs:
   num-points:
     type: int
-    default: 1000
+    default: 100
     inputBinding:
       position: 1
   output-path:
