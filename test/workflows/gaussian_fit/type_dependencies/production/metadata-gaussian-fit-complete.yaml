@@ -1,0 +1,8 @@
+data-generation:
+  metadata:
+    type: DataGenerationModel
+fit:
+  metadata:
+    type: GaussianFitModel
+    group_size:
+      data: 1

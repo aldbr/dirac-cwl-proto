@@ -131,6 +131,21 @@ def cleanup():
                 "test/workflows/mandelbrot/type_dependencies/job/inputs-mandelbrot_imagemerge.yaml"
             ],
         ),
+        # --- Gaussian fit example ---
+        # Data generation only
+        (
+            "test/workflows/gaussian_fit/data_generation/data-generation.cwl",
+            [
+                "test/workflows/gaussian_fit/type_dependencies/job/inputs-data-generation.yaml"
+            ],
+        ),
+        # Gaussian fit only
+        (
+            "test/workflows/gaussian_fit/gaussian_fit/gaussian-fit.cwl",
+            [
+                "test/workflows/gaussian_fit/type_dependencies/job/inputs-gaussian-fit.yaml"
+            ],
+        ),
     ],
 )
 def test_run_job_success(cli_runner, cleanup, cwl_file, inputs):
@@ -237,6 +252,12 @@ def test_run_job_validation_failure(
             "test/workflows/mandelbrot/image-prod.cwl",
             "test/workflows/mandelbrot/type_dependencies/transformation/metadata-mandelbrot_imageprod.yaml",
         ),
+        # --- Gaussian fit example ---
+        # Data generation workflow
+        (
+            "test/workflows/gaussian_fit/data_generation/data-generation.cwl",
+            "test/workflows/gaussian_fit/type_dependencies/transformation/inputs-data-generation.yaml",
+        ),
     ],
 )
 def test_run_nonblocking_transformation_success(
@@ -293,6 +314,19 @@ def test_run_nonblocking_transformation_success(
                     "test/workflows/mandelbrot/type_dependencies/transformation/data_2.txt",
                     "test/workflows/mandelbrot/type_dependencies/transformation/data_3.txt",
                 ]
+            },
+        ),
+        # Gaussian fit workflow
+        (
+            "test/workflows/gaussian_fit/gaussian_fit/gaussian-fit-workflow.cwl",
+            "test/workflows/gaussian_fit/type_dependencies/transformation/inputs-gaussian-fit.yaml",
+            {
+                "filecatalog/gaussian_fit/data-generation-1/": [
+                    "test/workflows/gaussian_fit/type_dependencies/transformation/data-generation-1/data_gen1.txt",
+                ],
+                "filecatalog/gaussian_fit/data-generation-2/": [
+                    "test/workflows/gaussian_fit/type_dependencies/transformation/data-generation-2/data_gen2.txt",
+                ],
             },
         ),
     ],
@@ -427,6 +461,12 @@ def test_run_transformation_validation_failure(
         (
             "test/workflows/mandelbrot/description.cwl",
             "test/workflows/mandelbrot/type_dependencies/production/metadata-mandelbrot_complete.yaml",
+        ),
+        # --- Gaussian fit example ---
+        # Complete
+        (
+            "test/workflows/gaussian_fit/main-workflow.cwl",
+            "test/workflows/gaussian_fit/type_dependencies/production/metadata-gaussian-fit-complete.yaml",
         ),
     ],
 )

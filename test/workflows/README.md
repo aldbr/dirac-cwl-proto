@@ -36,15 +36,15 @@ o
 (o->o)
 ```
 
-# Not tested yet
-
-- 1 `Workflow` with 2 dependent `Workflow`, where each of them is composed of 2 independent `CommandLineTools`
+- **gaussian-fit**: 1 `Workflow` with 2 dependent `Workflow`, where each of them is composed of 2 independent `CommandLineTools`
 
 ```
 (o  o)
   |
 (o  o)
 ```
+
+# Not tested yet
 
 - 1 `Workflow` with 3 indepent `CommandLineTools` and 1 subsequent `CommandLineTools` that merges the result (tested in PR #10 even if in sligthly smaller shape (2 independent CLT and 1 subsequent CTL)
 

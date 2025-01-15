@@ -323,3 +323,53 @@ class MandelBrotMerging(IMetadataModel):
         outputs = glob.glob(str(job_path / "mandelbrot_image*bmp"))
         if outputs:
             self._store_output("data-merged", outputs[0])
+
+
+class DataGenerationModel(IMetadataModel):
+    """Data generation metadata model."""
+
+    output_file_name_1: str | None
+    output_file_name_2: str | None
+
+    def get_output_query(self, output_name: str) -> Path | None:
+        return Path("filecatalog") / "gaussian_fit" / "data-generation"
+
+    def post_process(self, job_path: Path):
+        """Post process the outputs of a job."""
+        outputs = glob.glob(
+            str(job_path / self.output_file_name_1) if self.output_file_name_1 else "*"
+        )
+        if outputs:
+            self._store_output("data1", outputs[0])
+        outputs = glob.glob(
+            str(job_path / self.output_file_name_2) if self.output_file_name_2 else "*"
+        )
+        if outputs:
+            self._store_output("data2", outputs[0])
+
+
+class GaussianFitModel(IMetadataModel):
+    """Gaussian Fit metadata model."""
+
+    # Input data
+    data1: List | None
+    data2: List | None
+
+    def get_input_query(self, input_name: str) -> Path | None:
+        base_path = Path("filecatalog") / "gaussian_fit"
+        if input_name == "data1":
+            return base_path / "data-generation-1"
+        if input_name == "data2":
+            return base_path / "data-generation-2"
+        return None
+
+    def get_output_query(self, output_name: str) -> Path | None:
+        if output_name == "fit-data" and self.data1 and self.data2:
+            return Path("filecatalog") / "gaussian_fit" / "fit"
+        return None
+
+    def post_process(self, job_path: Path):
+        """Post process the outputs of a job."""
+        outputs = glob.glob(str(job_path / "fit*"))
+        if outputs:
+            self._store_output("fit-data", outputs[0])
