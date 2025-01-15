@@ -1,10 +1,16 @@
 import glob
 import logging
+import math
 import os
+import random
 from pathlib import Path
-from typing import List
+from typing import List, cast
 
+from cwl_utils.parser import load_document_by_uri, save
+from cwl_utils.parser.cwl_v1_2 import Saveable
+from cwl_utils.parser.cwl_v1_2_utils import load_inputfile
 from pydantic import BaseModel
+from ruamel.yaml import YAML
 
 # -----------------------------------------------------------------------------
 # Metadata models (Job Type)
@@ -28,7 +34,7 @@ class IMetadataModel(BaseModel):
         """
         return None
 
-    def pre_process(self, command: List[str]) -> List[str]:
+    def pre_process(self, job_path: Path, command: List[str]) -> List[str]:
         """
         Template method for process the inputs of a job.
         Should be overriden by subclasses.
@@ -83,6 +89,7 @@ class PiSimulate(IMetadataModel):
         if outputs:
             self._store_output("sim", outputs[0])
 
+
 class PiSimulate_v2(IMetadataModel):
     """Pi simulation metadata model."""
 
@@ -94,11 +101,11 @@ class PiSimulate_v2(IMetadataModel):
             return Path("filecatalog") / "pi" / str(self.num_points)
         return None
 
-    def post_process(self):
+    def post_process(self, job_path: Path):
         """Post process the outputs of a job."""
-        outputs = self.output_path
+        outputs = job_path / self.output_path
         if outputs:
-            self._store_output("sim", outputs)
+            self._store_output("sim", str(outputs))
 
 
 class PiGather(IMetadataModel):
@@ -131,11 +138,93 @@ class PiGather(IMetadataModel):
 # -----------------------------------------------------------------------------
 
 
-class LHCb(IMetadataModel):
+class LHCbSimulate(IMetadataModel):
     """LHCb metadata model version 1."""
 
     task_id: int
     run_id: int
+    number_of_events: int
+
+    def get_input_query(self, input_name: str) -> Path | None:
+        return Path("filecatalog") / str(self.task_id) / str(self.run_id)
+
+    def get_output_query(self, output_name: str) -> Path | None:
+        return Path("filecatalog") / str(self.task_id) / str(self.run_id)
+
+    def pre_process(self, job_path: Path, command: List[str]) -> List[str]:
+        """Pre process the inputs of a job.
+
+        - Open the file specified in the last argument of the command: it always contains the parameters
+        - Compute the number of events to simulate based on the cpu power (fake it) and the number of processors
+          available (from the requirements of the cwl of default is 1)
+        """
+        # Load the document, at this point we know the document is valid
+        task = load_document_by_uri(job_path / command[1])
+        cores_min = None
+        cores_max = None
+        for requirement in task.requirements:
+            if requirement.class_ == "ResourceRequirement":
+                cores_min = requirement.coresMin
+                cores_max = requirement.coresMax
+
+        if cores_min is None:
+            cores_min = 1
+        if cores_max is None:
+            cores_max = 1
+
+        # Get the number of processors to use
+        number_of_processors_wn = random.randint(1, 4)
+        number_of_processors = 1
+        if number_of_processors_wn < cores_min:
+            raise RuntimeError("Not enough processors available.")
+        if number_of_processors_wn > cores_max:
+            number_of_processors = cores_max
+        else:
+            number_of_processors = number_of_processors_wn
+
+        # Get the CPU power from the local config (fake it with a random number)
+        cpu_power = random.randint(10, 20)
+        cpu_time = random.randint(3600, 86400)
+        cpu_work_per_event = random.randint(600, 1200)
+        self.number_of_events = (
+            math.floor((cpu_power * cpu_time) / cpu_work_per_event)
+            * number_of_processors
+        )
+
+        # Write the number of events to simulate in the last argument of the command
+        if len(command) == 3:
+            parameters_path = job_path / command[2]
+            parameters = load_inputfile(str(parameters_path))
+        else:
+            parameters_path = job_path / "parameter.cwl"
+            parameters = {}
+            command.append(parameters_path.name)
+        parameters["number-of-events"] = self.number_of_events
+
+        # Save the parameters to the file
+        parameter_dict = save(cast(Saveable, parameters))
+        with open(parameters_path, "w") as parameter_file:
+            YAML().dump(parameter_dict, parameter_file)
+
+        return command
+
+    def post_process(self, job_path: Path):
+        """Post process the outputs of a job."""
+        outputs = glob.glob(str(job_path / "*.sim"))
+        if outputs:
+            self._store_output("sim", outputs[0])
+        outputs = glob.glob(str(job_path / "pool_xml_catalog.xml"))
+        if outputs:
+            self._store_output("pool_xml_catalog", outputs[0])
+
+
+class LHCbReconstruct(IMetadataModel):
+    """LHCb metadata model version 1."""
+
+    task_id: int
+    run_id: int
+    # Input data
+    files: List | None
 
     def get_input_query(self, input_name: str) -> Path | None:
         return Path("filecatalog") / str(self.task_id) / str(self.run_id)

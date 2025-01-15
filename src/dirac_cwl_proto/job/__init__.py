@@ -251,10 +251,10 @@ class JobExecutionCoordinator:
         # Get a metadata instance
         self.metadata = _get_metadata(job)
 
-    def pre_process(self, command: List[str]) -> List[str]:
+    def pre_process(self, job_path: Path, command: List[str]) -> List[str]:
         """Pre process a job according to its type."""
         if self.metadata:
-            return self.metadata.pre_process(command)
+            return self.metadata.pre_process(job_path, command)
 
         return command
 
@@ -341,7 +341,7 @@ def _pre_process(
         with open(parameter_path, "w") as parameter_file:
             YAML().dump(parameter_dict, parameter_file)
         command.append(str(parameter_path.name))
-    return job_exec_coordinator.pre_process(command)
+    return job_exec_coordinator.pre_process(job_path, command)
 
 
 def _post_process(

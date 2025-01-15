@@ -20,18 +20,12 @@ o
 o
 ```
 
-- **lhcb**: 1 linear `Workflow` with multiple dependent `CommandLineTools` (only works in an lhcb environment)
+- **lhcb**: 1 linear `Workflow` with 1 `CommandLineTools` followed by 1 `Workflows` of many dependent `CommandLineTools`
 
 ```
 o
 |
-o
-|
-o
-|
-o
-|
-o
+(o->o->o->o->o)
 ```
 
 - **mandelbrot**: 1 `Workflow` with 2 dependent `Workflows` of 2 `CommandLineTools`

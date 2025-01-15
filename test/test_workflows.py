@@ -97,8 +97,22 @@ def cleanup():
         ),
         # --- Merge example ---
         # Complete
+        ("test/workflows/merge/merge_complete/description.cwl", []),
+        # --- LHCb example ---
+        # Complete
         (
-            "test/workflows/merge/merge_complete/description.cwl", []
+            "test/workflows/lhcb/lhcb_complete/description.cwl",
+            ["test/workflows/lhcb/type_dependencies/job/inputs-lhcb_complete.yaml"],
+        ),
+        # Simulate only
+        (
+            "test/workflows/lhcb/lhcb_simulate/lhcbsimulate.cwl",
+            ["test/workflows/lhcb/type_dependencies/job/inputs-lhcb_simulate.yaml"],
+        ),
+        # Reconstruct only
+        (
+            "test/workflows/lhcb/lhcb_reconstruct/lhcbreconstruct.cwl",
+            ["test/workflows/lhcb/type_dependencies/job/inputs-lhcb_reconstruct.yaml"],
         ),
         # --- Mandelbrot example ---
         # Complete
@@ -195,6 +209,11 @@ def test_run_job_validation_failure(
             "test/workflows/merge/pi_simulate_v2/pisimulate_v2.cwl",
             "test/workflows/merge/type_dependencies/transformation/metadata-pi_simulate_v2.yaml",
         ),
+        # --- LHCb example ---
+        (
+            "test/workflows/lhcb/lhcb_simulate/lhcbsimulate.cwl",
+            "test/workflows/lhcb/type_dependencies/transformation/metadata-lhcb_simulate.yaml",
+        ),
         # --- Mandelbrot example ---
         (
             "test/workflows/mandelbrot/mandelbrot_imageprod/image-prod.cwl",
@@ -232,6 +251,17 @@ def test_run_nonblocking_transformation_success(
                 "test/workflows/pi/type_dependencies/job/result_5.sim",
             ],
             "filecatalog/pi/100",
+        ),
+        # --- LHCb example ---
+        (
+            "test/workflows/lhcb/lhcb_reconstruct/lhcbreconstruct.cwl",
+            "test/workflows/lhcb/type_dependencies/transformation/metadata-lhcb_reconstruct.yaml",
+            [
+                "test/workflows/lhcb/type_dependencies/job/Gauss_123_456_1.sim",
+                "test/workflows/lhcb/type_dependencies/job/Gauss_456_456_1.sim",
+                "test/workflows/lhcb/type_dependencies/job/Gauss_789_456_1.sim",
+            ],
+            "filecatalog/456/123",
         ),
         # --- Mandelbrot example ---
         (
@@ -346,6 +376,12 @@ def test_run_transformation_validation_failure(
         (
             "test/workflows/merge/merge_complete/description.cwl",
             "test/workflows/merge/type_dependencies/production/metadata-merge_complete.yaml",
+        ),
+        # --- LHCb example ---
+        # Complete
+        (
+            "test/workflows/lhcb/lhcb_complete/description.cwl",
+            "test/workflows/lhcb/type_dependencies/production/metadata-lhcb_complete.yaml",
         ),
         # --- Mandelbrot example ---
         (

@@ -1,0 +1,6 @@
+type: LHCbReconstruct
+group_size:
+  files: 3
+query_params:
+  run-id: 123
+  task-id: 456

@@ -1,0 +1,8 @@
+simulation:
+  metadata:
+    type: LHCbSimulate
+reconstruction:
+  metadata:
+    type: LHCbReconstruct
+    group_size:
+      files: 1
