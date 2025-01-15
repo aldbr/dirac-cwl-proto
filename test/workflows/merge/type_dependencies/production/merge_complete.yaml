@@ -1,0 +1,11 @@
+simulate_step1:
+  metadata:
+    type: PiSimulate
+simulate_step2:
+  metadata:
+    type: PiSimulate
+gathering:
+  metadata:
+    type: PiGather
+    group_size:
+      input-data: 2
