@@ -14,7 +14,7 @@ def generate_random_data(file_path: str, num_lines: int = 100):
         for _ in range(num_lines):
             rd = random.gauss(mu, sig)
             f.write(f"{rd}\n")
-    typer.echo(f"Random data file generated at {file_path}")
+    typer.echo(f"Gaussian data file generated at {file_path} with mean {mu} and standard deviation {sig}") 
 
 
 if __name__ == "__main__":
