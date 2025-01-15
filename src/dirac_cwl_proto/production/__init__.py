@@ -182,55 +182,67 @@ def _get_transformations(
 
 
 def _create_subworkflow(
-    step: WorkflowStep, cwlVersion: str, inputs: List[WorkflowInputParameter]
+    wf_step: WorkflowStep, cwlVersion: str, inputs: List[WorkflowInputParameter]
 ) -> Workflow | CommandLineTool:
     """Create a CWL file for a given step.
 
     If the step is a workflow, a new workflow is created.
     If the step is a command line tool, a new command line tool is created.
 
-    :param step: The step to create a CWL file for
+    :param wf_step: The step to create a CWL file for
     :param cwlVersion: The CWL version to use
 
     :return: The CWL subworkflow
     """
     new_workflow: Workflow | CommandLineTool
-    if step.run.class_ == "Workflow":
+    if wf_step.run.class_ == "Workflow":
         # Handle nested workflows
         new_workflow = Workflow(
             cwlVersion=cwlVersion,
-            inputs=step.run.inputs,
-            outputs=step.run.outputs,
-            steps=step.run.steps,
-            requirements=step.run.requirements,
+            inputs=wf_step.run.inputs,
+            outputs=wf_step.run.outputs,
+            steps=wf_step.run.steps,
+            requirements=wf_step.run.requirements,
         )
     else:
         # Handle command line tools
         new_workflow = CommandLineTool(
             cwlVersion=cwlVersion,
-            arguments=step.run.arguments,
-            baseCommand=step.run.baseCommand,
-            inputs=step.run.inputs,
-            outputs=step.run.outputs,
-            requirements=step.run.requirements,
+            arguments=wf_step.run.arguments,
+            baseCommand=wf_step.run.baseCommand,
+            inputs=wf_step.run.inputs,
+            outputs=wf_step.run.outputs,
+            requirements=wf_step.run.requirements,
         )
 
     # Add the default value to the inputs if any
     for new_workflow_input in new_workflow.inputs:
-        for workflow_input in inputs:
+        found_default = False
+
+        if not new_workflow_input.id:
+            continue
+
+        new_workflow_input_name = new_workflow_input.id.split("#")[-1].split("/")[-1]
+        for wf_step_in in wf_step.in_:
             # Skip if the input is not set: this should never happen
-            if not workflow_input.id:
-                continue
-            if not new_workflow_input.id:
+            if not wf_step_in.id:
                 continue
 
-            new_workflow_input_name = new_workflow_input.id.split("#")[-1].split("/")[
-                -1
-            ]
-            workflow_input_name = workflow_input.id.split("#")[-1].split("/")[-1]
-            if new_workflow_input_name == workflow_input_name:
-                new_workflow_input.default = workflow_input.default
+            if new_workflow_input_name == wf_step_in.id.split("#")[-1].split("/")[-1]:
+                # Find the source input from the original workflow
+                for input in inputs:
+                    # Skip if the input is not set: this should never happen
+                    if not input.id:
+                        continue
+
+                    if input.id == wf_step_in.source:
+                        new_workflow_input.default = input.default
+                        found_default = True
+                        break
+
+            if found_default:
                 break
+
     return new_workflow
 
 
