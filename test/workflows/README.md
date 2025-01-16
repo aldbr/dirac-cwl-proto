@@ -52,7 +52,7 @@ o
 (o  o)
 ```
 
-- 1 `Workflow` with 3 indepent `CommandLineTools` and 1 subsequent `CommandLineTools` that merges the result
+- 1 `Workflow` with 3 indepent `CommandLineTools` and 1 subsequent `CommandLineTools` that merges the result (tested in PR #10 even if in sligthly smaller shape (2 independent CLT and 1 subsequent CTL)
 
 ```
 o  o  o
