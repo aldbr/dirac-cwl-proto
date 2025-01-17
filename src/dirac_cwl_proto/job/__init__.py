@@ -79,10 +79,10 @@ def submit_job_client(
             hint_stripped = {k: v for k, v in hint.items() if k != "class"}
             if hint_class == "dirac:metadata":
                 console.print(f"Update metadata with:\n{hint_stripped}")
-                job_metadata = job_metadata.copy(update=hint_stripped)
+                job_metadata = job_metadata.model_copy(update=hint_stripped)
                 continue
             if hint_class == "dirac:description":
-                job_description = job_description.copy(update=hint_stripped)
+                job_description = job_description.model_copy(update=hint_stripped)
 
     console.print("\t[green]:heavy_check_mark:[/green] Metadata")
     console.print("\t[green]:heavy_check_mark:[/green] Description")
@@ -102,8 +102,8 @@ def submit_job_client(
                     return typer.Exit(code=1)
                 override_hints = overrides[next(iter(overrides))].get("hints", {})
                 if override_hints:
-                    job_description = job_description.copy(update=override_hints.pop("dirac:description", {}))
-                    job_metadata = job_metadata.copy(update=override_hints.pop("dirac:metadata", {}))
+                    job_description = job_description.model_copy(update=override_hints.pop("dirac:description", {}))
+                    job_metadata = job_metadata.model_copy(update=override_hints.pop("dirac:metadata", {}))
 
             # Upload the local files to the sandbox store
             sandbox_id = upload_local_input_files(parameter)
