@@ -33,6 +33,7 @@ jobs:
       - name: Set up environment
         run: |
           pip install .
+          pip install types-jsonschema types-PyYAML  # Install type stubs
       - name: Run mypy
         run: |
           mypy src

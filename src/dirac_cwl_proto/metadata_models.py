@@ -4,7 +4,7 @@ import math
 import os
 import random
 from pathlib import Path
-from typing import List, cast
+from typing import Any, List, cast
 
 from cwl_utils.parser import load_document_by_uri, save
 from cwl_utils.parser.cwl_v1_2 import Saveable
@@ -20,7 +20,7 @@ from ruamel.yaml import YAML
 class IMetadataModel(BaseModel):
     """Metadata for a transformation."""
 
-    def get_input_query(self, input_name: str) -> Path | None:
+    def get_input_query(self, input_name: str, **kwargs: Any) -> Path | list[Path] | None:
         """
         Template method for getting the input path where the inputs of a job are stored.
         Should be overridden by subclasses.
@@ -87,7 +87,7 @@ class TaskWithMetadataQuery(IMetadataModel):
     Inherits attributes from IMetadataModel.
     """
 
-    def get_input_query(self, **kwargs) -> Path | list[Path] | None:
+    def get_input_query(self, input_name: str, **kwargs: Any) -> Path | list[Path] | None:
         """
         Generates a query to retrieve input paths based on provided metadata.
 
@@ -175,7 +175,7 @@ class PiGather(IMetadataModel):
     # Input data
     input_data: List | None
 
-    def get_input_query(self, input_name: str) -> Path | None:
+    def get_input_query(self, input_name: str, **kwargs: Any) -> Path | list[Path] | None:
         if input_name == "input-data":
             return PiSimulate(num_points=self.num_points).get_output_query("sim")
         return None
@@ -202,7 +202,7 @@ class LHCbSimulate(IMetadataModel):
     run_id: int
     number_of_events: int
 
-    def get_input_query(self, input_name: str) -> Path | None:
+    def get_input_query(self, input_name: str, **kwargs: Any) -> Path | list[Path] | None:
         return Path("filecatalog") / str(self.task_id) / str(self.run_id)
 
     def get_output_query(self, output_name: str) -> Path | None:
@@ -243,10 +243,7 @@ class LHCbSimulate(IMetadataModel):
         cpu_power = random.randint(10, 20)
         cpu_time = random.randint(3600, 86400)
         cpu_work_per_event = random.randint(600, 1200)
-        self.number_of_events = (
-            math.floor((cpu_power * cpu_time) / cpu_work_per_event)
-            * number_of_processors
-        )
+        self.number_of_events = math.floor((cpu_power * cpu_time) / cpu_work_per_event) * number_of_processors
 
         # Write the number of events to simulate in the last argument of the command
         if len(command) == 3:
@@ -343,7 +340,7 @@ class MandelBrotMerging(IMetadataModel):
     # Input data
     data: List | None
 
-    def get_input_query(self, input_name: str) -> Path | None:
+    def get_input_query(self, input_name: str, **kwargs: Any) -> Path | list[Path] | None:
         return MandelBrotGeneration(
             precision=self.precision,
             max_iterations=self.max_iterations,
