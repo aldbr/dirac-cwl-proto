@@ -35,14 +35,14 @@ class IMetadataModel(BaseModel):
         """
         return command
 
-    def post_process(self):
+    def post_process(self, job_path: Path):
         """
         Template method for processing the outputs of a job.
         Should be overridden by subclasses.
         """
         pass
 
-    def _store_output(self, output_name: str, output_value: str):
+    def _store_output(self, output_name: str, src: str):
         """Store the output in the "filecatalog" directory."""
         # Get the output query
         output_path = self.get_output_query(output_name)
@@ -51,9 +51,10 @@ class IMetadataModel(BaseModel):
         output_path.mkdir(exist_ok=True, parents=True)
 
         # Send the output to the file catalog
-        output = output_path / f"{output_value}"
-        os.rename(output_value, output)
-        logging.info(f"Output stored in {output}")
+        output_value = Path(src).name
+        dest = output_path / output_value
+        os.rename(src, dest)
+        logging.info(f"Output stored in {dest}")
 
 
 # -----------------------------------------------------------------------------
@@ -76,9 +77,9 @@ class PiSimulate(IMetadataModel):
             return Path("filecatalog") / "pi" / str(self.num_points)
         return None
 
-    def post_process(self):
+    def post_process(self, job_path: Path):
         """Post process the outputs of a job."""
-        outputs = glob.glob("*.sim")
+        outputs = glob.glob(str(job_path / "*.sim"))
         if outputs:
             self._store_output("sim", outputs[0])
 
@@ -120,9 +121,9 @@ class PiGather(IMetadataModel):
             )
         return None
 
-    def post_process(self):
+    def post_process(self, job_path: Path):
         """Post process the outputs of a job."""
-        outputs = glob.glob("*sim")
+        outputs = glob.glob(str(job_path / "*.sim"))
         if outputs:
             self._store_output("pi_result", outputs[0])
 
@@ -142,12 +143,12 @@ class LHCb(IMetadataModel):
     def get_output_query(self, output_name: str) -> Path | None:
         return Path("filecatalog") / str(self.task_id) / str(self.run_id)
 
-    def post_process(self):
+    def post_process(self, job_path: Path):
         """Post process the outputs of a job."""
-        outputs = glob.glob("*.sim")
+        outputs = glob.glob(str(job_path / "*.sim"))
         if outputs:
             self._store_output("sim", outputs[0])
-        outputs = glob.glob("pool_xml_catalog.xml")
+        outputs = glob.glob(str(job_path / "pool_xml_catalog.xml"))
         if outputs:
             self._store_output("pool_xml_catalog", outputs[0])
 
@@ -179,9 +180,9 @@ class MandelBrotGeneration(IMetadataModel):
             )
         return None
 
-    def post_process(self):
+    def post_process(self, job_path: Path):
         """Post process the outputs of a job."""
-        outputs = glob.glob("data*txt")
+        outputs = glob.glob(str(job_path / "data*.txt"))
         if outputs:
             self._store_output("data", outputs[0])
 
@@ -228,8 +229,8 @@ class MandelBrotMerging(IMetadataModel):
             )
         return None
 
-    def post_process(self):
+    def post_process(self, job_path: Path):
         """Post process the outputs of a job."""
-        outputs = glob.glob("mandelbrot_image*bmp")
+        outputs = glob.glob(str(job_path / "mandelbrot_image*bmp"))
         if outputs:
             self._store_output("data-merged", outputs[0])

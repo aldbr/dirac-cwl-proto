@@ -258,10 +258,10 @@ class JobExecutionCoordinator:
 
         return command
 
-    def post_process(self) -> bool:
+    def post_process(self, job_path: Path) -> bool:
         """Post process a job according to its type."""
         if self.metadata:
-            return self.metadata.post_process()
+            return self.metadata.post_process(job_path)
 
         return True
 
@@ -292,7 +292,7 @@ def _pre_process(
     task_path = job_path / "task.cwl"
     with open(task_path, "w") as task_file:
         YAML().dump(task_dict, task_file)
-    command.append(str(task_path))
+    command.append(str(task_path.name))
 
     if arguments:
         if arguments.sandbox:
@@ -340,12 +340,16 @@ def _pre_process(
         parameter_path = job_path / "parameter.cwl"
         with open(parameter_path, "w") as parameter_file:
             YAML().dump(parameter_dict, parameter_file)
-        command.append(str(parameter_path))
+        command.append(str(parameter_path.name))
     return job_exec_coordinator.pre_process(command)
 
 
 def _post_process(
-    status: int, stdout: str, stderr: str, job_exec_coordinator: JobExecutionCoordinator
+    status: int,
+    stdout: str,
+    stderr: str,
+    job_path: Path,
+    job_exec_coordinator: JobExecutionCoordinator,
 ):
     """
     Post-process the job after execution.
@@ -359,7 +363,7 @@ def _post_process(
     logger.info(stdout)
     logger.info(stderr)
 
-    job_exec_coordinator.post_process()
+    job_exec_coordinator.post_process(job_path)
 
 
 def run_job(job: JobSubmissionModel) -> bool:
@@ -389,7 +393,7 @@ def run_job(job: JobSubmissionModel) -> bool:
 
         # Execute the task
         logger.info(f"Executing Task: {command}")
-        result = subprocess.run(command, capture_output=True, text=True)
+        result = subprocess.run(command, capture_output=True, text=True, cwd=job_path)
 
         if result.returncode != 0:
             logger.error(
@@ -401,7 +405,11 @@ def run_job(job: JobSubmissionModel) -> bool:
         # Post-process the job
         logger.info("Post-processing Task...")
         _post_process(
-            result.returncode, result.stdout, result.stderr, job_exec_coordinator
+            result.returncode,
+            result.stdout,
+            result.stderr,
+            job_path,
+            job_exec_coordinator,
         )
         logger.info("Task post-processed successfully!")
         return True

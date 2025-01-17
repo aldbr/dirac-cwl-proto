@@ -132,8 +132,10 @@ console = Console()
 @app.command()
 def run_application(
     app_config_path: str = typer.Argument(..., help="Application configuration"),
-    files: Optional[list[str]] = typer.Option(
-        None, help="List of input data files", show_default=False
+    files: Optional[str] = typer.Option(
+        None,
+        help="List of input data files passed as a string, such as: f1,f2,f3",
+        show_default=False,
     ),
     pool_xml_catalog: Optional[str] = typer.Option(
         None, help="Pool XML catalog name", show_default=False
@@ -156,7 +158,7 @@ def run_application(
 
     # Override input files and pool_xml_catalog if provided
     if files:
-        app_config["input"]["files"] = files
+        app_config["input"]["files"] = files.split(",")
     if pool_xml_catalog:
         app_config["input"]["pool_xml_catalog"] = pool_xml_catalog
     if secondary_files:

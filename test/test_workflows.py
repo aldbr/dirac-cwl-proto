@@ -21,11 +21,6 @@ def cleanup():
         shutil.rmtree("filecatalog", ignore_errors=True)
         shutil.rmtree("sandboxstore", ignore_errors=True)
         shutil.rmtree("workernode", ignore_errors=True)
-        # crypto results
-        Path("base64_result.txt").unlink(missing_ok=True)
-        Path("caesar_result.txt").unlink(missing_ok=True)
-        Path("md5_result.txt").unlink(missing_ok=True)
-        Path("rot13_result.txt").unlink(missing_ok=True)
 
     _cleanup()
     yield
