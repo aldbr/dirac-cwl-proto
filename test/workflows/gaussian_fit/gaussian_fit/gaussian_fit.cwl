@@ -1,5 +1,5 @@
 cwlVersion: v1.2
-label: "Benchmark execution Workflow"
+label: "Fit execution Workflow"
 class: Workflow
 
 inputs:
@@ -7,50 +7,48 @@ inputs:
     type: File[]?
 
 outputs:
-  benchmark-data:
+  fit-data:
     type: File[]?
     outputSource: 
-      - run-benchmark-1/benchmark-data
-      - run-benchmark-2/benchmark-data
+      - run-fit-1/fit-data
+      - run-fit-2/fit-data
   log:
     type: File[]?
     outputSource:
-      - run-benchmark-1/log
-      - run-benchmark-2/log
+      - run-fit-1/log
+      - run-fit-2/log
 
 steps:
-  # Run benchmark 1
-  run-benchmark-1:
+  # Run fit 1
+  run-fit-1:
     in: 
       data: data
-    out: [benchmark-1-data, benchmark-1-log]
+    out: [fit-1-data, fit-1-log]
     run:
       class: CommandLineTool
-      baseCommand: ["python", "run_benchmark_1.py"]
+      baseCommand: ["gaussian-fit"]
       inputs:
         data:
           type: File[]?
-        repo:
-          type: Directory
   
       outputs:
-        benchmark-data:
+        fit-data:
           type: File[]?
           outputBinding:
-            glob: ["benchmark.txt"]
+            glob: ["fit.txt"]
         log:
           type: File[]?
           outputBinding:
             glob: ["*log"]
 
-  # Run benchmark 2
-  run-benchmark-2:
+  # Run fit 2
+  run-fit-2:
     in:
       data: data
-    out: [benchmark-2-data, benchmark-2-log]
+    out: [fit-2-data, fit-2-log]
     run:
       class: CommandLineTool
-      baseCommand: ["python", "benchmark_2.py"]
+      baseCommand: ["gaussian-fit"]
       requirements:
         InitialWorkDirRequirement:
           listing:
@@ -59,14 +57,12 @@ steps:
       inputs:
         data:
           type: File[]?
-        repo:
-          type: Directory
 
       outputs:
-        benchmark-data:
+        fit-data:
           type: File[]?
           outputBinding:
-            glob: ["benchmark.txt"]
+            glob: ["fit.txt"]
         log:
           type: File[]?
           outputBinding:

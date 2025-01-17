@@ -3,9 +3,9 @@ label: "Benchmark Data Generation Workflow"
 class: Workflow
 
 inputs:
-  random_seed:
-    type: float
-    default: 0.0005
+  output_file:
+    type: string
+    default: data.txt
 
 outputs:
   data:
@@ -23,16 +23,16 @@ steps:
   # Generate first set of data
   gen-data-1:
     in:
-      random_seed: random_seed
+      output_file: output_file
     out: [data, log]
     run:
       class: CommandLineTool
-      baseCommand: ["python", "generate_data.py"]
+      baseCommand: ["random-data-gen"]
       inputs:
-        random_seed:
+        output_file:
           type: float
           inputBinding:
-            prefix: "--random_seed"
+            prefix: "--output_file"
       outputs:
         data:
           type: File[]?
@@ -46,18 +46,18 @@ steps:
   # Generate second set of data
   gen-data-2:
     in:
-      random_seed: random_seed
+      output_file: output_file
     out: [data, log]
     run:
       class: CommandLineTool
-      baseCommand: ["python", "generate_data.py"]
+      baseCommand: ["random-data-gen"]
       requirements:
         InitialWorkDirRequirement: []
       inputs:
-        random_seed:
+        output_file:
           type: float
           inputBinding:
-            prefix: "--random_seed"
+            prefix: "--output_file"
       outputs:
         data:
           type: File[]?

@@ -1,30 +1,30 @@
 cwlVersion: v1.2
 class: Workflow
-label: "Benchmark Workflow"
+label: "Fit data Workflow"
 doc: >
   This workflow is composed of 2 Workflow steps:
   - data-generation: produce data
-  - benchmark: run the benchmark of two algorithms
+  - fit: run the fit of two algorithms
 
 # Define the inputs of the workflow
 inputs:
-  random_seed:
-    type: float
-    default: 0.0005
+  output_file:
+    type: string
+    default: data.txt
 
 
 # Define the outputs of the workflow
 outputs:
-  benchmark-data:
+  fit-data:
     type: File[]?
     outputSource:
       - data-generation/data
-      - benchmark/benchmark-data
+      - fit/fit-data
   logs:
     type: File[]?
     outputSource:
       - data-generation/log
-      - benchmark/log
+      - fit/log
     linkMerge: merge_flattened
 
 
@@ -38,7 +38,7 @@ steps:
   # Producing the data
   data-generation:
     in: 
-      random_seed: random_seed
+      output_file: output_file
     out: [data, log]
     run:
       class: Workflow
@@ -50,7 +50,7 @@ steps:
           ramMax: 4096
 
       inputs:
-        random_seed:
+        output_file:
           type: float
       outputs:
         data:
@@ -68,16 +68,16 @@ steps:
         # Generate first set of data
         gen-data-1:
           in:
-            random_seed: random_seed
+            output_file: output_file
           out: [data, log]
           run:
             class: CommandLineTool
-            baseCommand: ["python", "generate_data.py"]
+            baseCommand: ["random-data-gen"]
             inputs:
-              random_seed:
-                type: float
+              output_file:
+                type: string
                 inputBinding:
-                  prefix: "--random_seed"
+                  prefix: "--output_file"
 
             outputs:
               data:
@@ -92,7 +92,7 @@ steps:
         # Generate second set of data
         gen-data-2:
           in:
-            random_seed: random_seed
+            output_file: output_file
           out: [data, log]
           run:
             class: CommandLineTool
@@ -101,10 +101,10 @@ steps:
               InitialWorkDirRequirement: []
 
             inputs:
-              random_seed:
+              output_file:
                 type: float
                 inputBinding:
-                  prefix: "--random_seed"
+                  prefix: "--output_file"
 
             outputs:
               data:
@@ -116,13 +116,13 @@ steps:
                 outputBinding:
                   glob: ["gen.log"]
 
-  # Run benchmark
-  benchmark:
+  # Run fit
+  fit:
     in:
       data: data-generation/data
     out:
-      - benchmark-data
-      - benchmark-log
+      - fit-data
+      - fit-log
     run:
       class: Workflow
       requirements:
@@ -137,50 +137,48 @@ steps:
           type: File[]?
 
       outputs:
-        benchmark-data:
+        fit-data:
           type: File[]?
           outputSource: 
-            - run-benchmark-1/benchmark-data
-            - run-benchmark-2/benchmark-data
+            - run-fit-1/fit-data
+            - run-fit-2/fit-data
         log:
           type: File[]?
           outputSource:
-            - run-benchmark-1/log
-            - run-benchmark-2/log
+            - run-fit-1/log
+            - run-fit-2/log
 
       steps:
-        # Run benchmark 1
-        run-benchmark-1:
+        # Run fit 1
+        run-fit-1:
           in: 
             data: data
-          out: [benchmark-1-data, benchmark-1-log]
+          out: [fit-1-data, fit-1-log]
           run:
             class: CommandLineTool
-            baseCommand: ["python", "run_benchmark_1.py"]
+            baseCommand: ["gaussian-fit"]
             inputs:
               data:
                 type: File[]?
-              repo:
-                type: Directory
         
             outputs:
-              benchmark-data:
+              fit-data:
                 type: File[]?
                 outputBinding:
-                  glob: ["benchmark.txt"]
+                  glob: ["fit.txt"]
               log:
                 type: File[]?
                 outputBinding:
                   glob: ["*log"]
 
-        # Run benchmark 2
-        run-benchmark-2:
+        # Run fit 2
+        run-fit-2:
           in: 
             data: data
-          out: [benchmark-2-data, benchmark-2-log]
+          out: [fit-2-data, fit-2-log]
           run:
             class: CommandLineTool
-            baseCommand: ["python", "benchmark_2.py"]
+            baseCommand: ["gaussian-fit"]
             requirements:
               InitialWorkDirRequirement:
                 listing:
@@ -189,14 +187,12 @@ steps:
             inputs:
               data:
                 type: File[]?
-              repo:
-                type: Directory
 
             outputs:
-              benchmark-data:
+              fit-data:
                 type: File[]?
                 outputBinding:
-                  glob: ["benchmark.txt"]
+                  glob: ["fit.txt"]
               log:
                 type: File[]?
                 outputBinding:
