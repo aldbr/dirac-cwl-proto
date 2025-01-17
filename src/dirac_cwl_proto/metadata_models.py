@@ -82,6 +82,23 @@ class PiSimulate(IMetadataModel):
         if outputs:
             self._store_output("sim", outputs[0])
 
+class PiSimulate_v2(IMetadataModel):
+    """Pi simulation metadata model."""
+
+    num_points: int
+    output_path: str
+
+    def get_output_query(self, output_name: str) -> Path | None:
+        if output_name == "sim":
+            return Path("filecatalog") / "pi" / str(self.num_points)
+        return None
+
+    def post_process(self):
+        """Post process the outputs of a job."""
+        outputs = self.output_path
+        if outputs:
+            self._store_output("sim", outputs)
+
 
 class PiGather(IMetadataModel):
     """Pi gathering metadata model."""

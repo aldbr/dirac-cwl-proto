@@ -40,6 +40,7 @@ testing = ["pytest>=6"]
 [project.scripts]
 dirac-cwl = "dirac_cwl_proto:app"
 pi-simulate = "dirac_cwl_proto.modules.pi_simulate:app"
+pi-simulate-v2 = "dirac_cwl_proto.modules.pi_simulate_v2:app"
 pi-gather = "dirac_cwl_proto.modules.pi_gather:app"
 crypto = "dirac_cwl_proto.modules.crypto:app"
 lhcb-app = "dirac_cwl_proto.modules.lhcb_app:app"

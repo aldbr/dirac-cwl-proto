@@ -100,6 +100,11 @@ def cleanup():
             "test/workflows/pi/pi_gather/pigather.cwl",
             ["test/workflows/pi/type_dependencies/job/inputs-pi_gather.yaml"],
         ),
+        # --- Merge example ---
+        # Complete
+        (
+            "test/workflows/merge/merge_complete/description.cwl", []
+        ),
         # --- Mandelbrot example ---
         # Complete
         (
@@ -188,6 +193,12 @@ def test_run_job_validation_failure(
         (
             "test/workflows/pi/pi_simulate/pisimulate.cwl",
             "test/workflows/pi/type_dependencies/transformation/metadata-pi_simulate.yaml",
+        ),
+        # --- Pi v2 example ---
+        # There is no input expected
+        (
+            "test/workflows/merge/pi_simulate_v2/pisimulate_v2.cwl",
+            "test/workflows/merge/type_dependencies/transformation/metadata-pi_simulate_v2.yaml",
         ),
         # --- Mandelbrot example ---
         (
@@ -334,6 +345,12 @@ def test_run_transformation_validation_failure(
         (
             "test/workflows/pi/pi_complete/description.cwl",
             "test/workflows/pi/type_dependencies/production/metadata-pi_complete.yaml",
+        ),
+        # --- Merge example ---
+        # There is no input expected
+        (
+            "test/workflows/merge/merge_complete/description.cwl",
+            "test/workflows/merge/type_dependencies/production/metadata-merge_complete.yaml",
         ),
         # --- Mandelbrot example ---
         (
