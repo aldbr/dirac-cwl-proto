@@ -1,0 +1,25 @@
+$schema: "http://json-schema.org/draft-07/schema#"
+title: "Dirac Metadata"
+type: "object"
+properties:
+  metadata:
+    type: "object"
+    properties:
+      type:
+        type: "string"
+        enum: ["User", "Admin", "Guest"]  # Example enum values
+      query_params:
+        type: "object"
+        $ref: "transformation_meta.yaml"
+  description:
+    type: "object"
+    properties:
+      platform:
+        type: "string"
+      priority:
+        type: "integer"
+      sites:
+        type: "array"
+        items:
+          type: "string"
+additionalProperties: false
