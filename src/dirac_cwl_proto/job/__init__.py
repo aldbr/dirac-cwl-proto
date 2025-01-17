@@ -103,13 +103,11 @@ def submit_job_client(
             overrides = parameter.pop("cwltool:overrides", {})
             if overrides:
                 if len(overrides) > 1:
-                    # QUESTION: What's the best way to handle a ValueError? Raising it or logging and exiting wiht 1:
-                    # console.print(
-                    #     "[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] "
-                    #     "Job submission model only supports one override per parameter."
-                    # )
-                    # return typer.Exit(code=1)
-                    raise ValueError("Job submission model only supports one override per parameter.")
+                    console.print(
+                        "[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] "
+                        "Job submission model only supports one override per parameter."
+                    )
+                    return typer.Exit(code=1)
                 override_hints = overrides[next(iter(overrides))].get("hints", {})
                 if override_hints:
                     job_description = job_description.copy(update=override_hints.pop("dirac:description", {}))
