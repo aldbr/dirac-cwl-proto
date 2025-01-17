@@ -96,7 +96,7 @@ steps:
           out: [data, log]
           run:
             class: CommandLineTool
-            baseCommand: ["python", "generate_data.py"]
+            baseCommand: ["random-data-gen"]
             requirements:
               InitialWorkDirRequirement: []
 
