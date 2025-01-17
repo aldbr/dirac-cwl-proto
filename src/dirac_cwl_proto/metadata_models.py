@@ -66,6 +66,65 @@ class IMetadataModel(BaseModel):
 # -----------------------------------------------------------------------------
 
 
+class TaskWithMetadataQuery(IMetadataModel):
+    """
+    TaskWithMetadataQuery is a class providing methods to query metadata and generate input paths based on the metadata.
+
+    Methods
+    -------
+    get_input_query(**kwargs) -> Path | list[Path] | None
+        Generates a query to retrieve input paths based on provided metadata.
+
+    Example
+    -------
+    >>> query = TaskWithMetadataQuery()
+    >>> input_path = query.get_input_query(site="LaPalma", campaign="PROD6")
+    >>> print(input_path)
+    [PosixPath('filecatalog/PROD6/LaPalma')]
+
+    Attributes
+    ----------
+    Inherits attributes from IMetadataModel.
+    """
+
+    def get_input_query(self, **kwargs) -> Path | list[Path] | None:
+        """
+        Generates a query to retrieve input paths based on provided metadata.
+
+        Parameters
+        ----------
+        **kwargs : dict
+            Keyword arguments representing metadata attributes. Expected keys are:
+            - site (str): The site name.
+            - campaign (str): The campaign name.
+
+        Returns
+        -------
+        Path | list[Path] | None
+            A Path or list of Paths representing the input query based on the provided metadata.
+            Returns None if neither site nor campaign is provided.
+
+        Notes
+        -----
+        This is an example implementation. In a real implementation,
+        an actual query should be made to the metadata service,
+        resulting in an array of Logical File Names (LFNs) being returned.
+        """
+        site = kwargs.get("site", "")
+        campaign = kwargs.get("campaign", "")
+
+        # Example implementation
+        if site and campaign:
+            return [Path("filecatalog") / campaign / site]
+        elif site:
+            return Path("filecatalog") / site
+        else:
+            return None
+
+
+# -----------------------------------------------------------------------------
+
+
 class User(IMetadataModel):
     """User metadata model: does nothing."""
 
@@ -123,9 +182,7 @@ class PiGather(IMetadataModel):
 
     def get_output_query(self, output_name: str) -> Path | None:
         if output_name == "pi_result" and self.input_data:
-            return (
-                Path("filecatalog") / "pi" / str(self.num_points * len(self.input_data))
-            )
+            return Path("filecatalog") / "pi" / str(self.num_points * len(self.input_data))
         return None
 
     def post_process(self, job_path: Path):
@@ -260,13 +317,7 @@ class MandelBrotGeneration(IMetadataModel):
 
     def get_output_query(self, output_name: str) -> Path | None:
         if output_name == "data":
-            return (
-                Path("filecatalog")
-                / "mandelbrot"
-                / "images"
-                / "raw"
-                / f"{self.width}x{self.height}"
-            )
+            return Path("filecatalog") / "mandelbrot" / "images" / "raw" / f"{self.width}x{self.height}"
         return None
 
     def post_process(self, job_path: Path):
@@ -309,13 +360,7 @@ class MandelBrotMerging(IMetadataModel):
         if output_name == "data-merged" and self.data:
             width = len(self.data) * self.width
             height = len(self.data) * self.height
-            return (
-                Path("filecatalog")
-                / "mandelbrot"
-                / "images"
-                / "merged"
-                / f"{width}x{height}"
-            )
+            return Path("filecatalog") / "mandelbrot" / "images" / "merged" / f"{width}x{height}"
         return None
 
     def post_process(self, job_path: Path):
