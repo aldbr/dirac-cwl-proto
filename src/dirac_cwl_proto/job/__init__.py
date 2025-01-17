@@ -46,10 +46,6 @@ console = Console()
 def submit_job_client(
     task_path: str = typer.Argument(..., help="Path to the CWL file"),
     parameter_path: Optional[List[str]] = typer.Option(None, help="Path to the files containing the metadata"),
-    metadata_path: Optional[str] = typer.Option(None, help="Path to metadata file used to generate the input query"),
-    platform: Optional[str] = typer.Option(None, help="The platform required to run the job"),
-    priority: Optional[int] = typer.Option(10, help="The priority of the job"),
-    sites: Optional[List[str]] = typer.Option(None, help="The site to run the job"),
     # Specific parameter for the purpose of the prototype
     local: Optional[bool] = typer.Option(True, help="Run the job locally instead of submitting it to the router"),
 ):
@@ -76,11 +72,7 @@ def submit_job_client(
     console.print(f"\t[green]:heavy_check_mark:[/green] Task {task_path}")
 
     job_metadata = JobMetadataModel()
-    job_description = JobDescriptionModel(
-        platform=platform,
-        priority=priority,
-        sites=sites,
-    )
+    job_description = JobDescriptionModel()
     if task.hints:
         for hint in task.hints:
             hint_class = hint["class"]
