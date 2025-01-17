@@ -2,7 +2,7 @@
 CLI interface to run a CWL workflow from end to end (production/transformation/job).
 """
 
-from typing import AbstractSet, Any, Dict, List, Mapping
+from typing import Any, Dict, List, Mapping, Optional
 
 from cwl_utils.parser import save
 from cwl_utils.parser.cwl_v1_2 import (
@@ -49,7 +49,7 @@ class JobParameterModel(BaseModel):
 class JobMetadataModel(BaseModel):
     """Job metadata."""
 
-    type: str = "User"
+    type: Optional[str] = None
     # Parameters used to build input/output queries
     # Generally correspond to the inputs of the previous transformations
     query_params: Dict[str, Any] = {}
@@ -66,12 +66,10 @@ class JobMetadataModel(BaseModel):
 
         return value
 
-    def copy(
+    def model_copy(
         self,
         *,
-        include: AbstractSet[int] | AbstractSet[str] | Mapping[int, Any] | Mapping[str, Any] | None = None,
-        exclude: AbstractSet[int] | AbstractSet[str] | Mapping[int, Any] | Mapping[str, Any] | None = None,
-        update: dict[str, Any] | None = None,
+        update: Optional[Mapping[str, Any]] = None,
         deep: bool = False,
     ) -> "JobMetadataModel":
         if update is None:
@@ -85,7 +83,7 @@ class JobMetadataModel(BaseModel):
             new_query_params.update(update.pop("query_params"))
             update["query_params"] = new_query_params
 
-        return super().copy(include=include, exclude=exclude, update=update, deep=deep)
+        return super().model_copy(update=update, deep=deep)
 
 
 class JobSubmissionModel(BaseModel):
