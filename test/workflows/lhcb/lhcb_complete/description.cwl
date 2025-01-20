@@ -10,8 +10,10 @@ doc: >
 inputs:
   run-id:
     type: int
+    default: 123
   task-id:
     type: int
+    default: 456
 
 # Define the outputs of the workflow
 outputs:
@@ -58,8 +60,7 @@ steps:
                     "system_config": "x86_64-slc6-gcc48-opt"
                   },
                   "input": {
-                    "tck": "",
-                    "number_of_events": 2
+                    "tck": ""
                   },
                   "output": {
                     "types": ["sim"],
@@ -83,7 +84,7 @@ steps:
                   }
                 }
         ResourceRequirement:
-          coresMin: 4
+          coresMin: 1
           ramMin: 2048
 
       inputs:
@@ -95,6 +96,11 @@ steps:
           type: int
           inputBinding:
             prefix: "--task-id"
+        number-of-events:
+          type: int
+          default: 1
+          inputBinding:
+            prefix: "--number-of-events"
 
       arguments:
         - position: 1

@@ -5,7 +5,6 @@ import logging
 import re
 import shlex
 import shutil
-import subprocess
 from enum import Enum
 from pathlib import Path
 from typing import Optional
@@ -47,7 +46,6 @@ class InputConfiguration(BaseModel):
     mc_tck: Optional[str] = None
     pool_xml_catalog: str
     run_number: Optional[int] = None
-    number_of_events: int = -1
 
     # validate that tck and mc_tck are not both set
     @model_validator(mode="after")
@@ -110,10 +108,10 @@ class Configuration(BaseModel):
     @model_validator(mode="after")
     def gaudi_required_fields(self):
         if self.application.name.value == ApplicationName.Gauss and not (
-            self.run_id and self.task_id and self.input.number_of_events
+            self.run_id and self.task_id
         ):
             raise ValueError(
-                "Simulation ID, Task ID and Number of Events are required for Gauss application"
+                "Simulation ID and Task ID are required for Gauss application"
             )
         if (
             self.application.name.value != ApplicationName.Gauss
@@ -132,11 +130,13 @@ console = Console()
 @app.command()
 def run_application(
     app_config_path: str = typer.Argument(..., help="Application configuration"),
-    files: Optional[list[str]] = typer.Option(
-        None, help="List of input data files", show_default=False
+    files: Optional[str] = typer.Option(
+        None,
+        help="List of input data files passed as a string, such as: f1,f2,f3",
+        show_default=False,
     ),
     pool_xml_catalog: Optional[str] = typer.Option(
-        None, help="Pool XML catalog name", show_default=False
+        "pool_xml_catalog.xml", help="Pool XML catalog name", show_default=False
     ),
     secondary_files: Optional[list[str]] = typer.Option(
         None,
@@ -145,6 +145,9 @@ def run_application(
     ),
     run_id: Optional[int] = typer.Option(None, help="Simulation ID"),
     task_id: Optional[int] = typer.Option(None, help="Task ID"),
+    number_of_events: Optional[int] = typer.Option(
+        1, help="Number of events to process", show_default=False
+    ),
 ):
     """
     LHCb application: generates a prodconf.json file and runs the application.
@@ -156,7 +159,7 @@ def run_application(
 
     # Override input files and pool_xml_catalog if provided
     if files:
-        app_config["input"]["files"] = files
+        app_config["input"]["files"] = files.split(",")
     if pool_xml_catalog:
         app_config["input"]["pool_xml_catalog"] = pool_xml_catalog
     if secondary_files:
@@ -173,12 +176,15 @@ def run_application(
         console.print("[bold red]Failed to install dependencies[/bold red]")
         raise typer.Exit(code=1)
 
+    if not number_of_events:
+        number_of_events = 1
+
     # Get run & event number for Gauss application
     run_number_gauss, first_event_number_gauss = get_run_event_numbers(
         configuration.application.name,
         configuration.run_id,
         configuration.task_id,
-        configuration.input.number_of_events,
+        number_of_events,
     )
     if run_number_gauss and first_event_number_gauss:
         console.print(
@@ -191,7 +197,7 @@ def run_application(
         generated_options = build_gaudi_extra_options(
             gaudi_options=configuration.options.gaudi_options,
             application_name=configuration.application.name,
-            number_of_events=configuration.input.number_of_events,
+            number_of_events=number_of_events,
             pool_xml_catalog=configuration.input.pool_xml_catalog,
             run_number=run_number_gauss,
             first_event_number=first_event_number_gauss,
@@ -214,6 +220,7 @@ def run_application(
         configuration,
         output_file_prefix=output_file_prefix,
         first_event_number=first_event_number_gauss,
+        number_of_events=number_of_events,
     )
     console.print(
         f"[bold blue]prodconf.json file generated:\n{prodconf_file}[/bold blue]"
@@ -424,6 +431,7 @@ def build_prodconf_json(
     output_file_prefix: str,
     computed_run_number: int | None = None,
     first_event_number: int | None = None,
+    number_of_events: int = 1,
 ) -> str:
     """Build the prodconf.json file"""
     # application
@@ -449,7 +457,7 @@ def build_prodconf_json(
         if run_number and run_number not in ("Unknown", "Multiple")
         else computed_run_number,
         tck=tck if tck else configuration.input.mc_tck,
-        n_of_events=configuration.input.number_of_events,
+        n_of_events=number_of_events,
         first_event_number=first_event_number,
     )
 
@@ -495,6 +503,7 @@ def build_prodconf_json(
 
     # Initialise the prodInfo object
     prod_info = JobSpecV1(
+        spec_version=1,
         application=application,
         input=inputs,
         output=outputs,
@@ -502,7 +511,6 @@ def build_prodconf_json(
         options=options,
     )
     prod_info_dict = prod_info.model_dump()
-    prod_info_dict["spec_version"] = 1
     logging.info(f"prodConf content: {prod_info_dict}")
 
     # Write the prodconf.json file
@@ -539,26 +547,72 @@ async def run_lbprodrun(
     stdout = ""
     stderr = ""
 
-    proc = await asyncio.create_subprocess_exec(
-        *command,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
-    stdout_fh = open(application_log, "a")
-    stderr_fh = stdout_fh
+    # ------------------------------------------------------------------------------
+    # Run the command (This is the code we are expecting to run)
+    # ------------------------------------------------------------------------------
+    # proc = await asyncio.create_subprocess_exec(
+    #    *command,
+    #    stdout=subprocess.PIPE,
+    #    stderr=subprocess.PIPE,
+    # )
+    # stdout_fh = open(application_log, "a")
+    # stderr_fh = stdout_fh
+    #
+    # try:
+    #     await asyncio.gather(
+    #         handle_output(proc.stdout, stdout_fh),
+    #         handle_output(proc.stderr, stderr_fh),
+    #         proc.wait(),
+    #     )
+    # finally:
+    #     if stdout_fh:
+    #         stdout_fh.close()
+    #     if stderr_fh and stdout_fh != stderr_fh:
+    #         stderr_fh.close()
+    # returncode = proc.returncode
+    #
+    # ------------------------------------------------------------------------------
+    # But here we are going to simulate the execution of the command as we would
+    # need the lhcb environment otherwise
+    # ------------------------------------------------------------------------------
+    with open(prodconf_file) as f:
+        prodconf = json.load(f)
 
-    try:
-        await asyncio.gather(
-            handle_output(proc.stdout, stdout_fh),
-            handle_output(proc.stderr, stderr_fh),
-            proc.wait(),
-        )
-    finally:
-        if stdout_fh:
-            stdout_fh.close()
-        if stderr_fh and stdout_fh != stderr_fh:
-            stderr_fh.close()
-    returncode = proc.returncode
+    # Load pydantic model
+    prodconf = JobSpecV1(**prodconf)
+
+    # Create the expected results
+    for type in prodconf.output.types:
+        with open(f"{output_file_prefix}.{type}", "w") as f:
+            f.write("Nothing fancy here")
+
+    # Create the pool_xml_catalog
+    with open(prodconf.input.xml_file_catalog, "w") as f:
+        f.write("Nothing fancy here")
+
+    # Create the other expected results
+    with open(application_log, "w") as f:
+        f.write("Nothing fancy here")
+
+    with open("prmon.log", "w") as f:
+        f.write("Nothing fancy here")
+
+    with open("GeneratorLog.xml", "w") as f:
+        f.write("Nothing fancy here")
+
+    with open(f"summary_{output_file_prefix}.xml", "w") as f:
+        f.write("Nothing fancy here")
+
+    with open(f"prodConf_{output_file_prefix}.py", "w") as f:
+        f.write("Nothing fancy here")
+
+    # Fake return code and stdout, stderr
+    returncode = 0
+    stdout = "Nothing fancy here"
+    stderr = ""
+
+    # ------------------------------------------------------------------------------
+
     return (returncode, stdout, stderr)
 
 
