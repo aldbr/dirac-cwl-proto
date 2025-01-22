@@ -10,7 +10,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, cast
 
 import typer
-from cwl_utils.parser import save
+from cwl_utils.pack import pack
+from cwl_utils.parser import load_document, save
 from cwl_utils.parser.cwl_v1_2 import (
     CommandLineTool,
     File,
@@ -30,7 +31,7 @@ from dirac_cwl_proto.submission_models import (
     JobParameterModel,
     JobSubmissionModel,
 )
-from dirac_cwl_proto.utils import _get_metadata, load_workflow
+from dirac_cwl_proto.utils import _get_metadata
 
 app = typer.Typer()
 console = Console()
@@ -71,8 +72,8 @@ def submit_job_client(
         "[blue]:information_source:[/blue] [bold]CLI:[/bold] Validating the job(s)..."
     )
     try:
-        task = load_workflow(task_path)
-    except (ValidationException, FileNotFoundError) as ex:
+        task = load_document(pack(task_path))
+    except ValidationException as ex:
         console.print(
             f"[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to validate the task:\n{ex}"
         )

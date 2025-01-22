@@ -8,6 +8,8 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 import typer
+from cwl_utils.pack import pack
+from cwl_utils.parser import load_document
 from cwl_utils.parser.cwl_v1_2 import File
 from rich import print_json
 from rich.console import Console
@@ -22,7 +24,7 @@ from dirac_cwl_proto.submission_models import (
     TransformationMetadataModel,
     TransformationSubmissionModel,
 )
-from dirac_cwl_proto.utils import _get_metadata, load_workflow
+from dirac_cwl_proto.utils import _get_metadata
 
 app = typer.Typer()
 console = Console()
@@ -66,8 +68,8 @@ def submit_transformation_client(
         "[blue]:information_source:[/blue] [bold]CLI:[/bold] Validating the transformation..."
     )
     try:
-        task = load_workflow(task_path)
-    except (ValidationException, FileNotFoundError) as ex:
+        task = load_document(pack(task_path))
+    except ValidationException as ex:
         console.print(
             f"[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to validate the task:\n{ex}"
         )

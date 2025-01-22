@@ -6,6 +6,8 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any, List, Optional
 
 import typer
+from cwl_utils.pack import pack
+from cwl_utils.parser import load_document
 from cwl_utils.parser.cwl_v1_2 import (
     CommandLineTool,
     Workflow,
@@ -27,7 +29,6 @@ from dirac_cwl_proto.submission_models import (
 from dirac_cwl_proto.transformation import (
     submit_transformation_router,
 )
-from dirac_cwl_proto.utils import load_workflow
 
 app = typer.Typer()
 console = Console()
@@ -62,8 +63,8 @@ def submit_production_client(
         "[blue]:information_source:[/blue] [bold]CLI:[/bold] Validating the production..."
     )
     try:
-        task = load_workflow(task_path)
-    except (ValidationException, FileNotFoundError) as ex:
+        task = load_document(pack(task_path))
+    except ValidationException as ex:
         console.print(
             f"[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to validate the task:\n{ex}"
         )
