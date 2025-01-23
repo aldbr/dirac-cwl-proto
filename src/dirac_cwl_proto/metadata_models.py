@@ -216,3 +216,32 @@ class MandelBrotMerging(IMetadataModel):
         outputs = glob.glob("mandelbrot_image*bmp")
         if outputs:
             self._store_output("data-merged", outputs[0])
+
+
+class GaussianFitModel(IMetadataModel):
+    """Gaussian Fit metadata model."""
+
+    # Query parameters
+    data_file_1: str
+    data_file_2: str
+
+    # Input data
+    data: List | None
+
+    def get_input_query(self, input_name: str) -> Path | None:
+        if input_name == "data_file_1":
+            return Path(self.data_file_1)
+        elif input_name == "data_file_2":
+            return Path(self.data_file_2)
+        return None
+
+    def get_output_query(self, output_name: str) -> Path | None:
+        if output_name == "fit-data" and self.data:
+            return self.data
+        return None
+
+    def post_process(self):
+        """Post process the outputs of a job."""
+        outputs = glob.glob("fit*.txt")
+        if outputs:
+            self._store_output("fit-data", outputs)
