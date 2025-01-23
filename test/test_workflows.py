@@ -76,7 +76,7 @@ def cleanup():
         (
             "test/workflows/crypto/crypto_rot13/rot13.cwl",
             ["test/workflows/crypto/type_dependencies/job/inputs-crypto_complete.yaml"],
-        ),
+        ),  
         # Base64 only
         (
             "test/workflows/crypto/crypto_base64/base64.cwl",
@@ -117,6 +117,9 @@ def cleanup():
                 "test/workflows/mandelbrot/type_dependencies/job/inputs-mandelbrot_imagemerge.yaml"
             ],
         ),
+        # --- Gaussian fit example ---
+        # Complete
+        ("test/workflows/gaussian_fit/gaussian_fit_complete/description.cwl", [])
     ],
 )
 def test_run_job_success(cli_runner, cleanup, cwl_file, inputs):
