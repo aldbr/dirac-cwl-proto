@@ -44,7 +44,7 @@ pi-gather = "dirac_cwl_proto.modules.pi_gather:app"
 crypto = "dirac_cwl_proto.modules.crypto:app"
 lhcb-app = "dirac_cwl_proto.modules.lhcb_app:app"
 random-data-gen = "dirac_cwl_proto.modules.random_data_gen:app"
-guassian-fit = "dirac_cwl_proto.modules.guassian_fit:app"
+gaussian-fit = "dirac_cwl_proto.modules.gaussian_fit:app"
 
 [tool.setuptools_scm]
 
