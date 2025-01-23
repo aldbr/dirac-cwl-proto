@@ -160,6 +160,24 @@ def test_run_job_success(cli_runner, cleanup, cwl_file, inputs):
             [],
             "invalidfield`baseComand`",
         ),
+        # The description file points to a non-existent file (subworkflow)
+        (
+            "test/workflows/bad_references/reference_doesnotexists.cwl",
+            [],
+            "Nosuchfileordirectory",
+        ),
+        # The description file points to another file point to it (circular dependency)
+        (
+            "test/workflows/bad_references/reference_circular1.cwl",
+            [],
+            "Recursingintostep",
+        ),
+        # The description file points to itself (another circular dependency)
+        (
+            "test/workflows/bad_references/reference_circular1.cwl",
+            [],
+            "Recursingintostep",
+        ),
     ],
 )
 def test_run_job_validation_failure(
@@ -337,6 +355,24 @@ def test_run_blocking_transformation_success(
             None,
             "invalidfield`baseComand`",
         ),
+        # The description file points to a non-existent file (subworkflow)
+        (
+            "test/workflows/bad_references/reference_doesnotexists.cwl",
+            [],
+            "Nosuchfileordirectory",
+        ),
+        # The description file points to another file point to it (circular dependency)
+        (
+            "test/workflows/bad_references/reference_circular1.cwl",
+            [],
+            "Recursingintostep",
+        ),
+        # The description file points to itself (another circular dependency)
+        (
+            "test/workflows/bad_references/reference_circular1.cwl",
+            [],
+            "Recursingintostep",
+        ),
     ],
 )
 def test_run_transformation_validation_failure(
@@ -417,6 +453,24 @@ def test_run_simple_production_success(cli_runner, cleanup, cwl_file, metadata):
             "test/workflows/malformed_description/description_malformed_command.cwl",
             None,
             "invalidfield`baseComand`",
+        ),
+        # The description file points to a non-existent file (subworkflow)
+        (
+            "test/workflows/bad_references/reference_doesnotexists.cwl",
+            [],
+            "Nosuchfileordirectory",
+        ),
+        # The description file points to another file point to it (circular dependency)
+        (
+            "test/workflows/bad_references/reference_circular1.cwl",
+            [],
+            "Recursingintostep",
+        ),
+        # The description file points to itself (another circular dependency)
+        (
+            "test/workflows/bad_references/reference_circular1.cwl",
+            [],
+            "Recursingintostep",
         ),
         # The workflow is a CommandLineTool instead of a Workflow
         (

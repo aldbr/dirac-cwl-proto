@@ -69,6 +69,11 @@ def submit_transformation_client(
     )
     try:
         task = load_document(pack(task_path))
+    except FileNotFoundError as ex:
+        console.print(
+            f"[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to load the task:\n{ex}"
+        )
+        return typer.Exit(code=1)
     except ValidationException as ex:
         console.print(
             f"[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to validate the task:\n{ex}"
