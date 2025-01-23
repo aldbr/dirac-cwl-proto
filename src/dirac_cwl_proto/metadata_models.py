@@ -280,7 +280,7 @@ class LHCbReconstruct(IMetadataModel):
     # Input data
     files: List | None
 
-    def get_input_query(self, input_name: str) -> Path | None:
+    def get_input_query(self, input_name: str, **kwargs: Any) -> Path | list[Path] | None:
         return Path("filecatalog") / str(self.task_id) / str(self.run_id)
 
     def get_output_query(self, output_name: str) -> Path | None:
