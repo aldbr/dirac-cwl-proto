@@ -1,7 +1,8 @@
 """
 CLI interface to run a CWL workflow from end to end (production/transformation/job).
 """
-from typing import Any, Dict, List
+
+from typing import Any, Dict, List, Mapping
 
 from cwl_utils.parser import save
 from cwl_utils.parser.cwl_v1_2 import (
@@ -51,7 +52,7 @@ class JobMetadataModel(BaseModel):
     type: str = "User"
     # Parameters used to build input/output queries
     # Generally correspond to the inputs of the previous transformations
-    query_params: Dict[str, Any] | None = None
+    query_params: Dict[str, Any] = {}
 
     # Validation to ensure type corresponds to a subclass of IMetadataModel
     @field_validator("type")
@@ -61,11 +62,28 @@ class JobMetadataModel(BaseModel):
 
         # Check if the provided value matches any of the subclass names
         if value not in valid_types:
-            raise ValueError(
-                f"Invalid type '{value}'. Must be one of: {', '.join(valid_types)}."
-            )
+            raise ValueError(f"Invalid type '{value}'. Must be one of: {', '.join(valid_types)}.")
 
         return value
+
+    def model_copy(
+        self,
+        *,
+        update: Mapping[str, Any] | None = None,
+        deep: bool = False,
+    ) -> "JobMetadataModel":
+        if update is None:
+            update = {}
+        else:
+            update = dict(update)
+
+        # Handle merging of query_params
+        if "query_params" in update:
+            new_query_params = self.query_params.copy()
+            new_query_params.update(update.pop("query_params"))
+            update["query_params"] = new_query_params
+
+        return super().model_copy(update=update, deep=deep)
 
 
 class JobSubmissionModel(BaseModel):
@@ -153,9 +171,7 @@ class ProductionSubmissionModel(BaseModel):
             # Check if all metadata keys exist in the task's workflow steps
             missing_steps = metadata_keys - task_steps
             if missing_steps:
-                raise ValueError(
-                    f"The following steps are missing from the task workflow: {missing_steps}"
-                )
+                raise ValueError(f"The following steps are missing from the task workflow: {missing_steps}")
 
         return values
 
