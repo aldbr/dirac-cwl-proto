@@ -37,19 +37,19 @@ def cleanup():
     [
         # --- Hello World example ---
         # There is no input expected
-        ("test/workflows/helloworld/helloworld_basic/description.cwl", []),
+        ("test/workflows/helloworld/description_basic.cwl", []),
         # An input is expected but not required (default value is used)
-        ("test/workflows/helloworld/helloworld_with_inputs/description.cwl", []),
+        ("test/workflows/helloworld/description_with_inputs.cwl", []),
         # A string input is passed
         (
-            "test/workflows/helloworld/helloworld_with_inputs/description.cwl",
+            "test/workflows/helloworld/description_with_inputs.cwl",
             [
                 "test/workflows/helloworld/type_dependencies/job/inputs-helloworld_with_inputs1.yaml"
             ],
         ),
         # Multiple string inputs are passed
         (
-            "test/workflows/helloworld/helloworld_with_inputs/description.cwl",
+            "test/workflows/helloworld/description_with_inputs.cwl",
             [
                 "test/workflows/helloworld/type_dependencies/job/inputs-helloworld_with_inputs1.yaml",
                 "test/workflows/helloworld/type_dependencies/job/inputs-helloworld_with_inputs2.yaml",
@@ -59,74 +59,74 @@ def cleanup():
         # --- Crypto example ---
         # Complete
         (
-            "test/workflows/crypto/crypto_complete/description.cwl",
+            "test/workflows/crypto/description.cwl",
             ["test/workflows/crypto/type_dependencies/job/inputs-crypto_complete.yaml"],
         ),
         # Caesar only
         (
-            "test/workflows/crypto/crypto_caesar/caesar.cwl",
+            "test/workflows/crypto/caesar.cwl",
             ["test/workflows/crypto/type_dependencies/job/inputs-crypto_complete.yaml"],
         ),
         # ROT13 only
         (
-            "test/workflows/crypto/crypto_rot13/rot13.cwl",
+            "test/workflows/crypto/rot13.cwl",
             ["test/workflows/crypto/type_dependencies/job/inputs-crypto_complete.yaml"],
         ),
         # Base64 only
         (
-            "test/workflows/crypto/crypto_base64/base64.cwl",
+            "test/workflows/crypto/base64.cwl",
             ["test/workflows/crypto/type_dependencies/job/inputs-crypto_complete.yaml"],
         ),
         # MD5 only
         (
-            "test/workflows/crypto/crypto_md5/md5.cwl",
+            "test/workflows/crypto/md5.cwl",
             ["test/workflows/crypto/type_dependencies/job/inputs-crypto_complete.yaml"],
         ),
         # --- Pi example ---
         # Complete
         (
-            "test/workflows/pi/pi_complete/description.cwl",
+            "test/workflows/pi/description.cwl",
             ["test/workflows/pi/type_dependencies/job/inputs-pi_complete.yaml"],
         ),
         # Simulate only
-        ("test/workflows/pi/pi_simulate/pisimulate.cwl", []),
+        ("test/workflows/pi/pisimulate.cwl", []),
         # Gather only
         (
-            "test/workflows/pi/pi_gather/pigather.cwl",
+            "test/workflows/pi/pigather.cwl",
             ["test/workflows/pi/type_dependencies/job/inputs-pi_gather.yaml"],
         ),
         # --- Merge example ---
         # Complete
-        ("test/workflows/merge/merge_complete/description.cwl", []),
+        ("test/workflows/merge/description.cwl", []),
         # --- LHCb example ---
         # Complete
         (
-            "test/workflows/lhcb/lhcb_complete/description.cwl",
+            "test/workflows/lhcb/description.cwl",
             ["test/workflows/lhcb/type_dependencies/job/inputs-lhcb_complete.yaml"],
         ),
         # Simulate only
         (
-            "test/workflows/lhcb/lhcb_simulate/lhcbsimulate.cwl",
+            "test/workflows/lhcb/lhcbsimulate.cwl",
             ["test/workflows/lhcb/type_dependencies/job/inputs-lhcb_simulate.yaml"],
         ),
         # Reconstruct only
         (
-            "test/workflows/lhcb/lhcb_reconstruct/lhcbreconstruct.cwl",
+            "test/workflows/lhcb/lhcbreconstruct.cwl",
             ["test/workflows/lhcb/type_dependencies/job/inputs-lhcb_reconstruct.yaml"],
         ),
         # --- Mandelbrot example ---
         # Complete
         (
-            "test/workflows/mandelbrot/mandelbrot_complete/description.cwl",
+            "test/workflows/mandelbrot/description.cwl",
             [
                 "test/workflows/mandelbrot/type_dependencies/job/inputs-mandelbrot_complete.yaml"
             ],
         ),
         # Image production only
-        ("test/workflows/mandelbrot/mandelbrot_imageprod/image-prod.cwl", []),
+        ("test/workflows/mandelbrot/image-prod.cwl", []),
         # Image merge only
         (
-            "test/workflows/mandelbrot/mandelbrot_imagemerge/image-merge.cwl",
+            "test/workflows/mandelbrot/image-merge.cwl",
             [
                 "test/workflows/mandelbrot/type_dependencies/job/inputs-mandelbrot_imagemerge.yaml"
             ],
@@ -160,6 +160,24 @@ def test_run_job_success(cli_runner, cleanup, cwl_file, inputs):
             [],
             "invalidfield`baseComand`",
         ),
+        # The description file points to a non-existent file (subworkflow)
+        (
+            "test/workflows/bad_references/reference_doesnotexists.cwl",
+            [],
+            "Nosuchfileordirectory",
+        ),
+        # The description file points to another file point to it (circular dependency)
+        (
+            "test/workflows/bad_references/reference_circular1.cwl",
+            [],
+            "Recursingintostep",
+        ),
+        # The description file points to itself (another circular dependency)
+        (
+            "test/workflows/bad_references/reference_circular1.cwl",
+            [],
+            "Recursingintostep",
+        ),
     ],
 )
 def test_run_job_validation_failure(
@@ -185,38 +203,38 @@ def test_run_job_validation_failure(
     [
         # --- Hello World example ---
         # There is no input expected
-        ("test/workflows/helloworld/helloworld_basic/description.cwl", None),
+        ("test/workflows/helloworld/description_basic.cwl", None),
         # --- Crypto example ---
         # Complete
-        ("test/workflows/crypto/crypto_complete/description.cwl", None),
+        ("test/workflows/crypto/description.cwl", None),
         # Caesar only
-        ("test/workflows/crypto/crypto_caesar/caesar.cwl", None),
+        ("test/workflows/crypto/caesar.cwl", None),
         # ROT13 only
-        ("test/workflows/crypto/crypto_rot13/rot13.cwl", None),
+        ("test/workflows/crypto/rot13.cwl", None),
         # Base64 only
-        ("test/workflows/crypto/crypto_base64/base64.cwl", None),
+        ("test/workflows/crypto/base64.cwl", None),
         # MD5 only
-        ("test/workflows/crypto/crypto_md5/md5.cwl", None),
+        ("test/workflows/crypto/md5.cwl", None),
         # --- Pi example ---
         # There is no input expected
         (
-            "test/workflows/pi/pi_simulate/pisimulate.cwl",
+            "test/workflows/pi/pisimulate.cwl",
             "test/workflows/pi/type_dependencies/transformation/metadata-pi_simulate.yaml",
         ),
         # --- Pi v2 example ---
         # There is no input expected
         (
-            "test/workflows/merge/pi_simulate_v2/pisimulate_v2.cwl",
+            "test/workflows/merge/pisimulate_v2.cwl",
             "test/workflows/merge/type_dependencies/transformation/metadata-pi_simulate_v2.yaml",
         ),
         # --- LHCb example ---
         (
-            "test/workflows/lhcb/lhcb_simulate/lhcbsimulate.cwl",
+            "test/workflows/lhcb/lhcbsimulate.cwl",
             "test/workflows/lhcb/type_dependencies/transformation/metadata-lhcb_simulate.yaml",
         ),
         # --- Mandelbrot example ---
         (
-            "test/workflows/mandelbrot/mandelbrot_imageprod/image-prod.cwl",
+            "test/workflows/mandelbrot/image-prod.cwl",
             "test/workflows/mandelbrot/type_dependencies/transformation/metadata-mandelbrot_imageprod.yaml",
         ),
     ],
@@ -241,7 +259,7 @@ def test_run_nonblocking_transformation_success(
     [
         # --- Pi example ---
         (
-            "test/workflows/pi/pi_gather/pigather.cwl",
+            "test/workflows/pi/pigather.cwl",
             "test/workflows/pi/type_dependencies/transformation/metadata-pi_gather.yaml",
             [
                 "test/workflows/pi/type_dependencies/job/result_1.sim",
@@ -254,7 +272,7 @@ def test_run_nonblocking_transformation_success(
         ),
         # --- LHCb example ---
         (
-            "test/workflows/lhcb/lhcb_reconstruct/lhcbreconstruct.cwl",
+            "test/workflows/lhcb/lhcbreconstruct.cwl",
             "test/workflows/lhcb/type_dependencies/transformation/metadata-lhcb_reconstruct.yaml",
             [
                 "test/workflows/lhcb/type_dependencies/job/Gauss_123_456_1.sim",
@@ -265,7 +283,7 @@ def test_run_nonblocking_transformation_success(
         ),
         # --- Mandelbrot example ---
         (
-            "test/workflows/mandelbrot/mandelbrot_imagemerge/image-merge.cwl",
+            "test/workflows/mandelbrot/image-merge.cwl",
             "test/workflows/mandelbrot/type_dependencies/transformation/metadata-mandelbrot_imagemerge.yaml",
             [
                 "test/workflows/mandelbrot/type_dependencies/transformation/data_1.txt",
@@ -337,6 +355,24 @@ def test_run_blocking_transformation_success(
             None,
             "invalidfield`baseComand`",
         ),
+        # The description file points to a non-existent file (subworkflow)
+        (
+            "test/workflows/bad_references/reference_doesnotexists.cwl",
+            [],
+            "Nosuchfileordirectory",
+        ),
+        # The description file points to another file point to it (circular dependency)
+        (
+            "test/workflows/bad_references/reference_circular1.cwl",
+            [],
+            "Recursingintostep",
+        ),
+        # The description file points to itself (another circular dependency)
+        (
+            "test/workflows/bad_references/reference_circular1.cwl",
+            [],
+            "Recursingintostep",
+        ),
     ],
 )
 def test_run_transformation_validation_failure(
@@ -364,28 +400,28 @@ def test_run_transformation_validation_failure(
     [
         # --- Crypto example ---
         # Complete
-        ("test/workflows/crypto/crypto_complete/description.cwl", None),
+        ("test/workflows/crypto/description.cwl", None),
         # --- Pi example ---
         # There is no input expected
         (
-            "test/workflows/pi/pi_complete/description.cwl",
+            "test/workflows/pi/description.cwl",
             "test/workflows/pi/type_dependencies/production/metadata-pi_complete.yaml",
         ),
         # --- Merge example ---
         # There is no input expected
         (
-            "test/workflows/merge/merge_complete/description.cwl",
+            "test/workflows/merge/description.cwl",
             "test/workflows/merge/type_dependencies/production/metadata-merge_complete.yaml",
         ),
         # --- LHCb example ---
         # Complete
         (
-            "test/workflows/lhcb/lhcb_complete/description.cwl",
+            "test/workflows/lhcb/description.cwl",
             "test/workflows/lhcb/type_dependencies/production/metadata-lhcb_complete.yaml",
         ),
         # --- Mandelbrot example ---
         (
-            "test/workflows/mandelbrot/mandelbrot_complete/description.cwl",
+            "test/workflows/mandelbrot/description.cwl",
             "test/workflows/mandelbrot/type_dependencies/production/metadata-mandelbrot_complete.yaml",
         ),
     ],
@@ -418,21 +454,39 @@ def test_run_simple_production_success(cli_runner, cleanup, cwl_file, metadata):
             None,
             "invalidfield`baseComand`",
         ),
+        # The description file points to a non-existent file (subworkflow)
+        (
+            "test/workflows/bad_references/reference_doesnotexists.cwl",
+            [],
+            "Nosuchfileordirectory",
+        ),
+        # The description file points to another file point to it (circular dependency)
+        (
+            "test/workflows/bad_references/reference_circular1.cwl",
+            [],
+            "Recursingintostep",
+        ),
+        # The description file points to itself (another circular dependency)
+        (
+            "test/workflows/bad_references/reference_circular1.cwl",
+            [],
+            "Recursingintostep",
+        ),
         # The workflow is a CommandLineTool instead of a Workflow
         (
-            "test/workflows/helloworld/helloworld_basic/description.cwl",
+            "test/workflows/helloworld/description_basic.cwl",
             None,
             "InputshouldbeaninstanceofWorkflow",
         ),
         # The metadata has an unexistent step name
         (
-            "test/workflows/mandelbrot/mandelbrot_complete/description.cwl",
+            "test/workflows/mandelbrot/description.cwl",
             "test/workflows/mandelbrot/type_dependencies/production/malformed-wrong-stepname_metadata-mandelbrot_complete.yaml",
             "Thefollowingstepsaremissingfromthetaskworkflow:{'this-step-doesnot-exist'}",
         ),
         # The metadata has an unexistent type
         (
-            "test/workflows/mandelbrot/mandelbrot_complete/description.cwl",
+            "test/workflows/mandelbrot/description.cwl",
             "test/workflows/mandelbrot/type_dependencies/production/malformed-nonexisting-type_metadata-mandelbrot_complete.yaml",
             "Invalidtype'MandelBrotDoesNotExist'.Mustbeoneof:",
         ),

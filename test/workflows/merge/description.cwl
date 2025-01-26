@@ -1,17 +1,20 @@
 cwlVersion: v1.2
+label: "Merge Workflow"
 class: Workflow
-label: "Monte Carlo Pi Approximation Workflow"
-doc: >
-  This workflow approximates the value of Pi using the Monte Carlo method.
-  It generates random points in a square and calculates how many fall within
-  a unit circle inscribed in the square.
-
+requirements:
+  MultipleInputFeatureRequirement: {}
 # Define the inputs of the workflow
 inputs:
   num-points:
     type: int
     doc: "Number of random points to generate for the simulation"
     default: 1000
+  output-path-step1:
+    type: string
+    default: result_1.sim
+  output-path-step2:
+    type: string
+    default: result_2.sim
 
 # Define the outputs of the workflow
 outputs:
@@ -21,34 +24,30 @@ outputs:
 
 # Define the steps of the workflow
 steps:
-  # Simulation step
-  simulate:
+  # Simulation step 1
+  simulate_step1:
     in:
       num-points: num-points
+      output-path: output-path-step1
     out: [sim]
-    run:
-      class: CommandLineTool
-      requirements:
-        ResourceRequirement:
-          coresMin: 2
-          ramMin: 1024
-      inputs:
-        num-points:
-          type: int
-          inputBinding:
-            position: 1
-      outputs:
-        sim:
-          type: File[]
-          outputBinding:
-            glob: "result*.sim"
-      baseCommand: [pi-simulate]
+    run: ./pisimulate_v2.cwl
+
+  # Simulation step 2
+  simulate_step2:
+    in:
+      num-points: num-points
+      output-path: output-path-step2
+    out: [sim]
+    run: ./pisimulate_v2.cwl
 
   # Gathering step
   gathering:
     in:
       input-data:
-        source: simulate/sim
+        source:
+          - simulate_step1/sim
+          - simulate_step2/sim
+        linkMerge: merge_flattened
     out: [pi_result]
     run:
       class: CommandLineTool
