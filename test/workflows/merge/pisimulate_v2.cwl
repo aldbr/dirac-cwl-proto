@@ -9,14 +9,19 @@ requirements:
 inputs:
   num-points:
     type: int
-    default: 1000
+    default: 100
     inputBinding:
       position: 1
+  output-path:
+    type: string
+    default: result_3.sim
+    inputBinding:
+      position: 2
 
 outputs:
-  result_sim:
+  sim:
     type: File
     outputBinding:
       glob: "result*.sim"
 
-baseCommand: [pi-simulate]
+baseCommand: [pi-simulate-v2]

@@ -8,7 +8,8 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 import typer
-from cwl_utils.parser import load_document_by_uri
+from cwl_utils.pack import pack
+from cwl_utils.parser import load_document
 from cwl_utils.parser.cwl_v1_2 import File
 from rich import print_json
 from rich.console import Console
@@ -67,7 +68,12 @@ def submit_transformation_client(
         "[blue]:information_source:[/blue] [bold]CLI:[/bold] Validating the transformation..."
     )
     try:
-        task = load_document_by_uri(task_path)
+        task = load_document(pack(task_path))
+    except FileNotFoundError as ex:
+        console.print(
+            f"[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to load the task:\n{ex}"
+        )
+        return typer.Exit(code=1)
     except ValidationException as ex:
         console.print(
             f"[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to validate the task:\n{ex}"

@@ -10,7 +10,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, cast
 
 import typer
-from cwl_utils.parser import load_document_by_uri, save
+from cwl_utils.pack import pack
+from cwl_utils.parser import load_document, save
 from cwl_utils.parser.cwl_v1_2 import (
     CommandLineTool,
     File,
@@ -71,7 +72,12 @@ def submit_job_client(
         "[blue]:information_source:[/blue] [bold]CLI:[/bold] Validating the job(s)..."
     )
     try:
-        task = load_document_by_uri(task_path)
+        task = load_document(pack(task_path))
+    except FileNotFoundError as ex:
+        console.print(
+            f"[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to load the task:\n{ex}"
+        )
+        return typer.Exit(code=1)
     except ValidationException as ex:
         console.print(
             f"[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to validate the task:\n{ex}"
