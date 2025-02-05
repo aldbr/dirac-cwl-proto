@@ -119,7 +119,12 @@ def cleanup():
         ),
         # --- Gaussian fit example ---
         # Complete
-        ("test/workflows/gaussian_fit/gaussian_fit_complete/description.cwl", [])
+        (
+            "test/workflows/gaussian_fit/gaussian_fit_complete/description.cwl", 
+            [
+                "test/workflows/gaussian_fit/type_dependencies/production/metadata-gaussian_fit_complete.yaml"
+            ],
+        )
     ],
 )
 def test_run_job_success(cli_runner, cleanup, cwl_file, inputs):

@@ -158,7 +158,7 @@ steps:
           in: 
             data: data
           out: 
-            - fit-1-data
+            - fit-data
           run:
             class: CommandLineTool
             baseCommand: ["gaussian-fit"]
@@ -174,7 +174,7 @@ steps:
               fit-data:
                 type: File[]?
                 outputBinding:
-                  glob: ["fit.txt"]
+                  glob: ["fit*.txt"]
               # log:
               #   type: File[]?
               #   outputBinding:
@@ -185,7 +185,7 @@ steps:
           in: 
             data: data
           out: 
-            - fit-2-data
+            - fit-data
           run:
             class: CommandLineTool
             baseCommand: ["gaussian-fit"]
@@ -202,7 +202,7 @@ steps:
               fit-data:
                 type: File[]?
                 outputBinding:
-                  glob: ["fit.txt"]
+                  glob: ["fit*.txt"]
               # log:
               #   type: File[]?
               #   outputBinding:
