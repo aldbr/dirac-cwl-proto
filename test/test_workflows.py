@@ -254,48 +254,6 @@ def test_run_nonblocking_transformation_success(
     ), f"Failed to run the transformation: {result.stdout}"
 
 
-# @pytest.mark.parametrize(
-#     "cwl_file, metadata, source_input_data, destination_input_data",
-#     [
-#         # --- Pi example ---
-#         (
-#             "test/workflows/pi/pigather.cwl",
-#             "test/workflows/pi/type_dependencies/transformation/metadata-pi_gather.yaml",
-#             [
-#                 "test/workflows/pi/type_dependencies/job/result_1.sim",
-#                 "test/workflows/pi/type_dependencies/job/result_2.sim",
-#                 "test/workflows/pi/type_dependencies/job/result_3.sim",
-#                 "test/workflows/pi/type_dependencies/job/result_4.sim",
-#                 "test/workflows/pi/type_dependencies/job/result_5.sim",
-#             ],
-#             "filecatalog/pi/100",
-#         ),
-#         # --- LHCb example ---
-#         (
-#             "test/workflows/lhcb/lhcbreconstruct.cwl",
-#             "test/workflows/lhcb/type_dependencies/transformation/metadata-lhcb_reconstruct.yaml",
-#             [
-#                 "test/workflows/lhcb/type_dependencies/job/Gauss_123_456_1.sim",
-#                 "test/workflows/lhcb/type_dependencies/job/Gauss_456_456_1.sim",
-#                 "test/workflows/lhcb/type_dependencies/job/Gauss_789_456_1.sim",
-#             ],
-#             "filecatalog/456/123",
-#         ),
-#         # --- Mandelbrot example ---
-#         (
-#             "test/workflows/mandelbrot/image-merge.cwl",
-#             "test/workflows/mandelbrot/type_dependencies/transformation/metadata-mandelbrot_imagemerge.yaml",
-#             [
-#                 "test/workflows/mandelbrot/type_dependencies/transformation/data_1.txt",
-#                 "test/workflows/mandelbrot/type_dependencies/transformation/data_2.txt",
-#                 "test/workflows/mandelbrot/type_dependencies/transformation/data_3.txt",
-#             ],
-#             "filecatalog/mandelbrot/images/raw/1920x1080/",
-#         ),
-#     ],
-# )
-
-
 @pytest.mark.parametrize(
     "cwl_file, metadata, destination_source_input_data",
     [
