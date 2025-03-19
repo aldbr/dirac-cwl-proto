@@ -11,10 +11,10 @@ requirements:
 inputs:
   data1:
     type: File[]
-    default: "data1.txt"
+    default: ["data_gen1.txt"]
   data2:
     type: File[]
-    default: "data2.txt"
+    default: ["data_gen2.txt"]
 
 outputs:
   fit-data:

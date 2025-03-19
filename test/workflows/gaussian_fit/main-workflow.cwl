@@ -42,6 +42,6 @@ steps:
   fit:
     run: ./gaussian_fit/gaussian-fit-workflow.cwl
     in:
-      data1: data-generation/data1
-      data2: data-generation/data2
+      data1: [data-generation/data1]
+      data2: [data-generation/data2]
     out: [fit-data, log]

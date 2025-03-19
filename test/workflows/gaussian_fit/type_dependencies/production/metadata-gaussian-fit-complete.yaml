@@ -5,4 +5,5 @@ fit:
   metadata:
     type: GaussianFitModel
     group_size:
-      data: 1
+      data1: 1
+      data2: 1

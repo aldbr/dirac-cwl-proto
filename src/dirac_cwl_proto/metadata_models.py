@@ -332,6 +332,10 @@ class DataGenerationModel(IMetadataModel):
     output_file_name_2: str | None
 
     def get_output_query(self, output_name: str) -> Path | None:
+        if self.output_file_name_1 and output_name == "data1":
+            return Path("filecatalog") / "gaussian_fit" / "data-generation-1"
+        if self.output_file_name_2 and output_name == "data2":
+            return Path("filecatalog") / "gaussian_fit" / "data-generation-2"
         return Path("filecatalog") / "gaussian_fit" / "data-generation"
 
     def post_process(self, job_path: Path):

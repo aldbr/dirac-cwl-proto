@@ -11,7 +11,7 @@ inputs:
 
 outputs:
   data:
-    type: File
+    type: File[]
     outputBinding:
       glob: $(inputs.output_file_name)
   log:

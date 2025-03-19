@@ -14,10 +14,10 @@ inputs:
 
 outputs:
   data1:
-    type: File
+    type: File[]
     outputSource: data-generation-1/data
   data2:
-    type: File
+    type: File[]
     outputSource: data-generation-2/data
   log1:
     type: File[]
