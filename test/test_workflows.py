@@ -191,6 +191,14 @@ def test_run_job_success(cli_runner, cleanup, cwl_file, inputs):
             [],
             "Recursingintostep",
         ),
+        # The configuration file is malformed: the hints are overridden more than once
+        (
+            "test/workflows/test_meta/test_meta.cwl",
+            [
+                "test/workflows/test_meta/override_dirac_hints_twice.yaml",
+            ],
+            "Failedtovalidatetheparameter",
+        ),
     ],
 )
 def test_run_job_validation_failure(cli_runner, cleanup, cwl_file, inputs, expected_error):

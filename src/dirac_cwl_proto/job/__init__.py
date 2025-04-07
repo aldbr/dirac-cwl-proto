@@ -90,16 +90,16 @@ def submit_job_client(
     parameters = []
     if parameter_path:
         for parameter_p in parameter_path:
-            parameter = load_inputfile(parameter_p)
+            try:
+                parameter = load_inputfile(parameter_p)
+            except Exception as ex:
+                console.print(
+                    f"[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to validate the parameter:\n{ex}"
+                )
+                return typer.Exit(code=1)
 
             overrides = parameter.pop("cwltool:overrides", {})
             if overrides:
-                if len(overrides) > 1:
-                    console.print(
-                        "[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] "
-                        "Job submission model only supports one override per parameter."
-                    )
-                    return typer.Exit(code=1)
                 override_hints = overrides[next(iter(overrides))].get("hints", {})
                 if override_hints:
                     job_description = job_description.model_copy(update=override_hints.pop("dirac:description", {}))
