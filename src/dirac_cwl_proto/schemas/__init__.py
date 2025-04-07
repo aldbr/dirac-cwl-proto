@@ -1,5 +1,5 @@
 import yaml
-from referencing import Registry, Resource
+from referencing import Registry
 from referencing.exceptions import NoSuchResource
 
 
@@ -14,5 +14,5 @@ def package_loader(uri):
     raise NoSuchResource(ref=uri)
 
 
-# Create a Registry with the custom loader
+# Create a Registry with the custom loadeegistry
 registry = Registry(retrieve=package_loader)

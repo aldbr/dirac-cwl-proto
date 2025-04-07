@@ -382,14 +382,10 @@ class DataGenerationModel(IMetadataModel):
 
     def post_process(self, job_path: Path):
         """Post process the outputs of a job."""
-        outputs = glob.glob(
-            str(job_path / self.output_file_name_1) if self.output_file_name_1 else "*"
-        )
+        outputs = glob.glob(str(job_path / self.output_file_name_1) if self.output_file_name_1 else "*")
         if outputs:
             self._store_output("data1", outputs[0])
-        outputs = glob.glob(
-            str(job_path / self.output_file_name_2) if self.output_file_name_2 else "*"
-        )
+        outputs = glob.glob(str(job_path / self.output_file_name_2) if self.output_file_name_2 else "*")
         if outputs:
             self._store_output("data2", outputs[0])
 
@@ -401,7 +397,7 @@ class GaussianFitModel(IMetadataModel):
     data1: List | None
     data2: List | None
 
-    def get_input_query(self, input_name: str) -> Path | None:
+    def get_input_query(self, input_name: str, **kwargs: Any) -> Path | list[Path] | None:
         base_path = Path("filecatalog") / "gaussian_fit"
         if input_name == "data1":
             return base_path / "data-generation-1"
