@@ -14,5 +14,5 @@ def package_loader(uri):
     raise NoSuchResource(ref=uri)
 
 
-# Create a Registry with the custom loadeegistry
-registry = Registry(retrieve=package_loader)
+# Create a Registry with the custom loader
+registry = Registry(retrieve=package_loader)  # type: ignore
