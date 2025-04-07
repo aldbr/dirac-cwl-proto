@@ -30,6 +30,7 @@ dependencies = [
     "pydantic",
     "pyyaml",
     "typer",
+    "referencing",
     "rich",
     "ruamel.yaml"
 ]
