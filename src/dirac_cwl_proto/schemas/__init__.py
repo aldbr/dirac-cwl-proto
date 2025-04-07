@@ -1,15 +1,18 @@
-import jsonschema
-import pkg_resources
 import yaml
+from referencing import Registry, Resource
+from referencing.exceptions import NoSuchResource
 
 
 def package_loader(uri):
     if uri.startswith("package://"):
         package_path = uri[len("package://") :]
-        with pkg_resources.resource_stream(__name__, package_path) as stream:
+        # Load the resource using pkg_resources
+        from pkg_resources import resource_stream
+
+        with resource_stream(__name__, package_path) as stream:
             return yaml.safe_load(stream)
-    raise ValueError(f"Unsupported URI scheme: {uri}")
+    raise NoSuchResource(ref=uri)
 
 
-# Register the custom loader with jsonschema
-jsonschema.RefResolver.handlers["package"] = package_loader
+# Create a Registry with the custom loader
+registry = Registry(retrieve=package_loader)
