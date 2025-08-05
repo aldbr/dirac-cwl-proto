@@ -4,7 +4,7 @@ import math
 import os
 import random
 from pathlib import Path
-from typing import List, cast
+from typing import Any, List, cast
 
 from cwl_utils.parser import load_document_by_uri, save
 from cwl_utils.parser.cwl_v1_2 import Saveable
@@ -20,7 +20,7 @@ from ruamel.yaml import YAML
 class IMetadataModel(BaseModel):
     """Metadata for a transformation."""
 
-    def get_input_query(self, input_name: str) -> Path | None:
+    def get_input_query(self, input_name: str, **kwargs: Any) -> Path | list[Path] | None:
         """
         Template method for getting the input path where the inputs of a job are stored.
         Should be overridden by subclasses.
@@ -61,6 +61,65 @@ class IMetadataModel(BaseModel):
         dest = output_path / output_value
         os.rename(src, dest)
         logging.info(f"Output stored in {dest}")
+
+
+# -----------------------------------------------------------------------------
+
+
+class TaskWithMetadataQuery(IMetadataModel):
+    """
+    TaskWithMetadataQuery is a class providing methods to query metadata and generate input paths based on the metadata.
+
+    Methods
+    -------
+    get_input_query(**kwargs) -> Path | list[Path] | None
+        Generates a query to retrieve input paths based on provided metadata.
+
+    Example
+    -------
+    >>> query = TaskWithMetadataQuery()
+    >>> input_path = query.get_input_query(site="LaPalma", campaign="PROD6")
+    >>> print(input_path)
+    [PosixPath('filecatalog/PROD6/LaPalma')]
+
+    Attributes
+    ----------
+    Inherits attributes from IMetadataModel.
+    """
+
+    def get_input_query(self, input_name: str, **kwargs: Any) -> Path | list[Path] | None:
+        """
+        Generates a query to retrieve input paths based on provided metadata.
+
+        Parameters
+        ----------
+        **kwargs : dict
+            Keyword arguments representing metadata attributes. Expected keys are:
+            - site (str): The site name.
+            - campaign (str): The campaign name.
+
+        Returns
+        -------
+        Path | list[Path] | None
+            A Path or list of Paths representing the input query based on the provided metadata.
+            Returns None if neither site nor campaign is provided.
+
+        Notes
+        -----
+        This is an example implementation. In a real implementation,
+        an actual query should be made to the metadata service,
+        resulting in an array of Logical File Names (LFNs) being returned.
+        """
+        site = kwargs.get("site", "")
+        campaign = kwargs.get("campaign", "")
+
+        # Example implementation
+        if site and campaign:
+            return [Path("filecatalog") / campaign / site]
+        elif site:
+            return Path("filecatalog") / site
+        else:
+            return None
 
 
 # -----------------------------------------------------------------------------
@@ -116,16 +175,14 @@ class PiGather(IMetadataModel):
     # Input data
     input_data: List | None
 
-    def get_input_query(self, input_name: str) -> Path | None:
+    def get_input_query(self, input_name: str, **kwargs: Any) -> Path | list[Path] | None:
         if input_name == "input-data":
             return PiSimulate(num_points=self.num_points).get_output_query("sim")
         return None
 
     def get_output_query(self, output_name: str) -> Path | None:
         if output_name == "pi_result" and self.input_data:
-            return (
-                Path("filecatalog") / "pi" / str(self.num_points * len(self.input_data))
-            )
+            return Path("filecatalog") / "pi" / str(self.num_points * len(self.input_data))
         return None
 
     def post_process(self, job_path: Path):
@@ -145,7 +202,7 @@ class LHCbSimulate(IMetadataModel):
     run_id: int
     number_of_events: int
 
-    def get_input_query(self, input_name: str) -> Path | None:
+    def get_input_query(self, input_name: str, **kwargs: Any) -> Path | list[Path] | None:
         return Path("filecatalog") / str(self.task_id) / str(self.run_id)
 
     def get_output_query(self, output_name: str) -> Path | None:
@@ -186,10 +243,7 @@ class LHCbSimulate(IMetadataModel):
         cpu_power = random.randint(10, 20)
         cpu_time = random.randint(3600, 86400)
         cpu_work_per_event = random.randint(600, 1200)
-        self.number_of_events = (
-            math.floor((cpu_power * cpu_time) / cpu_work_per_event)
-            * number_of_processors
-        )
+        self.number_of_events = math.floor((cpu_power * cpu_time) / cpu_work_per_event) * number_of_processors
 
         # Write the number of events to simulate in the last argument of the command
         if len(command) == 3:
@@ -226,7 +280,7 @@ class LHCbReconstruct(IMetadataModel):
     # Input data
     files: List | None
 
-    def get_input_query(self, input_name: str) -> Path | None:
+    def get_input_query(self, input_name: str, **kwargs: Any) -> Path | list[Path] | None:
         return Path("filecatalog") / str(self.task_id) / str(self.run_id)
 
     def get_output_query(self, output_name: str) -> Path | None:
@@ -260,13 +314,7 @@ class MandelBrotGeneration(IMetadataModel):
 
     def get_output_query(self, output_name: str) -> Path | None:
         if output_name == "data":
-            return (
-                Path("filecatalog")
-                / "mandelbrot"
-                / "images"
-                / "raw"
-                / f"{self.width}x{self.height}"
-            )
+            return Path("filecatalog") / "mandelbrot" / "images" / "raw" / f"{self.width}x{self.height}"
         return None
 
     def post_process(self, job_path: Path):
@@ -292,7 +340,7 @@ class MandelBrotMerging(IMetadataModel):
     # Input data
     data: List | None
 
-    def get_input_query(self, input_name: str) -> Path | None:
+    def get_input_query(self, input_name: str, **kwargs: Any) -> Path | list[Path] | None:
         return MandelBrotGeneration(
             precision=self.precision,
             max_iterations=self.max_iterations,
@@ -309,13 +357,7 @@ class MandelBrotMerging(IMetadataModel):
         if output_name == "data-merged" and self.data:
             width = len(self.data) * self.width
             height = len(self.data) * self.height
-            return (
-                Path("filecatalog")
-                / "mandelbrot"
-                / "images"
-                / "merged"
-                / f"{width}x{height}"
-            )
+            return Path("filecatalog") / "mandelbrot" / "images" / "merged" / f"{width}x{height}"
         return None
 
     def post_process(self, job_path: Path):
@@ -340,14 +382,10 @@ class DataGenerationModel(IMetadataModel):
 
     def post_process(self, job_path: Path):
         """Post process the outputs of a job."""
-        outputs = glob.glob(
-            str(job_path / self.output_file_name_1) if self.output_file_name_1 else "*"
-        )
+        outputs = glob.glob(str(job_path / self.output_file_name_1) if self.output_file_name_1 else "*")
         if outputs:
             self._store_output("data1", outputs[0])
-        outputs = glob.glob(
-            str(job_path / self.output_file_name_2) if self.output_file_name_2 else "*"
-        )
+        outputs = glob.glob(str(job_path / self.output_file_name_2) if self.output_file_name_2 else "*")
         if outputs:
             self._store_output("data2", outputs[0])
 
@@ -359,7 +397,7 @@ class GaussianFitModel(IMetadataModel):
     data1: List | None
     data2: List | None
 
-    def get_input_query(self, input_name: str) -> Path | None:
+    def get_input_query(self, input_name: str, **kwargs: Any) -> Path | list[Path] | None:
         base_path = Path("filecatalog") / "gaussian_fit"
         if input_name == "data1":
             return base_path / "data-generation-1"

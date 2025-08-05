@@ -1,6 +1,7 @@
 """
 CLI interface to run a workflow as a job.
 """
+
 import logging
 import random
 import shutil
@@ -44,21 +45,9 @@ console = Console()
 @app.command("submit")
 def submit_job_client(
     task_path: str = typer.Argument(..., help="Path to the CWL file"),
-    parameter_path: Optional[List[str]] = typer.Option(
-        None, help="Path to the files containing the metadata"
-    ),
-    metadata_path: Optional[str] = typer.Option(
-        None, help="Path to metadata file used to generate the input query"
-    ),
-    platform: Optional[str] = typer.Option(
-        None, help="The platform required to run the job"
-    ),
-    priority: Optional[int] = typer.Option(10, help="The priority of the job"),
-    sites: Optional[List[str]] = typer.Option(None, help="The site to run the job"),
+    parameter_path: Optional[List[str]] = typer.Option(None, help="Path to the files containing the metadata"),
     # Specific parameter for the purpose of the prototype
-    local: Optional[bool] = typer.Option(
-        True, help="Run the job locally instead of submitting it to the router"
-    ),
+    local: Optional[bool] = typer.Option(True, help="Run the job locally instead of submitting it to the router"),
 ):
     """
     Correspond to the dirac-cli command to submit jobs
@@ -68,9 +57,7 @@ def submit_job_client(
     - Start the jobs
     """
     # Validate the workflow
-    console.print(
-        "[blue]:information_source:[/blue] [bold]CLI:[/bold] Validating the job(s)..."
-    )
+    console.print("[blue]:information_source:[/blue] [bold]CLI:[/bold] Validating the job(s)...")
     try:
         task = load_document(pack(task_path))
     except FileNotFoundError as ex:
@@ -79,32 +66,44 @@ def submit_job_client(
         )
         return typer.Exit(code=1)
     except ValidationException as ex:
-        console.print(
-            f"[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to validate the task:\n{ex}"
-        )
+        console.print(f"[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to validate the task:\n{ex}")
         return typer.Exit(code=1)
+
     console.print(f"\t[green]:heavy_check_mark:[/green] Task {task_path}")
 
-    if metadata_path:
-        # Load the metadata (yaml fiel)
-        with open(metadata_path, "r") as file:
-            job_metadata = YAML(typ="safe").load(file)
-    else:
-        job_metadata = JobMetadataModel()
+    job_metadata = JobMetadataModel()
+    job_description = JobDescriptionModel()
+    if task.hints:
+        for hint in task.hints:
+            hint_class = hint["class"]
+            hint_stripped = {k: v for k, v in hint.items() if k != "class"}
+            if hint_class == "dirac:metadata":
+                console.print(f"Update metadata with:\n{hint_stripped}")
+                job_metadata = job_metadata.model_copy(update=hint_stripped)
+                continue
+            if hint_class == "dirac:description":
+                job_description = job_description.model_copy(update=hint_stripped)
+
     console.print("\t[green]:heavy_check_mark:[/green] Metadata")
-
-    job_description = JobDescriptionModel(
-        platform=platform,
-        priority=priority,
-        sites=sites,
-    )
-
     console.print("\t[green]:heavy_check_mark:[/green] Description")
 
     parameters = []
     if parameter_path:
         for parameter_p in parameter_path:
-            parameter = load_inputfile(parameter_p)
+            try:
+                parameter = load_inputfile(parameter_p)
+            except Exception as ex:
+                console.print(
+                    f"[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to validate the parameter:\n{ex}"
+                )
+                return typer.Exit(code=1)
+
+            overrides = parameter.pop("cwltool:overrides", {})
+            if overrides:
+                override_hints = overrides[next(iter(overrides))].get("hints", {})
+                if override_hints:
+                    job_description = job_description.model_copy(update=override_hints.pop("dirac:description", {}))
+                    job_metadata = job_metadata.model_copy(update=override_hints.pop("dirac:metadata", {}))
 
             # Upload the local files to the sandbox store
             sandbox_id = upload_local_input_files(parameter)
@@ -115,9 +114,7 @@ def submit_job_client(
                     cwl=parameter,
                 )
             )
-            console.print(
-                f"\t[green]:heavy_check_mark:[/green] Parameter {parameter_p}"
-            )
+            console.print(f"\t[green]:heavy_check_mark:[/green] Parameter {parameter_p}")
 
     job = JobSubmissionModel(
         task=task,
@@ -125,19 +122,13 @@ def submit_job_client(
         description=job_description,
         metadata=job_metadata,
     )
-    console.print(
-        "[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Job(s) validated."
-    )
+    console.print("[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Job(s) validated.")
 
     # Submit the job
-    console.print(
-        "[blue]:information_source:[/blue] [bold]CLI:[/bold] Submitting the job(s) to service..."
-    )
+    console.print("[blue]:information_source:[/blue] [bold]CLI:[/bold] Submitting the job(s) to service...")
     print_json(job.model_dump_json(indent=4))
     if not submit_job_router(job):
-        console.print(
-            "[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to run job(s)."
-        )
+        console.print("[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to run job(s).")
         return typer.Exit(code=1)
     console.print("[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Job(s) done.")
 
@@ -166,9 +157,7 @@ def upload_local_input_files(input_data: Dict[str, Any]) -> str | None:
         return None
 
     # Tar the files and upload them to the file catalog
-    sandbox_path = (
-        Path("sandboxstore") / f"input_sandbox_{random.randint(1000, 9999)}.tar.gz"
-    )
+    sandbox_path = Path("sandboxstore") / f"input_sandbox_{random.randint(1000, 9999)}.tar.gz"
     with tarfile.open(sandbox_path, "w:gz") as tar:
         for file in files:
             # TODO: path is not the only attribute to consider, but so far it is the only one used
@@ -180,9 +169,7 @@ def upload_local_input_files(input_data: Dict[str, Any]) -> str | None:
                 f"\t\t[blue]:information_source:[/blue] Found {file_path} locally, uploading it to the sandbox store..."
             )
             tar.add(file_path, arcname=file_path.name)
-    console.print(
-        f"\t\t[blue]:information_source:[/blue] File(s) will be available through {sandbox_path}"
-    )
+    console.print(f"\t\t[blue]:information_source:[/blue] File(s) will be available through {sandbox_path}")
 
     # Modify the location of the files to point to the future location on the worker node
     for file in files:
@@ -402,9 +389,7 @@ def run_job(job: JobSubmissionModel) -> bool:
         result = subprocess.run(command, capture_output=True, text=True, cwd=job_path)
 
         if result.returncode != 0:
-            logger.error(
-                f"Error in executing workflow:\n{Text.from_ansi(result.stderr)}"
-            )
+            logger.error(f"Error in executing workflow:\n{Text.from_ansi(result.stderr)}")
             return False
         logger.info("Task executed successfully!")
 

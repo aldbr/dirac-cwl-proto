@@ -32,4 +32,5 @@ repos:
           - types-PyYAML
           - types-cachetools
           - types-requests
+          - types-jsonschema
         exclude: ^(/tests/|/workflows/|/filecatalog/|/sandboxstore/)
