@@ -30,8 +30,8 @@ from dirac_cwl_proto.metadata_models import IMetadataModel
 from dirac_cwl_proto.submission_models import (
     JobParameterModel,
     JobSubmissionModel,
+    extract_dirac_hints,
 )
-from dirac_cwl_proto.utils import extract_dirac_hints
 
 app = typer.Typer()
 console = Console()

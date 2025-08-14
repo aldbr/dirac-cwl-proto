@@ -34,6 +34,24 @@ class JobDescriptionModel(BaseModel):
     priority: int = 10
     sites: list[str] | None = None
 
+    @classmethod
+    def from_hints(cls, cwl: Any) -> "JobDescriptionModel":
+        """Create a JobDescriptionModel from CWL hints.
+
+        This is the recommended class-factory alternative to the module-level
+        helper. It mirrors the previous behaviour of extracting
+        `dirac:description` hints and validating via Pydantic.
+        """
+        description = cls()
+
+        hints = cwl.hints or []
+        for hint in hints:
+            if hint.get("class") == "dirac:description":
+                hint_body = {k: v for k, v in hint.items() if k != "class"}
+                description = description.model_copy(update=hint_body)
+
+        return description
+
 
 class JobParameterModel(BaseModel):
     """Parameter of a job."""
@@ -121,6 +139,26 @@ class JobMetadataModel(BaseModel):
 
         return instantiate_metadata(self.type, params)
 
+    @classmethod
+    def from_hints(cls, cwl: Any) -> "JobMetadataModel":
+        """Create a JobMetadataModel from CWL hints.
+
+        Mirrors the old module-level helper. Unknown hints are ignored and the
+        returned model is validated using the same mechanisms as the primary
+        model.
+        """
+        metadata = cls()
+
+        hints = cwl.hints or []
+        for hint in hints:
+            hint_class = hint.get("class")
+            hint_body = {k: v for k, v in hint.items() if k != "class"}
+
+            if hint_class == "dirac:metadata":
+                metadata = metadata.model_copy(update=hint_body)
+
+        return metadata
+
 
 class JobSubmissionModel(BaseModel):
     """Job definition sent to the router."""
@@ -139,6 +177,16 @@ class JobSubmissionModel(BaseModel):
             return save(value)
         else:
             raise TypeError(f"Cannot serialize type {type(value)}")
+
+
+def extract_dirac_hints(cwl: Any) -> tuple[JobMetadataModel, JobDescriptionModel]:
+    """Thin wrapper that returns (JobMetadataModel, JobDescriptionModel).
+
+    Prefer the class-factory APIs `JobMetadataModel.from_hints` and
+    `JobDescriptionModel.from_hints` for new code. This helper remains for
+    convenience and backward compatibility.
+    """
+    return JobMetadataModel.from_hints(cwl), JobDescriptionModel.from_hints(cwl)
 
 
 # -----------------------------------------------------------------------------
