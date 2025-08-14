@@ -8,7 +8,7 @@ import shutil
 import subprocess
 import tarfile
 from pathlib import Path
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, cast
 
 import typer
 from cwl_utils.pack import pack
@@ -27,12 +27,10 @@ from ruamel.yaml import YAML
 from schema_salad.exceptions import ValidationException
 
 from dirac_cwl_proto.submission_models import (
-    JobDescriptionModel,
-    JobMetadataModel,
     JobParameterModel,
     JobSubmissionModel,
 )
-from dirac_cwl_proto.utils import _get_metadata
+from dirac_cwl_proto.utils import _get_metadata, extract_dirac_hints
 
 app = typer.Typer()
 console = Console()
@@ -45,9 +43,9 @@ console = Console()
 @app.command("submit")
 def submit_job_client(
     task_path: str = typer.Argument(..., help="Path to the CWL file"),
-    parameter_path: Optional[List[str]] = typer.Option(None, help="Path to the files containing the metadata"),
+    parameter_path: list[str] | None = typer.Option(None, help="Path to the files containing the metadata"),
     # Specific parameter for the purpose of the prototype
-    local: Optional[bool] = typer.Option(True, help="Run the job locally instead of submitting it to the router"),
+    local: bool | None = typer.Option(True, help="Run the job locally instead of submitting it to the router"),
 ):
     """
     Correspond to the dirac-cli command to submit jobs
@@ -61,9 +59,7 @@ def submit_job_client(
     try:
         task = load_document(pack(task_path))
     except FileNotFoundError as ex:
-        console.print(
-            f"[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to load the task:\n{ex}"
-        )
+        console.print(f"[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to load the task:\n{ex}")
         return typer.Exit(code=1)
     except ValidationException as ex:
         console.print(f"[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to validate the task:\n{ex}")
@@ -71,18 +67,12 @@ def submit_job_client(
 
     console.print(f"\t[green]:heavy_check_mark:[/green] Task {task_path}")
 
-    job_metadata = JobMetadataModel()
-    job_description = JobDescriptionModel()
-    if task.hints:
-        for hint in task.hints:
-            hint_class = hint["class"]
-            hint_stripped = {k: v for k, v in hint.items() if k != "class"}
-            if hint_class == "dirac:metadata":
-                console.print(f"Update metadata with:\n{hint_stripped}")
-                job_metadata = job_metadata.model_copy(update=hint_stripped)
-                continue
-            if hint_class == "dirac:description":
-                job_description = job_description.model_copy(update=hint_stripped)
+    # Extract and validate dirac hints; unknown hints are logged as warnings.
+    try:
+        job_metadata, job_description = extract_dirac_hints(task)
+    except Exception as exc:
+        console.print(f"[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Invalid DIRAC hints:\n{exc}")
+        return typer.Exit(code=1)
 
     console.print("\t[green]:heavy_check_mark:[/green] Metadata")
     console.print("\t[green]:heavy_check_mark:[/green] Description")
@@ -133,7 +123,7 @@ def submit_job_client(
     console.print("[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Job(s) done.")
 
 
-def upload_local_input_files(input_data: Dict[str, Any]) -> str | None:
+def upload_local_input_files(input_data: dict[str, Any]) -> str | None:
     """
     Extract the files from the parameters.
 
@@ -244,7 +234,7 @@ class JobExecutionCoordinator:
         # Get a metadata instance
         self.metadata = _get_metadata(job)
 
-    def pre_process(self, job_path: Path, command: List[str]) -> List[str]:
+    def pre_process(self, job_path: Path, command: list[str]) -> list[str]:
         """Pre process a job according to its type."""
         if self.metadata:
             return self.metadata.pre_process(job_path, command)
@@ -269,7 +259,7 @@ def _pre_process(
     arguments: JobParameterModel | None,
     job_exec_coordinator: JobExecutionCoordinator,
     job_path: Path,
-) -> List[str]:
+) -> list[str]:
     """
     Pre-process the job before execution.
 
@@ -294,7 +284,7 @@ def _pre_process(
             for sandbox in arguments.sandbox:
                 sandbox_path = Path("sandboxstore") / f"{sandbox}.tar.gz"
                 with tarfile.open(sandbox_path, "r:gz") as tar:
-                    tar.extractall(job_path)
+                    tar.extractall(job_path, filter="data")
             logger.info("Files downloaded successfully!")
 
         # Download input data from the file catalog

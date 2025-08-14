@@ -2,7 +2,7 @@
 CLI interface to run a CWL workflow from end to end (production/transformation/job).
 """
 
-from typing import Any, Dict, List, Mapping
+from typing import Any, Mapping
 
 from cwl_utils.parser import save
 from cwl_utils.parser.cwl_v1_2 import (
@@ -17,6 +17,7 @@ from pydantic import (
     model_validator,
 )
 
+from dirac_cwl_proto.metadata import instantiate_metadata, list_registered
 from dirac_cwl_proto.metadata_models import IMetadataModel
 
 # -----------------------------------------------------------------------------
@@ -29,7 +30,7 @@ class JobDescriptionModel(BaseModel):
 
     platform: str | None = None
     priority: int = 10
-    sites: List[str] | None = None
+    sites: list[str] | None = None
 
 
 class JobParameterModel(BaseModel):
@@ -38,8 +39,8 @@ class JobParameterModel(BaseModel):
     # Allow arbitrary types to be passed to the model
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    sandbox: List[str] | None
-    cwl: Dict[str, Any]
+    sandbox: list[str] | None
+    cwl: dict[str, Any]
 
     @field_serializer("cwl")
     def serialize_cwl(self, value):
@@ -52,15 +53,13 @@ class JobMetadataModel(BaseModel):
     type: str = "User"
     # Parameters used to build input/output queries
     # Generally correspond to the inputs of the previous transformations
-    query_params: Dict[str, Any] = {}
+    query_params: dict[str, Any] = {}
 
     # Validation to ensure type corresponds to a subclass of IMetadataModel
     @field_validator("type")
     def check_type(cls, value):
-        # Collect all subclass names of IMetadataModel
-        valid_types = {cls.__name__ for cls in IMetadataModel.__subclasses__()}
-
-        # Check if the provided value matches any of the subclass names
+        # Validate type against the registry so downstream projects can extend
+        valid_types = list_registered()
         if value not in valid_types:
             raise ValueError(f"Invalid type '{value}'. Must be one of: {', '.join(valid_types)}.")
 
@@ -85,6 +84,14 @@ class JobMetadataModel(BaseModel):
 
         return super().model_copy(update=update, deep=deep)
 
+    def to_runtime(self) -> IMetadataModel:
+        """Instantiate the runtime metadata object from this serializable descriptor.
+
+        This uses the metadata registry to construct the actual implementation
+        (which can be a Pydantic model or any callable accepting **kwargs).
+        """
+        return instantiate_metadata(self.type, self.query_params)
+
 
 class JobSubmissionModel(BaseModel):
     """Job definition sent to the router."""
@@ -93,7 +100,7 @@ class JobSubmissionModel(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     task: CommandLineTool | Workflow
-    parameters: List[JobParameterModel] | None = None
+    parameters: list[JobParameterModel] | None = None
     description: JobDescriptionModel
     metadata: JobMetadataModel
 
@@ -115,7 +122,7 @@ class TransformationMetadataModel(JobMetadataModel):
 
     # Number of data to group together in a transformation
     # Key: input name, Value: group size
-    group_size: Dict[str, int] | None = None
+    group_size: dict[str, int] | None = None
 
 
 class TransformationSubmissionModel(BaseModel):
@@ -156,7 +163,7 @@ class ProductionSubmissionModel(BaseModel):
 
     task: Workflow
     # Key: step name, Value: description & metadata of a transformation
-    steps_metadata: Dict[str, ProductionStepMetadataModel]
+    steps_metadata: dict[str, ProductionStepMetadataModel]
 
     @model_validator(mode="before")
     def validate_steps_metadata(cls, values):

@@ -415,3 +415,24 @@ class GaussianFitModel(IMetadataModel):
         outputs = glob.glob(str(job_path / "fit*"))
         if outputs:
             self._store_output("fit-data", outputs[0])
+
+
+# Register known metadata types with the registry so they can be instantiated
+# from descriptors (e.g. CWL hints). Import locally to avoid circular imports
+# during module initialization.
+try:
+    from dirac_cwl_proto.metadata import register_metadata
+
+    register_metadata("User", User)
+    register_metadata("PiSimulate", PiSimulate)
+    register_metadata("PiSimulate_v2", PiSimulate_v2)
+    register_metadata("PiGather", PiGather)
+    register_metadata("LHCbSimulate", LHCbSimulate)
+    register_metadata("LHCbReconstruct", LHCbReconstruct)
+    register_metadata("MandelBrotGeneration", MandelBrotGeneration)
+    register_metadata("MandelBrotMerging", MandelBrotMerging)
+    register_metadata("DataGenerationModel", DataGenerationModel)
+    register_metadata("GaussianFitModel", GaussianFitModel)
+except Exception:
+    # Optional: registry may be unavailable during static analysis or early import
+    pass
