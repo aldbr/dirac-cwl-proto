@@ -2,6 +2,8 @@
 CLI interface to run a CWL workflow from end to end (production/transformation/job).
 """
 
+from __future__ import annotations
+
 from typing import Any, Mapping
 
 from cwl_utils.parser import save
@@ -84,13 +86,40 @@ class JobMetadataModel(BaseModel):
 
         return super().model_copy(update=update, deep=deep)
 
-    def to_runtime(self) -> IMetadataModel:
+    def to_runtime(self, submitted: "JobSubmissionModel" | None = None) -> IMetadataModel:
         """Instantiate the runtime metadata object from this serializable descriptor.
 
-        This uses the metadata registry to construct the actual implementation
-        (which can be a Pydantic model or any callable accepting **kwargs).
+        If a `submitted` JobSubmissionModel is provided, build the params using
+        the task inputs and the first parameter set, then merge with
+        `query_params` (this preserves the old behaviour of `_get_metadata`).
+
+        Otherwise fall back to using `query_params` only.
         """
-        return instantiate_metadata(self.type, self.query_params)
+
+        # Quick helper to convert dash-case to snake_case without importing utils
+        def _dash_to_snake(s: str) -> str:
+            return s.replace("-", "_")
+
+        if submitted is None:
+            return instantiate_metadata(self.type, self.query_params)
+
+        # Build inputs from task defaults and parameter overrides
+        inputs: dict[str, Any] = {}
+        for inp in submitted.task.inputs:
+            input_name = inp.id.split("#")[-1].split("/")[-1]
+            input_value = getattr(inp, "default", None)
+            params_list = getattr(submitted, "parameters", None)
+            if params_list and params_list[0]:
+                input_value = params_list[0].cwl.get(input_name, input_value)
+            inputs[input_name] = input_value
+
+        # Merge with explicit query params
+        if self.query_params:
+            inputs.update(self.query_params)
+
+        params = {_dash_to_snake(key): value for key, value in inputs.items()}
+
+        return instantiate_metadata(self.type, params)
 
 
 class JobSubmissionModel(BaseModel):

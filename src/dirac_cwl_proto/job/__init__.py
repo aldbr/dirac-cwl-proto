@@ -26,11 +26,12 @@ from rich.text import Text
 from ruamel.yaml import YAML
 from schema_salad.exceptions import ValidationException
 
+from dirac_cwl_proto.metadata_models import IMetadataModel
 from dirac_cwl_proto.submission_models import (
     JobParameterModel,
     JobSubmissionModel,
 )
-from dirac_cwl_proto.utils import _get_metadata, extract_dirac_hints
+from dirac_cwl_proto.utils import extract_dirac_hints
 
 app = typer.Typer()
 console = Console()
@@ -219,37 +220,6 @@ def submit_job_router(job: JobSubmissionModel) -> bool:
 
 
 # -----------------------------------------------------------------------------
-# Job Execution Coordinator
-# -----------------------------------------------------------------------------
-
-
-class JobExecutionCoordinator:
-    """Reproduction of the JobExecutionCoordinator.
-
-    In Dirac, you would inherit from it to define your pre/post-processing strategy.
-    In this context, we assume that these stages depend on the JobType.
-    """
-
-    def __init__(self, job: JobSubmissionModel):
-        # Get a metadata instance
-        self.metadata = _get_metadata(job)
-
-    def pre_process(self, job_path: Path, command: list[str]) -> list[str]:
-        """Pre process a job according to its type."""
-        if self.metadata:
-            return self.metadata.pre_process(job_path, command)
-
-        return command
-
-    def post_process(self, job_path: Path) -> bool:
-        """Post process a job according to its type."""
-        if self.metadata:
-            return self.metadata.post_process(job_path)
-
-        return True
-
-
-# -----------------------------------------------------------------------------
 # JobWrapper
 # -----------------------------------------------------------------------------
 
@@ -257,7 +227,7 @@ class JobExecutionCoordinator:
 def _pre_process(
     executable: CommandLineTool | Workflow,
     arguments: JobParameterModel | None,
-    job_exec_coordinator: JobExecutionCoordinator,
+    runtime_metadata: IMetadataModel | None,
     job_path: Path,
 ) -> list[str]:
     """
@@ -324,7 +294,10 @@ def _pre_process(
         with open(parameter_path, "w") as parameter_file:
             YAML().dump(parameter_dict, parameter_file)
         command.append(str(parameter_path.name))
-    return job_exec_coordinator.pre_process(job_path, command)
+    if runtime_metadata:
+        return runtime_metadata.pre_process(job_path, command)
+
+    return command
 
 
 def _post_process(
@@ -332,7 +305,7 @@ def _post_process(
     stdout: str,
     stderr: str,
     job_path: Path,
-    job_exec_coordinator: JobExecutionCoordinator,
+    runtime_metadata: IMetadataModel | None,
 ):
     """
     Post-process the job after execution.
@@ -346,7 +319,10 @@ def _post_process(
     logger.info(stdout)
     logger.info(stderr)
 
-    job_exec_coordinator.post_process(job_path)
+    if runtime_metadata:
+        return runtime_metadata.post_process(job_path)
+
+    return True
 
 
 def run_job(job: JobSubmissionModel) -> bool:
@@ -357,7 +333,9 @@ def run_job(job: JobSubmissionModel) -> bool:
     :return: True if the job is executed successfully, False otherwise
     """
     logger = logging.getLogger("JobWrapper")
-    job_exec_coordinator = JobExecutionCoordinator(job)
+    # Instantiate runtime metadata from the serializable descriptor and
+    # the job context so implementations can access task inputs/overrides.
+    runtime_metadata = job.metadata.to_runtime(job) if job.metadata else None
 
     # Isolate the job in a specific directory
     job_path = Path(".") / "workernode" / f"{random.randint(1000, 9999)}"
@@ -369,7 +347,7 @@ def run_job(job: JobSubmissionModel) -> bool:
         command = _pre_process(
             job.task,
             job.parameters[0] if job.parameters else None,
-            job_exec_coordinator,
+            runtime_metadata,
             job_path,
         )
         logger.info("Task pre-processed successfully!")
@@ -390,7 +368,7 @@ def run_job(job: JobSubmissionModel) -> bool:
             result.stdout,
             result.stderr,
             job_path,
-            job_exec_coordinator,
+            runtime_metadata,
         )
         logger.info("Task post-processed successfully!")
         return True
