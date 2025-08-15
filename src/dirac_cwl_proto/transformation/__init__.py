@@ -19,9 +19,9 @@ from schema_salad.exceptions import ValidationException
 
 from dirac_cwl_proto.job import submit_job_router
 from dirac_cwl_proto.submission_models import (
-    TaskDescriptionModel,
     JobParameterModel,
     JobSubmissionModel,
+    TaskDescriptionModel,
     TransformationMetadataModel,
     TransformationSubmissionModel,
 )
