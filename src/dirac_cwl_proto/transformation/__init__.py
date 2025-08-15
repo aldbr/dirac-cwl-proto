@@ -19,7 +19,7 @@ from schema_salad.exceptions import ValidationException
 
 from dirac_cwl_proto.job import submit_job_router
 from dirac_cwl_proto.submission_models import (
-    JobDescriptionModel,
+    TaskDescriptionModel,
     JobParameterModel,
     JobSubmissionModel,
     TransformationMetadataModel,
@@ -75,7 +75,7 @@ def submit_transformation_client(
         metadata_model = TransformationMetadataModel()
     console.print("\t[green]:heavy_check_mark:[/green] Metadata")
 
-    transformation_description = JobDescriptionModel(
+    transformation_description = TaskDescriptionModel(
         platform=platform,
         priority=priority,
         sites=sites,

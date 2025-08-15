@@ -20,7 +20,7 @@ from ruamel.yaml import YAML
 from schema_salad.exceptions import ValidationException
 
 from dirac_cwl_proto.submission_models import (
-    JobDescriptionModel,
+    TaskDescriptionModel,
     ProductionStepMetadataModel,
     ProductionSubmissionModel,
     TransformationMetadataModel,
@@ -170,8 +170,8 @@ def _get_transformations(
         step_id = step.id.split("#")[-1]
         step_data: ProductionStepMetadataModel = production.steps_metadata.get(
             step_id,
-            ProductionStepMetadataModel(
-                description=JobDescriptionModel(),
+                ProductionStepMetadataModel(
+                description=TaskDescriptionModel(),
                 metadata=TransformationMetadataModel(),
             ),
         )

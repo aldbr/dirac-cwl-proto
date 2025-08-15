@@ -27,16 +27,16 @@ from dirac_cwl_proto.metadata_models import IMetadataModel
 # -----------------------------------------------------------------------------
 
 
-class JobDescriptionModel(BaseModel):
-    """Description of a job."""
+class TaskDescriptionModel(BaseModel):
+    """Description of a task (job/transformation/production step)."""
 
     platform: str | None = None
     priority: int = 10
     sites: list[str] | None = None
 
     @classmethod
-    def from_hints(cls, cwl: Any) -> "JobDescriptionModel":
-        """Create a JobDescriptionModel from CWL hints.
+    def from_hints(cls, cwl: Any) -> "TaskDescriptionModel":
+        """Create a TaskDescriptionModel from CWL hints.
 
         This is the recommended class-factory alternative to the module-level
         helper. It mirrors the previous behaviour of extracting
@@ -67,8 +67,8 @@ class JobParameterModel(BaseModel):
         return save(value)
 
 
-class JobMetadataModel(BaseModel):
-    """Job metadata."""
+class TaskMetadataModel(BaseModel):
+    """Task metadata (descriptor used by Jobs/Transformations/Production steps)."""
 
     type: str = "User"
     # Parameters used to build input/output queries
@@ -90,7 +90,7 @@ class JobMetadataModel(BaseModel):
         *,
         update: Mapping[str, Any] | None = None,
         deep: bool = False,
-    ) -> "JobMetadataModel":
+    ) -> "TaskMetadataModel":
         if update is None:
             update = {}
         else:
@@ -140,8 +140,8 @@ class JobMetadataModel(BaseModel):
         return instantiate_metadata(self.type, params)
 
     @classmethod
-    def from_hints(cls, cwl: Any) -> "JobMetadataModel":
-        """Create a JobMetadataModel from CWL hints.
+    def from_hints(cls, cwl: Any) -> "TaskMetadataModel":
+        """Create a TaskMetadataModel from CWL hints.
 
         Mirrors the old module-level helper. Unknown hints are ignored and the
         returned model is validated using the same mechanisms as the primary
@@ -168,8 +168,8 @@ class JobSubmissionModel(BaseModel):
 
     task: CommandLineTool | Workflow
     parameters: list[JobParameterModel] | None = None
-    description: JobDescriptionModel
-    metadata: JobMetadataModel
+    description: TaskDescriptionModel
+    metadata: TaskMetadataModel
 
     @field_serializer("task")
     def serialize_task(self, value):
@@ -179,14 +179,14 @@ class JobSubmissionModel(BaseModel):
             raise TypeError(f"Cannot serialize type {type(value)}")
 
 
-def extract_dirac_hints(cwl: Any) -> tuple[JobMetadataModel, JobDescriptionModel]:
-    """Thin wrapper that returns (JobMetadataModel, JobDescriptionModel).
+def extract_dirac_hints(cwl: Any) -> tuple[TaskMetadataModel, TaskDescriptionModel]:
+    """Thin wrapper that returns (TaskMetadataModel, TaskDescriptionModel).
 
-    Prefer the class-factory APIs `JobMetadataModel.from_hints` and
-    `JobDescriptionModel.from_hints` for new code. This helper remains for
+    Prefer the class-factory APIs `TaskMetadataModel.from_hints` and
+    `TaskDescriptionModel.from_hints` for new code. This helper remains for
     convenience and backward compatibility.
     """
-    return JobMetadataModel.from_hints(cwl), JobDescriptionModel.from_hints(cwl)
+    return TaskMetadataModel.from_hints(cwl), TaskDescriptionModel.from_hints(cwl)
 
 
 # -----------------------------------------------------------------------------
@@ -194,7 +194,7 @@ def extract_dirac_hints(cwl: Any) -> tuple[JobMetadataModel, JobDescriptionModel
 # -----------------------------------------------------------------------------
 
 
-class TransformationMetadataModel(JobMetadataModel):
+class TransformationMetadataModel(TaskMetadataModel):
     """Transformation metadata."""
 
     # Number of data to group together in a transformation
@@ -210,7 +210,7 @@ class TransformationSubmissionModel(BaseModel):
 
     task: CommandLineTool | Workflow
     metadata: TransformationMetadataModel
-    description: JobDescriptionModel
+    description: TaskDescriptionModel
 
     @field_serializer("task")
     def serialize_task(self, value):
@@ -228,7 +228,7 @@ class TransformationSubmissionModel(BaseModel):
 class ProductionStepMetadataModel(BaseModel):
     """Step metadata for a transformation."""
 
-    description: JobDescriptionModel
+    description: TaskDescriptionModel
     metadata: TransformationMetadataModel
 
 
