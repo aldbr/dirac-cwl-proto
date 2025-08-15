@@ -28,7 +28,27 @@ from dirac_cwl_proto.metadata_models import IMetadataModel
 
 
 class TaskDescriptionModel(BaseModel):
-    """Description of a task (job/transformation/production step)."""
+    """
+    Description of a task (job/transformation/production step).
+
+    Parameters
+    ----------
+    platform : str | None
+        Target platform name (for example ``"DIRAC"``). If ``None``, no
+        platform preference is encoded.
+    priority : int, optional
+        Scheduling priority. Higher values indicate higher priority.
+        Defaults to ``10``.
+    sites : list[str] | None
+        Optional list of candidate site names where the task may run.
+
+    Notes
+    -----
+    This is a serialisable Pydantic descriptor intended to carry CWL hints
+    related to runtime placement and scheduling. Prefer using the class
+    factory ``TaskDescriptionModel.from_hints(cwl)`` when extracting hints
+    from parsed CWL objects.
+    """
 
     platform: str | None = None
     priority: int = 10
@@ -36,11 +56,20 @@ class TaskDescriptionModel(BaseModel):
 
     @classmethod
     def from_hints(cls, cwl: Any) -> "TaskDescriptionModel":
-        """Create a TaskDescriptionModel from CWL hints.
+        """
+        Create a ``TaskDescriptionModel`` from CWL hints.
 
-        This is the recommended class-factory alternative to the module-level
-        helper. It mirrors the previous behaviour of extracting
-        `dirac:description` hints and validating via Pydantic.
+        Parameters
+        ----------
+        cwl : Any
+            A parsed CWL ``CommandLineTool`` or ``Workflow`` object (for
+            example from ``cwl-utils``).
+
+        Returns
+        -------
+        TaskDescriptionModel
+            Descriptor populated from CWL hints. Unknown or missing hints
+            are ignored and sensible defaults are used.
         """
         description = cls()
 
@@ -68,7 +97,44 @@ class JobParameterModel(BaseModel):
 
 
 class TaskMetadataModel(BaseModel):
-    """Task metadata (descriptor used by Jobs/Transformations/Production steps)."""
+    """
+    Task metadata descriptor used by Jobs, Transformations and Production
+    steps.
+
+    Parameters
+    ----------
+    type : str
+        Registry key identifying the runtime metadata implementation to
+        instantiate (for example ``"User"``). The concrete runtime type
+        must be registered with the metadata registry for ``to_runtime`` to
+        successfully instantiate it.
+    query_params : dict[str, Any], optional
+        Parameters used to build input/output queries. These are merged with
+        task defaults and any runtime parameter overrides when
+        ``to_runtime`` is called.
+    group_size : int | None
+        Optional grouping size used by some transformation metadata
+        implementations.
+
+    Methods
+    -------
+    model_copy(update=None, deep=False)
+        Return a copy of the Pydantic model, optionally applying updates.
+    to_runtime(submitted)
+        Build runtime instantiation parameters from the submission context
+        (task inputs + parameter overrides + ``query_params``) and
+        instantiate a concrete :class:`IMetadataModel` via the metadata
+        registry.
+    from_hints(cwl)
+        Class factory extracting metadata from CWL hints.
+
+    Notes
+    -----
+    - Unknown CWL hints are ignored by the ``from_hints`` factory.
+    - During ``to_runtime``, query parameter keys are converted from
+      dash-case (e.g. ``"some-key"``) to snake_case (``"some_key"``) to
+      match typical Python argument names used by runtime implementations.
+    """
 
     type: str = "User"
     # Parameters used to build input/output queries
@@ -105,13 +171,33 @@ class TaskMetadataModel(BaseModel):
         return super().model_copy(update=update, deep=deep)
 
     def to_runtime(self, submitted: "JobSubmissionModel" | None = None) -> IMetadataModel:
-        """Instantiate the runtime metadata object from this serializable descriptor.
+        """
+        Build and instantiate the runtime metadata implementation.
 
-        If a `submitted` JobSubmissionModel is provided, build the params using
-        the task inputs and the first parameter set, then merge with
-        `query_params` (this preserves the old behaviour of `_get_metadata`).
+        The returned object is an instance of :class:`IMetadataModel` created
+        by the :mod:`dirac_cwl_proto.metadata` registry. The instantiation
+        parameters are constructed by merging, in order:
 
-        Otherwise fall back to using `query_params` only.
+        1. Input defaults declared on the CWL task (if ``submitted`` is
+           provided).
+        2. The first set of CWL parameter overrides (``submitted.parameters``),
+           if present.
+        3. The descriptor's ``query_params``.
+
+        During merging, keys are normalised from dash-case to snake_case to
+        align with typical Python argument names used by runtime
+        implementations.
+
+        Parameters
+        ----------
+        submitted : JobSubmissionModel | None
+            Optional submission context used to resolve CWL input defaults
+            and parameter overrides.
+
+        Returns
+        -------
+        IMetadataModel
+            Runtime metadata implementation instantiated from the registry.
         """
 
         # Quick helper to convert dash-case to snake_case without importing utils
@@ -141,11 +227,18 @@ class TaskMetadataModel(BaseModel):
 
     @classmethod
     def from_hints(cls, cwl: Any) -> "TaskMetadataModel":
-        """Create a TaskMetadataModel from CWL hints.
+        """
+        Create a ``TaskMetadataModel`` from CWL hints.
 
-        Mirrors the old module-level helper. Unknown hints are ignored and the
-        returned model is validated using the same mechanisms as the primary
-        model.
+        Parameters
+        ----------
+        cwl : Any
+            A parsed CWL ``CommandLineTool`` or ``Workflow`` object.
+
+        Returns
+        -------
+        TaskMetadataModel
+            Descriptor populated from CWL hints; unknown hints are ignored.
         """
         metadata = cls()
 
