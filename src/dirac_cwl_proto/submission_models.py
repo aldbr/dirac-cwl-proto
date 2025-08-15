@@ -9,6 +9,7 @@ from typing import Any, Mapping
 from cwl_utils.parser import save
 from cwl_utils.parser.cwl_v1_2 import (
     CommandLineTool,
+    ExpressionTool,
     Workflow,
 )
 from pydantic import (
@@ -23,7 +24,7 @@ from dirac_cwl_proto.metadata import instantiate_metadata, list_registered
 from dirac_cwl_proto.metadata_models import IMetadataModel
 
 # -----------------------------------------------------------------------------
-# Job models
+# Task models
 # -----------------------------------------------------------------------------
 
 
@@ -80,20 +81,6 @@ class TaskDescriptionModel(BaseModel):
                 description = description.model_copy(update=hint_body)
 
         return description
-
-
-class JobParameterModel(BaseModel):
-    """Parameter of a job."""
-
-    # Allow arbitrary types to be passed to the model
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
-    sandbox: list[str] | None
-    cwl: dict[str, Any]
-
-    @field_serializer("cwl")
-    def serialize_cwl(self, value):
-        return save(value)
 
 
 class TaskMetadataModel(BaseModel):
@@ -253,33 +240,42 @@ class TaskMetadataModel(BaseModel):
         return metadata
 
 
+# -----------------------------------------------------------------------------
+# Job models
+# -----------------------------------------------------------------------------
+
+
+class JobParameterModel(BaseModel):
+    """Parameter of a job."""
+
+    # Allow arbitrary types to be passed to the model
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    sandbox: list[str] | None
+    cwl: dict[str, Any]
+
+    @field_serializer("cwl")
+    def serialize_cwl(self, value):
+        return save(value)
+
+
 class JobSubmissionModel(BaseModel):
     """Job definition sent to the router."""
 
     # Allow arbitrary types to be passed to the model
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    task: CommandLineTool | Workflow
+    task: CommandLineTool | Workflow | ExpressionTool
     parameters: list[JobParameterModel] | None = None
     description: TaskDescriptionModel
     metadata: TaskMetadataModel
 
     @field_serializer("task")
     def serialize_task(self, value):
-        if isinstance(value, (CommandLineTool, Workflow)):
+        if isinstance(value, (CommandLineTool, Workflow, ExpressionTool)):
             return save(value)
         else:
             raise TypeError(f"Cannot serialize type {type(value)}")
-
-
-def extract_dirac_hints(cwl: Any) -> tuple[TaskMetadataModel, TaskDescriptionModel]:
-    """Thin wrapper that returns (TaskMetadataModel, TaskDescriptionModel).
-
-    Prefer the class-factory APIs `TaskMetadataModel.from_hints` and
-    `TaskDescriptionModel.from_hints` for new code. This helper remains for
-    convenience and backward compatibility.
-    """
-    return TaskMetadataModel.from_hints(cwl), TaskDescriptionModel.from_hints(cwl)
 
 
 # -----------------------------------------------------------------------------
@@ -301,13 +297,13 @@ class TransformationSubmissionModel(BaseModel):
     # Allow arbitrary types to be passed to the model
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    task: CommandLineTool | Workflow
+    task: CommandLineTool | Workflow | ExpressionTool
     metadata: TransformationMetadataModel
     description: TaskDescriptionModel
 
     @field_serializer("task")
     def serialize_task(self, value):
-        if isinstance(value, (CommandLineTool, Workflow)):
+        if isinstance(value, (CommandLineTool, Workflow, ExpressionTool)):
             return save(value)
         else:
             raise TypeError(f"Cannot serialize type {type(value)}")
@@ -358,3 +354,18 @@ class ProductionSubmissionModel(BaseModel):
             return save(value)
         else:
             raise TypeError(f"Cannot serialize type {type(value)}")
+
+
+# -----------------------------------------------------------------------------
+# Module helpers
+# -----------------------------------------------------------------------------
+
+
+def extract_dirac_hints(cwl: Any) -> tuple[TaskMetadataModel, TaskDescriptionModel]:
+    """Thin wrapper that returns (TaskMetadataModel, TaskDescriptionModel).
+
+    Prefer the class-factory APIs `TaskMetadataModel.from_hints` and
+    `TaskDescriptionModel.from_hints` for new code. This helper remains for
+    convenience and backward compatibility.
+    """
+    return TaskMetadataModel.from_hints(cwl), TaskDescriptionModel.from_hints(cwl)
