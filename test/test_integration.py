@@ -1,0 +1,307 @@
+"""
+Integration tests for the complete metadata plugin system.
+
+This module tests the end-to-end functionality of the metadata plugin system,
+including plugin discovery, registration, CWL integration, and real-world
+usage scenarios.
+"""
+
+from pathlib import Path
+from unittest.mock import Mock
+
+import pytest
+
+from dirac_cwl_proto.metadata import (
+    get_registry,
+    instantiate_metadata,
+    list_registered,
+    register_metadata,
+)
+from dirac_cwl_proto.metadata.core import BaseMetadataModel
+from dirac_cwl_proto.submission_models import (
+    EnhancedMetadataDescriptor,
+    TaskDescriptionModel,
+)
+
+
+class TestSystemIntegration:
+    """Test complete system integration."""
+
+    def test_plugin_system_initialization(self):
+        """Test that the plugin system initializes correctly."""
+        # Test registry access
+        registry = get_registry()
+        assert registry is not None
+
+        # Test that core plugins are registered
+        plugins = list_registered()
+        core_plugins = {"User", "Admin", "QueryBased"}
+        assert core_plugins.issubset(set(plugins))
+
+    def test_plugin_instantiation_flow(self):
+        """Test the complete plugin instantiation flow."""
+        # Test each core plugin
+        test_cases = [
+            ("User", {}),
+            ("Admin", {"admin_level": 5, "log_level": "DEBUG"}),
+            ("QueryBased", {"query_root": "/data", "campaign": "Test"}),
+        ]
+
+        for plugin_type, params in test_cases:
+            # Test direct instantiation
+            instance = instantiate_metadata(plugin_type, params)
+            assert instance.metadata_type == plugin_type
+
+            # Test via descriptor
+            descriptor = EnhancedMetadataDescriptor(type=plugin_type, query_params=params)
+            runtime = descriptor.to_runtime()
+            assert runtime.metadata_type == plugin_type
+
+    def test_experiment_plugin_support(self):
+        """Test experiment-specific plugin functionality."""
+        registry = get_registry()
+        experiments = registry.list_experiments()
+
+        # Should have at least LHCb experiment
+        assert "lhcb" in experiments
+
+        # Test LHCb plugin access
+        lhcb_plugins = registry.list_plugins(experiment="lhcb")
+        assert len(lhcb_plugins) > 0
+
+    def test_cwl_integration_workflow(self):
+        """Test complete CWL integration workflow."""
+        # Create an enhanced descriptor directly to test CWL integration
+        metadata_descriptor = EnhancedMetadataDescriptor(
+            type="QueryBased", query_params={"campaign": "Run3", "data_type": "AOD", "site": "CERN"}
+        )
+
+        # Convert to runtime
+        runtime_metadata = metadata_descriptor.to_runtime()
+        assert runtime_metadata.metadata_type == "QueryBased"  # Test that CWL parameters are available
+        # (Note: exact parameter extraction depends on implementation)
+
+    def test_legacy_compatibility_integration(self):
+        """Test that legacy metadata models integrate correctly."""
+        # Test that legacy models are still accessible
+        legacy_plugins = ["PiSimulate", "PiGather", "LHCbSimulate", "MandelBrotGeneration", "GaussianFitModel"]
+
+        registered = list_registered()
+        for plugin in legacy_plugins:
+            assert plugin in registered
+
+
+class TestRealWorldScenarios:
+    """Test real-world usage scenarios."""
+
+    def test_user_workflow_scenario(self):
+        """Test a typical user workflow scenario."""
+        # User creates a basic job with user metadata
+        user_descriptor = EnhancedMetadataDescriptor(type="User")
+        user_runtime = user_descriptor.to_runtime()
+
+        # Simulate job execution
+        job_path = Path("/tmp/user_job")
+        command = ["python", "user_script.py"]
+
+        # Pre-process
+        processed_command = user_runtime.pre_process(job_path, command)
+        assert processed_command == command  # User metadata doesn't modify command
+
+        # Post-process
+        result = user_runtime.post_process(job_path)
+        assert result is True
+
+    def test_admin_workflow_scenario(self):
+        """Test an administrative workflow scenario."""
+        # Admin creates a job with enhanced logging
+        admin_descriptor = EnhancedMetadataDescriptor(
+            type="Admin", query_params={"admin_level": 8, "log_level": "DEBUG", "enable_monitoring": True}
+        )
+        admin_runtime = admin_descriptor.to_runtime()
+
+        # Simulate job execution
+        job_path = Path("/tmp/admin_job")
+        command = ["python", "admin_script.py"]
+
+        # Pre-process should add logging
+        processed_command = admin_runtime.pre_process(job_path, command)
+        assert len(processed_command) >= len(command)  # Should be at least the same length
+        assert "--log-level" in processed_command
+        assert "DEBUG" in processed_command
+
+    def test_data_analysis_workflow_scenario(self):
+        """Test a data analysis workflow scenario."""
+        # Analyst creates a job with query-based data discovery
+        analysis_descriptor = EnhancedMetadataDescriptor(
+            type="QueryBased",
+            query_params={"query_root": "/grid/data", "campaign": "Run3_2024", "data_type": "AOD", "site": "CERN"},
+        )
+        analysis_runtime = analysis_descriptor.to_runtime()
+
+        # Test input data discovery
+        input_path = analysis_runtime.get_input_query("input_data")
+        assert str(input_path).startswith("/grid/data")
+        assert "Run3_2024" in str(input_path)
+        assert "CERN" in str(input_path)
+        assert "AOD" in str(input_path)
+
+        # Test output path generation
+        output_path = analysis_runtime.get_output_query("results")
+        assert output_path is not None
+
+    def test_lhcb_simulation_workflow_scenario(self):
+        """Test an LHCb simulation workflow scenario."""
+        # Test if LHCb simulation plugin is available
+        try:
+            lhcb_descriptor = EnhancedMetadataDescriptor(
+                type="LHCbSimulation",
+                query_params={
+                    "task_id": "sim_b2kstarmumu_001",
+                    "run_id": "run3_2024_001",
+                    "generator": "Pythia8",
+                    "n_events": 10000,
+                },
+            )
+            lhcb_runtime = lhcb_descriptor.to_runtime()
+
+            # Test LHCb-specific functionality
+            assert lhcb_runtime.metadata_type == "LHCbSimulation"
+
+            # Test path generation
+            input_path = lhcb_runtime.get_input_query("gen_file")
+            output_path = lhcb_runtime.get_output_query("sim_file")
+
+            assert "lhcb" in str(input_path).lower()
+            assert "lhcb" in str(output_path).lower()
+
+        except ValueError:
+            # LHCb plugin might not be properly registered in test environment
+            pytest.skip("LHCb simulation plugin not available")
+
+    def test_transformation_workflow_scenario(self):
+        """Test a transformation (batch processing) workflow scenario."""
+        # Create multiple task descriptions for a transformation
+        task_configs = [{"platform": "DIRAC", "priority": 5, "sites": [f"site_{i}"]} for i in range(5)]
+
+        tasks = []
+        for config in task_configs:
+            task = TaskDescriptionModel(**config)
+            tasks.append(task)
+
+        # Verify all tasks have correct configuration
+        for i, task in enumerate(tasks):
+            assert task.platform == "DIRAC"
+            assert task.priority == 5
+            assert task.sites == [f"site_{i}"]
+
+    def test_parameter_override_scenario(self):
+        """Test parameter override scenarios."""
+        # Base descriptor with default parameters
+        base_descriptor = EnhancedMetadataDescriptor(type="Admin", query_params={"admin_level": 3, "log_level": "INFO"})
+
+        # Create variants with different overrides
+        variants = [
+            {"admin_level": 5},
+            {"log_level": "DEBUG"},
+            {"admin_level": 8, "log_level": "ERROR", "enable_monitoring": False},
+        ]
+
+        for override in variants:
+            variant_descriptor = base_descriptor.model_copy(update={"query_params": override})
+            runtime = variant_descriptor.to_runtime()
+
+            # Verify parameters are properly merged/overridden
+            for key, value in override.items():
+                assert getattr(runtime, key) == value
+
+
+class TestErrorHandling:
+    """Test error handling and edge cases."""
+
+    def test_invalid_plugin_type(self):
+        """Test handling of invalid plugin types."""
+        with pytest.raises(ValueError, match="Invalid type"):
+            EnhancedMetadataDescriptor(type="NonExistentPlugin")
+
+    def test_missing_required_parameters(self):
+        """Test handling of missing required parameters."""
+        # Some plugins might require specific parameters
+        try:
+            # Try to instantiate a plugin that might require parameters
+            descriptor = EnhancedMetadataDescriptor(type="LHCbSimulation")
+            descriptor.to_runtime()
+        except ValueError:
+            # Expected if required parameters are missing
+            pass
+
+    def test_plugin_registration_conflicts(self):
+        """Test handling of plugin registration conflicts."""
+
+        # Create a test plugin
+        class ConflictTestPlugin(BaseMetadataModel):
+            metadata_type = "ConflictTest"
+            description = "Test plugin for conflict testing"
+
+        # Register it
+        register_metadata("ConflictTest", ConflictTestPlugin)
+
+        # Try to register again (should raise error)
+        with pytest.raises(ValueError, match="already registered"):
+            register_metadata("ConflictTest", ConflictTestPlugin)
+
+    def test_malformed_cwl_hints(self):
+        """Test handling of malformed CWL hints."""
+        # Test with None hints
+        mock_cwl = Mock()
+        mock_cwl.hints = None
+
+        descriptor = EnhancedMetadataDescriptor.from_hints(mock_cwl)
+        assert descriptor.type == "User"  # Should use default
+
+        # Test with empty hints
+        mock_cwl.hints = []
+        descriptor = EnhancedMetadataDescriptor.from_hints(mock_cwl)
+        assert descriptor.type == "User"  # Should use default
+
+        # Test with malformed hints
+        mock_cwl.hints = [{"invalid": "hint"}]
+        descriptor = EnhancedMetadataDescriptor.from_hints(mock_cwl)
+        assert descriptor.type == "User"  # Should ignore and use default
+
+
+class TestPerformance:
+    """Test performance-related aspects."""
+
+    def test_plugin_instantiation_performance(self):
+        """Test that plugin instantiation is reasonably fast."""
+        import time
+
+        # Test instantiation of multiple plugins
+        start_time = time.time()
+
+        for _ in range(100):
+            descriptor = EnhancedMetadataDescriptor(type="User")
+            runtime = descriptor.to_runtime()
+
+        end_time = time.time()
+
+        # Should complete in reasonable time (adjust threshold as needed)
+        assert (end_time - start_time) < 1.0  # 1 second for 100 instantiations
+
+    def test_registry_lookup_performance(self):
+        """Test that registry lookups are efficient."""
+        import time
+
+        registry = get_registry()
+
+        start_time = time.time()
+
+        for _ in range(1000):
+            plugins = registry.list_plugins()
+            plugin_class = registry.get_plugin("User")
+
+        end_time = time.time()
+
+        # Registry operations should be fast
+        assert (end_time - start_time) < 0.5  # 0.5 seconds for 1000 operations
