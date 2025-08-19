@@ -123,7 +123,7 @@ class BaseMetadataModel(BaseModel, DataCatalogInterface, MetadataProcessor):
     """
 
     model_config = ConfigDict(
-        extra="forbid",
+        extra="ignore",
         validate_assignment=True,
         arbitrary_types_allowed=True,
         json_schema_extra={"title": "DIRAC Metadata Model", "description": "Base metadata model for DIRAC jobs"},

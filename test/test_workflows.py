@@ -155,7 +155,7 @@ def test_run_job_success(cli_runner, cleanup, cwl_file, inputs):
         command.extend(["--parameter-path", input])
 
     result = cli_runner.invoke(app, command)
-    assert "Job(s) done" in result.stdout, f"Failed to run the job: {result.stdout}"
+    assert "CLI: Job(s) done" in result.stdout, f"Failed to run the job: {result.stdout}"
 
 
 @pytest.mark.parametrize(

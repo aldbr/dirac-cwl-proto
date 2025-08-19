@@ -247,7 +247,7 @@ class JobSubmissionModel(BaseModel):
     task: CommandLineTool | Workflow | ExpressionTool
     parameters: list[JobParameterModel] | None = None
     description: TaskDescriptionModel
-    metadata: MetadataDescriptor
+    metadata: EnhancedMetadataDescriptor
 
     @field_serializer("task")
     def serialize_task(self, value):
@@ -262,7 +262,7 @@ class JobSubmissionModel(BaseModel):
 # -----------------------------------------------------------------------------
 
 
-class TransformationMetadataModel(MetadataDescriptor):
+class TransformationMetadataModel(EnhancedMetadataDescriptor):
     """Transformation metadata."""
 
     # Number of data to group together in a transformation
@@ -340,11 +340,11 @@ class ProductionSubmissionModel(BaseModel):
 # -----------------------------------------------------------------------------
 
 
-def extract_dirac_hints(cwl: Any) -> tuple[MetadataDescriptor, TaskDescriptionModel]:
-    """Thin wrapper that returns (MetadataDescriptor, TaskDescriptionModel).
+def extract_dirac_hints(cwl: Any) -> tuple[EnhancedMetadataDescriptor, TaskDescriptionModel]:
+    """Thin wrapper that returns (EnhancedMetadataDescriptor, TaskDescriptionModel).
 
-    Prefer the class-factory APIs `MetadataDescriptor.from_hints` and
+    Prefer the class-factory APIs `EnhancedMetadataDescriptor.from_hints` and
     `TaskDescriptionModel.from_hints` for new code. This helper remains for
     convenience.
     """
-    return MetadataDescriptor.from_hints(cwl), TaskDescriptionModel.from_hints(cwl)
+    return EnhancedMetadataDescriptor.from_hints(cwl), TaskDescriptionModel.from_hints(cwl)
