@@ -1,7 +1,9 @@
-this-step-doesnot-exist:
+image-prod:
   metadata:
     # This type does not exist
     type: MandelBrotDoesNotExist
+    group_size:
+      data: 1
 image-merge:
   metadata:
     type: MandelBrotMerging

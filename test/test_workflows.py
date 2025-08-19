@@ -514,7 +514,7 @@ def test_run_simple_production_success(cli_runner, cleanup, cwl_file, metadata):
         (
             "test/workflows/mandelbrot/description.cwl",
             "test/workflows/mandelbrot/type_dependencies/production/malformed-nonexisting-type_metadata-mandelbrot_complete.yaml",
-            "Invalidtype'MandelBrotDoesNotExist'.Mustbeoneof:",
+            "Unknownmetadataplugin:'MandelBrotDoesNotExist'",
         ),
     ],
 )

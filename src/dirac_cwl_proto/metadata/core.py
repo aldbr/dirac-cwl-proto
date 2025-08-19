@@ -169,6 +169,8 @@ class MetadataDescriptor(BaseModel):
     This class represents the serializable metadata configuration that
     can be embedded in CWL hints and later instantiated into concrete
     metadata models.
+
+    Enhanced with submission functionality for DIRAC CWL integration.
     """
 
     model_config = ConfigDict(
@@ -185,6 +187,19 @@ class MetadataDescriptor(BaseModel):
     experiment: Optional[str] = Field(default=None, description="Experiment namespace (e.g., 'lhcb', 'ctao')")
 
     version: Optional[str] = Field(default=None, description="Metadata model version")
+
+    # Enhanced fields for submission functionality
+    type: str = Field(default="User", description="Legacy field for backward compatibility (alias for metadata_class)")
+    query_params: Dict[str, Any] = Field(default_factory=dict, description="Additional parameters for metadata plugins")
+
+    def __init__(self, **data):
+        """Initialize with metadata_class/type field synchronization."""
+        # Synchronize metadata_class and type fields before calling super()
+        if "type" in data and "metadata_class" not in data:
+            data["metadata_class"] = data["type"]
+        elif "metadata_class" in data and "type" not in data:
+            data["type"] = data["metadata_class"]
+        super().__init__(**data)
 
     def model_copy_with_merge(
         self,
@@ -207,6 +222,81 @@ class MetadataDescriptor(BaseModel):
                 merged_update[key] = value
 
         return self.model_copy(update=merged_update, deep=deep)
+
+    def model_copy(
+        self,
+        *,
+        update: Optional[Dict[str, Any]] = None,
+        deep: bool = False,
+    ) -> "MetadataDescriptor":
+        """Enhanced model copy with intelligent merging of query_params."""
+        if update is None:
+            update = {}
+        else:
+            update = dict(update)
+
+        # Handle merging of query_params
+        if "query_params" in update:
+            new_query_params = self.query_params.copy()
+            new_query_params.update(update.pop("query_params"))
+            update["query_params"] = new_query_params
+
+        return super().model_copy(update=update, deep=deep)
+
+    def to_runtime(self, submitted: Optional[Any] = None) -> "BaseMetadataModel":
+        """
+        Build and instantiate the runtime metadata implementation.
+
+        The returned object is an instance of :class:`BaseMetadataModel` created
+        by the metadata registry. The instantiation parameters are constructed
+        by merging, in order:
+
+        1. Input defaults declared on the CWL task (if ``submitted`` is provided).
+        2. The first set of CWL parameter overrides (``submitted.parameters``),
+           if present.
+        3. The descriptor's ``query_params``.
+
+        During merging, keys are normalised from dash-case to snake_case to
+        align with typical Python argument names used by runtime implementations.
+
+        Parameters
+        ----------
+        submitted : JobSubmissionModel | None
+            Optional submission context used to resolve CWL input defaults
+            and parameter overrides.
+
+        Returns
+        -------
+        BaseMetadataModel
+            Runtime metadata implementation instantiated from the registry.
+        """
+        # Import here to avoid circular imports
+        from .registry import instantiate_metadata
+
+        # Quick helper to convert dash-case to snake_case without importing utils
+        def _dash_to_snake(s: str) -> str:
+            return s.replace("-", "_")
+
+        if submitted is None:
+            return instantiate_metadata(self.type, self.query_params)
+
+        # Build inputs from task defaults and parameter overrides
+        inputs: dict[str, Any] = {}
+        for inp in submitted.task.inputs:
+            input_name = inp.id.split("#")[-1].split("/")[-1]
+            input_value = getattr(inp, "default", None)
+            params_list = getattr(submitted, "parameters", None)
+            if params_list and params_list[0]:
+                input_value = params_list[0].cwl.get(input_name, input_value)
+            inputs[input_name] = input_value
+
+        # Merge with explicit query params
+        if self.query_params:
+            inputs.update(self.query_params)
+
+        params = {_dash_to_snake(key): value for key, value in inputs.items()}
+
+        return instantiate_metadata(self.type, params)
 
     @classmethod
     def from_cwl_hints(cls, cwl_object: Any) -> "MetadataDescriptor":
@@ -231,6 +321,25 @@ class MetadataDescriptor(BaseModel):
                 descriptor = descriptor.model_copy_with_merge(update=hint_data)
 
         return descriptor
+
+    @classmethod
+    def from_hints(cls, cwl_object: Any) -> "MetadataDescriptor":
+        """
+        Create a MetadataDescriptor from CWL hints.
+
+        Alias for from_cwl_hints for backward compatibility.
+
+        Parameters
+        ----------
+        cwl_object : Any
+            A parsed CWL ``CommandLineTool`` or ``Workflow`` object.
+
+        Returns
+        -------
+        MetadataDescriptor
+            Descriptor populated from CWL hints; unknown hints are ignored.
+        """
+        return cls.from_cwl_hints(cwl_object)
 
 
 class TransformationMetadataDescriptor(MetadataDescriptor):

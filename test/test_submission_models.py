@@ -11,45 +11,47 @@ import pytest
 
 from dirac_cwl_proto.metadata.core import MetadataDescriptor, TaskDescriptor
 from dirac_cwl_proto.submission_models import (
-    EnhancedMetadataDescriptor,
     TaskDescriptionModel,
 )
 
 
-class TestEnhancedMetadataDescriptor:
-    """Test the EnhancedMetadataDescriptor class."""
+class TestMetadataDescriptor:
+    """Test the MetadataDescriptor class."""
 
     def test_creation(self):
-        """Test EnhancedMetadataDescriptor creation."""
-        descriptor = EnhancedMetadataDescriptor()
+        """Test MetadataDescriptor creation."""
+        descriptor = MetadataDescriptor()
         assert descriptor.type == "User"
         assert descriptor.query_params == {}
 
     def test_creation_with_parameters(self):
         """Test creation with custom parameters."""
-        descriptor = EnhancedMetadataDescriptor(type="Admin", query_params={"admin_level": 5, "log_level": "DEBUG"})
+        descriptor = MetadataDescriptor(type="Admin", query_params={"admin_level": 5, "log_level": "DEBUG"})
         assert descriptor.type == "Admin"
         assert descriptor.query_params["admin_level"] == 5
         assert descriptor.query_params["log_level"] == "DEBUG"
 
     def test_inheritance(self):
-        """Test that EnhancedMetadataDescriptor inherits from MetadataDescriptor."""
-        descriptor = EnhancedMetadataDescriptor()
-        assert isinstance(descriptor, MetadataDescriptor)
+        """Test that MetadataDescriptor has the expected functionality."""
+        descriptor = MetadataDescriptor()
+        assert hasattr(descriptor, "to_runtime")
+        assert hasattr(descriptor, "from_hints")
+        assert hasattr(descriptor, "model_copy")
 
     def test_type_validation(self):
-        """Test type validation against registry."""
+        """Test type validation during runtime instantiation."""
         # Valid type (should be registered by default)
-        descriptor = EnhancedMetadataDescriptor(type="User")
+        descriptor = MetadataDescriptor(type="User")
         assert descriptor.type == "User"
 
-        # Invalid type should raise error
-        with pytest.raises(ValueError, match="Invalid type"):
-            EnhancedMetadataDescriptor(type="NonExistentType")
+        # Invalid type should raise error during runtime instantiation
+        descriptor_with_invalid_type = MetadataDescriptor(type="NonExistentType")
+        with pytest.raises(KeyError, match="Unknown metadata plugin"):
+            descriptor_with_invalid_type.to_runtime()
 
     def test_model_copy(self):
         """Test model_copy functionality."""
-        original = EnhancedMetadataDescriptor(type="Admin", query_params={"admin_level": 3})
+        original = MetadataDescriptor(type="Admin", query_params={"admin_level": 3})
 
         # Test basic copy
         copied = original.model_copy()
@@ -61,7 +63,7 @@ class TestEnhancedMetadataDescriptor:
 
     def test_model_copy_with_update(self):
         """Test model_copy with updates."""
-        original = EnhancedMetadataDescriptor(type="Admin", query_params={"admin_level": 3, "log_level": "INFO"})
+        original = MetadataDescriptor(type="Admin", query_params={"admin_level": 3, "log_level": "INFO"})
 
         # Test copy with type update
         copied = original.model_copy(update={"type": "User"})
@@ -76,7 +78,7 @@ class TestEnhancedMetadataDescriptor:
 
     def test_to_runtime_no_submission(self):
         """Test to_runtime without submission context."""
-        descriptor = EnhancedMetadataDescriptor(type="Admin", query_params={"admin_level": 7})
+        descriptor = MetadataDescriptor(type="Admin", query_params={"admin_level": 7})
 
         runtime = descriptor.to_runtime()
 
@@ -85,7 +87,7 @@ class TestEnhancedMetadataDescriptor:
 
     def test_to_runtime_with_submission(self):
         """Test to_runtime with submission context."""
-        descriptor = EnhancedMetadataDescriptor(type="QueryBased", query_params={"campaign": "Run3"})
+        descriptor = MetadataDescriptor(type="QueryBased", query_params={"campaign": "Run3"})
 
         # Mock submission model
         mock_submission = Mock()
@@ -104,7 +106,7 @@ class TestEnhancedMetadataDescriptor:
 
     def test_dash_to_snake_case_conversion(self):
         """Test dash-case to snake_case parameter conversion."""
-        descriptor = EnhancedMetadataDescriptor(
+        descriptor = MetadataDescriptor(
             type="QueryBased",
             query_params={"query_root": "/data", "data_type": "AOD"},  # Already in snake_case
         )
@@ -121,15 +123,15 @@ class TestEnhancedMetadataDescriptor:
         mock_from_cwl_hints.return_value = mock_descriptor
 
         # Actually call the method - it returns base MetadataDescriptor, not Enhanced
-        result = EnhancedMetadataDescriptor.from_hints(mock_cwl)
+        result = MetadataDescriptor.from_hints(mock_cwl)
 
-        # The current implementation returns MetadataDescriptor, not EnhancedMetadataDescriptor
+        # The result should be a MetadataDescriptor instance
         assert isinstance(result, MetadataDescriptor)
         mock_from_cwl_hints.assert_called_once_with(mock_cwl)
 
     def test_serialization_compatibility(self):
         """Test that serialization works correctly."""
-        descriptor = EnhancedMetadataDescriptor(type="Admin", query_params={"admin_level": 5})
+        descriptor = MetadataDescriptor(type="Admin", query_params={"admin_level": 5})
 
         # Test dict conversion
         data = descriptor.model_dump()
@@ -177,7 +179,7 @@ class TestTaskDescriptionModel:
 
     def test_metadata_runtime_conversion(self):
         """Test that metadata can be converted to runtime instances."""
-        metadata = EnhancedMetadataDescriptor(type="Admin", query_params={"admin_level": 6})
+        metadata = MetadataDescriptor(type="Admin", query_params={"admin_level": 6})
 
         runtime_metadata = metadata.to_runtime()
 
@@ -189,12 +191,12 @@ class TestSubmissionModelsIntegration:
     """Test integration between submission models and metadata system."""
 
     def test_enhanced_descriptor_registry_integration(self):
-        """Test that EnhancedMetadataDescriptor integrates with the registry."""
+        """Test that MetadataDescriptor integrates with the registry."""
         # Create descriptor for each core plugin type
         descriptors = [
-            EnhancedMetadataDescriptor(type="User"),
-            EnhancedMetadataDescriptor(type="Admin", query_params={"admin_level": 3}),
-            EnhancedMetadataDescriptor(type="QueryBased", query_params={"campaign": "Test"}),
+            MetadataDescriptor(type="User"),
+            MetadataDescriptor(type="Admin", query_params={"admin_level": 3}),
+            MetadataDescriptor(type="QueryBased", query_params={"campaign": "Test"}),
         ]
 
         for descriptor in descriptors:
@@ -226,7 +228,7 @@ class TestSubmissionModelsIntegration:
 
         for legacy_type in legacy_types:
             try:
-                descriptor = EnhancedMetadataDescriptor(type=legacy_type)
+                descriptor = MetadataDescriptor(type=legacy_type)
                 # If creation succeeds, test runtime conversion
                 # (may fail due to missing parameters, which is expected)
                 descriptor.to_runtime()
@@ -251,9 +253,7 @@ class TestSubmissionModelsIntegration:
     def test_cwl_hints_integration(self):
         """Test integration with CWL hints extraction."""
         # Create an enhanced descriptor directly
-        descriptor = EnhancedMetadataDescriptor(
-            type="QueryBased", query_params={"campaign": "Run3", "data_type": "AOD"}
-        )
+        descriptor = MetadataDescriptor(type="QueryBased", query_params={"campaign": "Run3", "data_type": "AOD"})
         runtime = descriptor.to_runtime()
 
         # Should use the QueryBased type
