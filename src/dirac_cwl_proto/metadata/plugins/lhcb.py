@@ -1,0 +1,364 @@
+"""LHCb experiment metadata plugins.
+
+This module demonstrates how to implement experiment-specific metadata models
+for the LHCb experiment, showcasing the extensibility of the DIRAC metadata system.
+"""
+
+from __future__ import annotations
+
+import glob
+import random
+from pathlib import Path
+from typing import Any, ClassVar, List, Optional, Union, cast
+
+from cwl_utils.parser import load_document_by_uri, save
+from cwl_utils.parser.cwl_v1_2 import Saveable
+from cwl_utils.parser.cwl_v1_2_utils import load_inputfile
+from pydantic import Field
+from ruamel.yaml import YAML
+
+from ..core import BaseMetadataModel
+
+
+class LHCbMetadata(BaseMetadataModel):
+    """Base metadata model for LHCb experiment.
+
+    This class provides common functionality for all LHCb metadata models,
+    including standard path structures and experiment-specific validation.
+    """
+
+    experiment: ClassVar[str] = "lhcb"
+
+    # LHCb-specific fields
+    task_id: int = Field(description="LHCb task identifier")
+    run_id: int = Field(description="LHCb run identifier")
+
+    def get_lhcb_base_path(self) -> Path:
+        """Get the base path for LHCb data organization."""
+        return Path("filecatalog") / "lhcb" / str(self.task_id) / str(self.run_id)
+
+
+class LHCbSimulationMetadata(LHCbMetadata):
+    """Metadata model for LHCb simulation jobs.
+
+    This model handles the specific requirements of LHCb simulation jobs,
+    including dynamic event number calculation based on available resources.
+    """
+
+    metadata_type: ClassVar[str] = "LHCbSimulation"
+    description: ClassVar[str] = "LHCb simulation metadata with dynamic resource allocation"
+
+    number_of_events: int = Field(default=0, description="Number of events to simulate")
+
+    # LHCb simulation parameters
+    detector_conditions: Optional[str] = Field(default=None, description="Detector conditions tag")
+
+    beam_energy: Optional[float] = Field(default=None, description="Beam energy in GeV")
+
+    generator_config: Optional[str] = Field(default=None, description="Generator configuration")
+
+    def get_input_query(self, input_name: str, **kwargs: Any) -> Union[Path, List[Path], None]:
+        """Get input data for LHCb simulation."""
+        if input_name == "conditions":
+            return self.get_lhcb_base_path() / "conditions"
+        elif input_name == "geometry":
+            return self.get_lhcb_base_path() / "geometry"
+
+        return self.get_lhcb_base_path()
+
+    def get_output_query(self, output_name: str) -> Optional[Path]:
+        """Get output path for LHCb simulation."""
+        base = self.get_lhcb_base_path()
+
+        if output_name == "sim":
+            return base / "simulation"
+        elif output_name == "pool_xml_catalog":
+            return base / "catalogs"
+
+        return base / "outputs"
+
+    def pre_process(self, job_path: Path, command: List[str]) -> List[str]:
+        """Pre-process LHCb simulation job.
+
+        This method calculates the optimal number of events to simulate
+        based on available CPU resources and job requirements.
+        """
+        # Load the CWL document to get resource requirements
+        if len(command) > 1:
+            try:
+                task = load_document_by_uri(job_path / command[1])
+                cores_min = 1
+                cores_max = 1
+
+                # Extract resource requirements
+                for requirement in getattr(task, "requirements", []):
+                    if requirement.class_ == "ResourceRequirement":
+                        cores_min = getattr(requirement, "coresMin", 1) or 1
+                        cores_max = getattr(requirement, "coresMax", 1) or 1
+
+                # Simulate worker node capabilities
+                available_processors = random.randint(1, 8)
+
+                if available_processors < cores_min:
+                    raise RuntimeError(f"Insufficient processors: need {cores_min}, have {available_processors}")
+
+                processors_to_use = min(available_processors, cores_max)
+
+                # Calculate optimal event count based on simulated performance
+                cpu_power_factor = random.uniform(0.8, 1.2)  # CPU variation
+                base_time_per_event = 10.0  # seconds per event (base)
+                max_job_time = 3600 * 8  # 8 hours max
+
+                events_per_core = int((max_job_time * cpu_power_factor) / base_time_per_event)
+
+                self.number_of_events = events_per_core * processors_to_use
+
+                # Update job parameters
+                self._update_job_parameters(job_path, command)
+
+            except Exception as e:
+                # Fallback to default if processing fails
+                self.number_of_events = 1000
+                print(f"Warning: Failed to calculate optimal events, using default: {e}")
+
+        return command
+
+    def _update_job_parameters(self, job_path: Path, command: List[str]) -> None:
+        """Update job parameters with calculated values."""
+        if len(command) >= 3:
+            parameters_path = job_path / command[2]
+            try:
+                parameters = load_inputfile(str(parameters_path))
+            except Exception:
+                parameters = {}
+        else:
+            parameters_path = job_path / "lhcb_parameters.yaml"
+            parameters = {}
+            command.append(parameters_path.name)
+
+        # Update parameters with LHCb-specific values
+        parameters.update(
+            {
+                "number-of-events": self.number_of_events,
+                "task-id": self.task_id,
+                "run-id": self.run_id,
+            }
+        )
+
+        if self.detector_conditions:
+            parameters["detector-conditions"] = self.detector_conditions
+        if self.beam_energy:
+            parameters["beam-energy"] = self.beam_energy
+        if self.generator_config:
+            parameters["generator-config"] = self.generator_config
+
+        # Save parameters
+        parameter_dict = save(cast(Saveable, parameters))
+        with open(parameters_path, "w") as f:
+            YAML().dump(parameter_dict, f)
+
+    def post_process(self, job_path: Path) -> bool:
+        """Post-process LHCb simulation outputs."""
+        success = True
+
+        # Store simulation files
+        sim_files = glob.glob(str(job_path / "*.sim"))
+        for sim_file in sim_files:
+            try:
+                self.store_output("sim", sim_file)
+            except Exception as e:
+                print(f"Failed to store simulation output {sim_file}: {e}")
+                success = False
+
+        # Store catalog files
+        catalog_files = glob.glob(str(job_path / "pool_xml_catalog.xml"))
+        for catalog_file in catalog_files:
+            try:
+                self.store_output("pool_xml_catalog", catalog_file)
+            except Exception as e:
+                print(f"Failed to store catalog {catalog_file}: {e}")
+                success = False
+
+        return success
+
+
+class LHCbReconstructionMetadata(LHCbMetadata):
+    """Metadata model for LHCb reconstruction jobs.
+
+    This model handles LHCb data reconstruction, including input file
+    management and output organization.
+    """
+
+    metadata_type: ClassVar[str] = "LHCbReconstruction"
+    description: ClassVar[str] = "LHCb reconstruction metadata with file management"
+
+    # Reconstruction-specific parameters
+    reconstruction_version: Optional[str] = Field(default=None, description="Reconstruction software version")
+
+    input_data_type: str = Field(default="RAW", description="Type of input data (RAW, DST, etc.)")
+
+    output_data_type: str = Field(default="DST", description="Type of output data")
+
+    def get_input_query(self, input_name: str, **kwargs: Any) -> Union[Path, List[Path], None]:
+        """Get input data for LHCb reconstruction."""
+        base = self.get_lhcb_base_path()
+
+        if input_name == "raw_data":
+            return base / "raw"
+        elif input_name == "conditions":
+            return base / "conditions"
+        elif input_name == "calibration":
+            return base / "calibration"
+
+        return base / self.input_data_type.lower()
+
+    def get_output_query(self, output_name: str) -> Optional[Path]:
+        """Get output path for LHCb reconstruction."""
+        base = self.get_lhcb_base_path()
+
+        if output_name == "dst":
+            return base / "dst"
+        elif output_name == "monitoring":
+            return base / "monitoring"
+        elif output_name == "logs":
+            return base / "logs"
+
+        return base / self.output_data_type.lower()
+
+    def pre_process(self, job_path: Path, command: List[str]) -> List[str]:
+        """Pre-process LHCb reconstruction job."""
+        # Add LHCb-specific environment variables or configuration
+        if self.reconstruction_version:
+            command.extend(["--version", self.reconstruction_version])
+
+        command.extend(["--input-type", self.input_data_type])
+        command.extend(["--output-type", self.output_data_type])
+
+        return command
+
+    def post_process(self, job_path: Path) -> bool:
+        """Post-process LHCb reconstruction outputs."""
+        success = True
+
+        # Store DST files
+        dst_files = glob.glob(str(job_path / "*.dst"))
+        for dst_file in dst_files:
+            try:
+                self.store_output("dst", dst_file)
+            except Exception as e:
+                print(f"Failed to store DST file {dst_file}: {e}")
+                success = False
+
+        # Store monitoring files
+        monitoring_files = glob.glob(str(job_path / "*_monitoring.root"))
+        for mon_file in monitoring_files:
+            try:
+                self.store_output("monitoring", mon_file)
+            except Exception as e:
+                print(f"Failed to store monitoring file {mon_file}: {e}")
+                success = False
+
+        # Store log files
+        log_files = glob.glob(str(job_path / "*.log"))
+        for log_file in log_files:
+            try:
+                self.store_output("logs", log_file)
+            except Exception as e:
+                print(f"Failed to store log file {log_file}: {e}")
+                success = False
+
+        return success
+
+
+class LHCbAnalysisMetadata(LHCbMetadata):
+    """Metadata model for LHCb analysis jobs.
+
+    This model supports user analysis jobs with flexible input/output
+    handling and analysis-specific configurations.
+    """
+
+    metadata_type: ClassVar[str] = "LHCbAnalysis"
+    description: ClassVar[str] = "LHCb analysis metadata for user analysis jobs"
+
+    # Analysis-specific parameters
+    analysis_name: str = Field(description="Name of the analysis")
+    analysis_version: Optional[str] = Field(default=None, description="Analysis version")
+    user_name: str = Field(description="Analysis owner")
+
+    input_datasets: Optional[List[str]] = Field(default=None, description="List of input dataset identifiers")
+
+    selection_criteria: Optional[str] = Field(default=None, description="Event selection criteria")
+
+    def get_input_query(self, input_name: str, **kwargs: Any) -> Union[Path, List[Path], None]:
+        """Get input data for LHCb analysis."""
+        base = Path("filecatalog") / "lhcb" / "analysis" / self.user_name / self.analysis_name
+
+        if self.input_datasets:
+            # Return paths for all specified datasets
+            dataset_paths = []
+            for dataset in self.input_datasets:
+                dataset_paths.append(base / "datasets" / dataset)
+            return dataset_paths
+
+        return base / "input"
+
+    def get_output_query(self, output_name: str) -> Optional[Path]:
+        """Get output path for LHCb analysis."""
+        base = Path("filecatalog") / "lhcb" / "analysis" / self.user_name / self.analysis_name
+
+        if self.analysis_version:
+            base = base / self.analysis_version
+
+        if output_name == "ntuples":
+            return base / "ntuples"
+        elif output_name == "histograms":
+            return base / "histograms"
+        elif output_name == "plots":
+            return base / "plots"
+
+        return base / "results"
+
+    def pre_process(self, job_path: Path, command: List[str]) -> List[str]:
+        """Pre-process LHCb analysis job."""
+        # Add analysis-specific parameters
+        command.extend(["--analysis", self.analysis_name])
+        command.extend(["--user", self.user_name])
+
+        if self.analysis_version:
+            command.extend(["--version", self.analysis_version])
+
+        if self.selection_criteria:
+            command.extend(["--selection", self.selection_criteria])
+
+        return command
+
+    def post_process(self, job_path: Path) -> bool:
+        """Post-process LHCb analysis outputs."""
+        success = True
+
+        # Store ROOT files (ntuples, histograms)
+        root_files = glob.glob(str(job_path / "*.root"))
+        for root_file in root_files:
+            try:
+                if "ntuple" in Path(root_file).name.lower():
+                    self.store_output("ntuples", root_file)
+                elif "hist" in Path(root_file).name.lower():
+                    self.store_output("histograms", root_file)
+                else:
+                    self.store_output("ntuples", root_file)  # Default to ntuples
+            except Exception as e:
+                print(f"Failed to store ROOT file {root_file}: {e}")
+                success = False
+
+        # Store plot files
+        plot_extensions = ["*.png", "*.pdf", "*.eps", "*.svg"]
+        for ext in plot_extensions:
+            plot_files = glob.glob(str(job_path / ext))
+            for plot_file in plot_files:
+                try:
+                    self.store_output("plots", plot_file)
+                except Exception as e:
+                    print(f"Failed to store plot {plot_file}: {e}")
+                    success = False
+
+        return success

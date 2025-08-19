@@ -422,7 +422,8 @@ class GaussianFitModel(IMetadataModel):
 # during module initialization.
 from dirac_cwl_proto.metadata import register_metadata
 
-register_metadata("User", User)
+# Note: User metadata is now provided by the core plugin system, so we skip it here
+# register_metadata("User", User)  # Commented out - use core plugin instead
 register_metadata("PiSimulate", PiSimulate)
 register_metadata("PiSimulate_v2", PiSimulate_v2)
 register_metadata("PiGather", PiGather)
