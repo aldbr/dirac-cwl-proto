@@ -5,9 +5,20 @@
 
 # Dirac CWL Prototype
 ![Workflow tests](https://github.com/aldbr/dirac-cwl-proto/actions/workflows/main.yml/badge.svg?branch=main)
-
+![Schema Generation](https://github.com/aldbr/dirac-cwl-proto/actions/workflows/generate-schemas.yml/badge.svg?branch=main)
 
 This Python prototype introduces a command-line interface (CLI) designed for the end-to-end execution of Common Workflow Language (CWL) workflows at different scales. It enables users to locally test CWL workflows, and then run them as jobs, transformations and/or productions.
+
+## 🚀 New: Automatic Schema Generation
+
+The prototype now features **automatic JSON/YAML schema generation** from Pydantic metadata models:
+
+- ✅ **Always synchronized** schemas with Python models
+- ✅ **Automatic discovery** of user plugins  
+- ✅ **CI/CD integration** for seamless updates
+- ✅ **CWL hint validation** support
+
+See [Schema Generation Documentation](docs/SCHEMA_GENERATION.md) for details.
 
 ## Prototype Workflow
 

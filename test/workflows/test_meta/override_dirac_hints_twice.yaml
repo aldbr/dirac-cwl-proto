@@ -1,5 +1,5 @@
 $namespaces:
-  dirac: "./schemas/dirac-metadata.yaml#"
+  dirac: "./schemas/dirac-metadata.json#"
 cwltool:overrides:
   test_meta.cwl#:
     hints:
