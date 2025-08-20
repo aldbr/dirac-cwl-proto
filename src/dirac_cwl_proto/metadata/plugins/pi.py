@@ -40,7 +40,7 @@ class PiSimulateMetadata(BaseMetadataModel):
         """Post process the simulation outputs."""
         outputs = glob.glob(str(job_path / "*.sim"))
         if outputs:
-            self._store_output("sim", outputs[0])
+            self.store_output("sim", outputs[0])
             return True
         return False
 
@@ -74,7 +74,7 @@ class PiSimulateV2Metadata(BaseMetadataModel):
         """Post process the simulation outputs."""
         outputs = job_path / self.output_path
         if outputs.exists():
-            self._store_output("sim", str(outputs))
+            self.store_output("sim", str(outputs))
             return True
         return False
 
@@ -119,6 +119,6 @@ class PiGatherMetadata(BaseMetadataModel):
         """Post process the gathered results."""
         outputs = glob.glob(str(job_path / "*.sim"))
         if outputs:
-            self._store_output("pi_result", outputs[0])
+            self.store_output("pi_result", outputs[0])
             return True
         return False

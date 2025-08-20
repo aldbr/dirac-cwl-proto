@@ -210,6 +210,9 @@ class LHCbReconstructionMetadata(LHCbMetadata):
         elif input_name == "input_files":
             # Use input_data_type to determine the subdirectory
             return base / self.input_data_type.lower()
+        elif input_name == "files":
+            # Files input typically refers to simulation output files
+            return base / "simulation"
 
         return base
 
@@ -229,13 +232,16 @@ class LHCbReconstructionMetadata(LHCbMetadata):
 
     def pre_process(self, job_dir: Path, command: List[str]) -> List[str]:
         """Pre-process the job command for reconstruction."""
-        # Add reconstruction version if specified
-        if self.reconstruction_version:
-            command.extend(["--version", self.reconstruction_version])
+        # Only add LHCb-specific arguments if this is not a CWL workflow execution
+        # (i.e., when running LHCb applications directly, not cwltool)
+        if not command or command[0] != "cwltool":
+            # Add reconstruction version if specified
+            if self.reconstruction_version:
+                command.extend(["--version", self.reconstruction_version])
 
-        # Add data type parameters
-        command.extend(["--input-type", self.input_data_type])
-        command.extend(["--output-type", self.output_data_type])
+            # Add data type parameters
+            command.extend(["--input-type", self.input_data_type])
+            command.extend(["--output-type", self.output_data_type])
 
         return command
 

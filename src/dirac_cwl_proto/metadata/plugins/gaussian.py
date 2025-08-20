@@ -52,21 +52,21 @@ class DataGenerationMetadata(BaseMetadataModel):
         if self.output_file_name_1:
             outputs = glob.glob(str(job_path / self.output_file_name_1))
             if outputs:
-                self._store_output("data1", outputs[0])
+                self.store_output("data1", outputs[0])
                 success = True
 
         # Process second output file
         if self.output_file_name_2:
             outputs = glob.glob(str(job_path / self.output_file_name_2))
             if outputs:
-                self._store_output("data2", outputs[0])
+                self.store_output("data2", outputs[0])
                 success = True
 
         # If no specific files, process all
         if not self.output_file_name_1 and not self.output_file_name_2:
             outputs = glob.glob(str(job_path / "*"))
             if outputs:
-                self._store_output("data1", outputs[0])
+                self.store_output("data1", outputs[0])
                 success = True
 
         return success
@@ -114,6 +114,6 @@ class GaussianFitMetadata(BaseMetadataModel):
         """Post process the fitting results."""
         outputs = glob.glob(str(job_path / "fit*"))
         if outputs:
-            self._store_output("fit-data", outputs[0])
+            self.store_output("fit-data", outputs[0])
             return True
         return False

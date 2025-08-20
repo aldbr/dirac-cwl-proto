@@ -295,7 +295,7 @@ def test_run_nonblocking_transformation_success(cli_runner, cleanup, cwl_file, m
             "test/workflows/lhcb/lhcbreconstruct.cwl",
             "test/workflows/lhcb/type_dependencies/transformation/metadata-lhcb_reconstruct.yaml",
             {
-                "filecatalog/456/123": [
+                "filecatalog/lhcb/456/123/simulation": [
                     "test/workflows/lhcb/type_dependencies/job/Gauss_123_456_1.sim",
                     "test/workflows/lhcb/type_dependencies/job/Gauss_456_456_1.sim",
                     "test/workflows/lhcb/type_dependencies/job/Gauss_789_456_1.sim",

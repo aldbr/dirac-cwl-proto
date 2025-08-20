@@ -64,7 +64,7 @@ class MandelBrotGenerationMetadata(BaseMetadataModel):
         """Post process the generated data files."""
         outputs = glob.glob(str(job_path / "data*.txt"))
         if outputs:
-            self._store_output("data", outputs[0])
+            self.store_output("data", outputs[0])
             return True
         return False
 
@@ -132,6 +132,6 @@ class MandelBrotMergingMetadata(BaseMetadataModel):
         """Post process the merged image files."""
         outputs = glob.glob(str(job_path / "mandelbrot_image*bmp"))
         if outputs:
-            self._store_output("data-merged", outputs[0])
+            self.store_output("data-merged", outputs[0])
             return True
         return False
