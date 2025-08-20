@@ -152,31 +152,26 @@ class TestRealWorldScenarios:
     def test_lhcb_simulation_workflow_scenario(self):
         """Test an LHCb simulation workflow scenario."""
         # Test if LHCb simulation plugin is available
-        try:
-            lhcb_descriptor = MetadataDescriptor(
-                type="LHCbSimulation",
-                query_params={
-                    "task_id": "sim_b2kstarmumu_001",
-                    "run_id": "run3_2024_001",
-                    "generator": "Pythia8",
-                    "n_events": 10000,
-                },
-            )
-            lhcb_runtime = lhcb_descriptor.to_runtime()
+        lhcb_descriptor = MetadataDescriptor(
+            type="LHCbSimulate",
+            query_params={
+                "task_id": 123,
+                "run_id": 2,
+                "generator": "Pythia8",
+                "n_events": 10000,
+            },
+        )
+        lhcb_runtime = lhcb_descriptor.to_runtime()
 
-            # Test LHCb-specific functionality
-            assert lhcb_runtime.metadata_type == "LHCbSimulation"
+        # Test LHCb-specific functionality
+        assert lhcb_runtime.metadata_type == "LHCbSimulate"
 
-            # Test path generation
-            input_path = lhcb_runtime.get_input_query("gen_file")
-            output_path = lhcb_runtime.get_output_query("sim_file")
+        # Test path generation
+        input_path = lhcb_runtime.get_input_query("gen_file")
+        output_path = lhcb_runtime.get_output_query("sim_file")
 
-            assert "lhcb" in str(input_path).lower()
-            assert "lhcb" in str(output_path).lower()
-
-        except ValueError:
-            # LHCb plugin might not be properly registered in test environment
-            pytest.skip("LHCb simulation plugin not available")
+        assert "lhcb" in str(input_path).lower()
+        assert "lhcb" in str(output_path).lower()
 
     def test_transformation_workflow_scenario(self):
         """Test a transformation (batch processing) workflow scenario."""
@@ -228,13 +223,9 @@ class TestErrorHandling:
     def test_missing_required_parameters(self):
         """Test handling of missing required parameters."""
         # Some plugins might require specific parameters
-        try:
-            # Try to instantiate a plugin that might require parameters
-            descriptor = MetadataDescriptor(type="LHCbSimulation")
+        with pytest.raises(ValueError, match="Failed to instantiate plugin 'LHCbSimulate'"):
+            descriptor = MetadataDescriptor(type="LHCbSimulate")
             descriptor.to_runtime()
-        except ValueError:
-            # Expected if required parameters are missing
-            pass
 
     def test_plugin_registration_conflicts(self):
         """Test handling of plugin registration conflicts."""

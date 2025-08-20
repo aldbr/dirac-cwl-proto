@@ -167,16 +167,6 @@ class TestTaskDescriptionModel:
         assert model.priority == 8
         assert model.sites == ["CERN", "GRIDKA"]
 
-    @pytest.mark.skip("from_cwl_file method not implemented")
-    def test_from_cwl_file(self):
-        """Test from_cwl_file class method."""
-        pass
-
-    @pytest.mark.skip("from_cwl_file method not implemented")
-    def test_from_cwl_file_with_metadata_type(self):
-        """Test from_cwl_file with custom metadata type."""
-        pass
-
     def test_metadata_runtime_conversion(self):
         """Test that metadata can be converted to runtime instances."""
         metadata = MetadataDescriptor(type="Admin", query_params={"admin_level": 6})
