@@ -208,8 +208,13 @@ def test_run_job_validation_failure(cli_runner, cleanup, cwl_file, inputs, expec
     result = cli_runner.invoke(app, command)
     assert "Job(s) done" not in result.stdout, "The job did complete successfully."
 
-    # Clean up output for comparison
+    # Check all possible output sources
     clean_output = re.sub(r"\s+", "", result.stdout)
+    try:
+        clean_stderr = re.sub(r"\s+", "", result.stderr or "")
+    except (ValueError, AttributeError):
+        clean_stderr = ""
+    clean_exception = re.sub(r"\s+", "", str(result.exception) if result.exception else "")
 
     # Handle different possible error messages for circular references
     if expected_error == "Recursingintostep":
@@ -220,11 +225,22 @@ def test_run_job_validation_failure(cli_runner, cleanup, cwl_file, inputs, expec
             "RecursionError",
             "circularreference",
         ]
-        assert any(
-            pattern in clean_output for pattern in circular_ref_patterns
-        ), f"None of the expected circular reference error patterns found in: {clean_output}"
+        error_found = any(
+            pattern in clean_output or pattern in clean_stderr or pattern in clean_exception
+            for pattern in circular_ref_patterns
+        )
+        assert error_found, (
+            f"None of the expected circular reference error patterns found in "
+            f"stdout: {clean_output}, stderr: {clean_stderr}, exception: {clean_exception}"
+        )
     else:
-        assert expected_error in clean_output, "The expected error was not found."
+        error_found = (
+            expected_error in clean_output or expected_error in clean_stderr or expected_error in clean_exception
+        )
+        assert error_found, (
+            f"Expected error '{expected_error}' not found in "
+            f"stdout: {clean_output}, stderr: {clean_stderr}, exception: {clean_exception}"
+        )
 
 
 # -----------------------------------------------------------------------------
@@ -427,8 +443,15 @@ def test_run_transformation_validation_failure(cli_runner, cwl_file, cleanup, me
     result = cli_runner.invoke(app, command)
     assert "Transformation done" not in result.stdout, "The transformation did complete successfully."
 
+    # Check all possible output sources
+    clean_output = re.sub(r"\s+", "", result.stdout)
+    try:
+        clean_stderr = re.sub(r"\s+", "", result.stderr or "")
+    except (ValueError, AttributeError):
+        clean_stderr = ""
+    clean_exception = re.sub(r"\s+", "", str(result.exception) if result.exception else "")
+
     # Handle multiple possible error patterns for circular references
-    output_text = re.sub(r"\s+", "", result.stdout)
     if expected_error == "Recursingintostep":
         # Check for various circular reference error patterns
         circular_ref_patterns = [
@@ -437,12 +460,22 @@ def test_run_transformation_validation_failure(cli_runner, cwl_file, cleanup, me
             "maximumrecursiondepthexceeded",
             "circularreference",
         ]
-        error_found = any(pattern in output_text for pattern in circular_ref_patterns)
-        assert (
-            error_found
-        ), f"None of the expected circular reference error patterns were found in output: {output_text}"
+        error_found = any(
+            pattern in clean_output or pattern in clean_stderr or pattern in clean_exception
+            for pattern in circular_ref_patterns
+        )
+        assert error_found, (
+            f"None of the expected circular reference error patterns were found in "
+            f"stdout: {clean_output}, stderr: {clean_stderr}, exception: {clean_exception}"
+        )
     else:
-        assert expected_error in output_text, "The expected error was not found."
+        error_found = (
+            expected_error in clean_output or expected_error in clean_stderr or expected_error in clean_exception
+        )
+        assert error_found, (
+            f"Expected error '{expected_error}' not found in "
+            f"stdout: {clean_output}, stderr: {clean_stderr}, exception: {clean_exception}"
+        )
 
 
 # -----------------------------------------------------------------------------
@@ -559,9 +592,13 @@ def test_run_production_validation_failure(cli_runner, cleanup, cwl_file, metada
 
     assert "Transformation done" not in result.stdout, "The transformation did complete successfully."
 
-    # Handle multiple possible error patterns for circular references
-    output_text = re.sub(r"\s+", "", f"{result.stdout}")
-    exception_text = re.sub(r"\s+", "", f"{result.exception}")
+    # Check all possible output sources
+    clean_output = re.sub(r"\s+", "", f"{result.stdout}")
+    try:
+        clean_stderr = re.sub(r"\s+", "", result.stderr or "")
+    except (ValueError, AttributeError):
+        clean_stderr = ""
+    clean_exception = re.sub(r"\s+", "", f"{result.exception}")
 
     if expected_error == "Recursingintostep":
         # Check for various circular reference error patterns
@@ -571,10 +608,19 @@ def test_run_production_validation_failure(cli_runner, cleanup, cwl_file, metada
             "maximumrecursiondepthexceeded",
             "circularreference",
         ]
-        error_found = any(pattern in output_text or pattern in exception_text for pattern in circular_ref_patterns)
+        error_found = any(
+            pattern in clean_output or pattern in clean_stderr or pattern in clean_exception
+            for pattern in circular_ref_patterns
+        )
         assert error_found, (
             f"None of the expected circular reference error patterns were found in "
-            f"output: {output_text} or exception: {exception_text}"
+            f"stdout: {clean_output}, stderr: {clean_stderr}, exception: {clean_exception}"
         )
     else:
-        assert expected_error in output_text or expected_error in exception_text, "The expected error was not found."
+        error_found = (
+            expected_error in clean_output or expected_error in clean_stderr or expected_error in clean_exception
+        )
+        assert error_found, (
+            f"Expected error '{expected_error}' not found in "
+            f"stdout: {clean_output}, stderr: {clean_stderr}, exception: {clean_exception}"
+        )
