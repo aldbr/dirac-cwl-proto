@@ -45,7 +45,7 @@ class LHCbSimulationMetadata(LHCbMetadata):
     including dynamic event number calculation based on available resources.
     """
 
-    metadata_type: ClassVar[str] = "LHCbSimulation"
+    metadata_type: ClassVar[str] = "LHCbSimulate"
     description: ClassVar[str] = "LHCb simulation metadata with dynamic resource allocation"
 
     number_of_events: int = Field(default=0, description="Number of events to simulate")
@@ -189,7 +189,7 @@ class LHCbReconstructionMetadata(LHCbMetadata):
     management and output organization.
     """
 
-    metadata_type: ClassVar[str] = "LHCbReconstruction"
+    metadata_type: ClassVar[str] = "LHCbReconstruct"
     description: ClassVar[str] = "LHCb reconstruction metadata with file management"
 
     # Reconstruction-specific parameters
@@ -207,30 +207,33 @@ class LHCbReconstructionMetadata(LHCbMetadata):
             return base / "raw"
         elif input_name == "conditions":
             return base / "conditions"
-        elif input_name == "calibration":
-            return base / "calibration"
+        elif input_name == "input_files":
+            # Use input_data_type to determine the subdirectory
+            return base / self.input_data_type.lower()
 
-        return base / self.input_data_type.lower()
+        return base
 
     def get_output_query(self, output_name: str) -> Optional[Path]:
         """Get output path for LHCb reconstruction."""
         base = self.get_lhcb_base_path()
 
         if output_name == "dst":
-            return base / "dst"
-        elif output_name == "monitoring":
-            return base / "monitoring"
-        elif output_name == "logs":
+            return base / "reconstruction" / self.output_data_type.lower()
+        elif output_name == "log":
             return base / "logs"
+        elif output_name == "output_files":
+            # Use output_data_type to determine the subdirectory
+            return base / self.output_data_type.lower()
 
-        return base / self.output_data_type.lower()
+        return base / "outputs"
 
-    def pre_process(self, job_path: Path, command: List[str]) -> List[str]:
-        """Pre-process LHCb reconstruction job."""
-        # Add LHCb-specific environment variables or configuration
+    def pre_process(self, job_dir: Path, command: List[str]) -> List[str]:
+        """Pre-process the job command for reconstruction."""
+        # Add reconstruction version if specified
         if self.reconstruction_version:
             command.extend(["--version", self.reconstruction_version])
 
+        # Add data type parameters
         command.extend(["--input-type", self.input_data_type])
         command.extend(["--output-type", self.output_data_type])
 
@@ -240,31 +243,22 @@ class LHCbReconstructionMetadata(LHCbMetadata):
         """Post-process LHCb reconstruction outputs."""
         success = True
 
-        # Store DST files
+        # Store reconstructed data files
         dst_files = glob.glob(str(job_path / "*.dst"))
         for dst_file in dst_files:
             try:
                 self.store_output("dst", dst_file)
             except Exception as e:
-                print(f"Failed to store DST file {dst_file}: {e}")
-                success = False
-
-        # Store monitoring files
-        monitoring_files = glob.glob(str(job_path / "*_monitoring.root"))
-        for mon_file in monitoring_files:
-            try:
-                self.store_output("monitoring", mon_file)
-            except Exception as e:
-                print(f"Failed to store monitoring file {mon_file}: {e}")
+                print(f"Failed to store DST output {dst_file}: {e}")
                 success = False
 
         # Store log files
         log_files = glob.glob(str(job_path / "*.log"))
         for log_file in log_files:
             try:
-                self.store_output("logs", log_file)
+                self.store_output("log", log_file)
             except Exception as e:
-                print(f"Failed to store log file {log_file}: {e}")
+                print(f"Failed to store log {log_file}: {e}")
                 success = False
 
         return success

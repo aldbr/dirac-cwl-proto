@@ -64,7 +64,7 @@ class TestLHCbSimulationMetadata:
     def test_creation(self):
         """Test LHCbSimulationMetadata creation."""
         metadata = LHCbSimulationMetadata(task_id=123, run_id=1)
-        assert metadata.metadata_type == "LHCbSimulation"
+        assert metadata.metadata_type == "LHCbSimulate"
         assert "LHCb simulation" in metadata.description
 
     def test_creation_with_simulation_parameters(self):
@@ -178,7 +178,7 @@ class TestLHCbReconstructionMetadata:
     def test_creation(self):
         """Test LHCbReconstructionMetadata creation."""
         metadata = LHCbReconstructionMetadata(task_id=456, run_id=1)
-        assert metadata.metadata_type == "LHCbReconstruction"
+        assert metadata.metadata_type == "LHCbReconstruct"
         assert "LHCb reconstruction" in metadata.description
 
     def test_creation_with_reconstruction_parameters(self):

@@ -117,3 +117,53 @@ class QueryBasedMetadata(BaseMetadataModel):
             return base_path / self.campaign
 
         return base_path / "default"
+
+
+class TaskWithMetadataQueryPlugin(BaseMetadataModel):
+    """Metadata plugin that demonstrates query-based input resolution.
+
+    This class provides methods to query metadata and generate input paths
+    based on metadata parameters like site and campaign.
+
+    This is primarily used as an example of how to implement query-based
+    data discovery in the DIRAC metadata system.
+    """
+
+    metadata_type: ClassVar[str] = "TaskWithMetadataQuery"
+    description: ClassVar[str] = "Example metadata plugin with query-based input resolution"
+
+    def get_input_query(self, input_name: str, **kwargs: Any) -> Union[Path, List[Path], None]:
+        """
+        Generates a query to retrieve input paths based on provided metadata.
+
+        Parameters
+        ----------
+        input_name : str
+            Name of the input parameter.
+        **kwargs : dict
+            Keyword arguments representing metadata attributes. Expected keys are:
+            - site (str): The site name.
+            - campaign (str): The campaign name.
+
+        Returns
+        -------
+        Union[Path, List[Path], None]
+            A Path or list of Paths representing the input query based on the provided metadata.
+            Returns None if neither site nor campaign is provided.
+
+        Notes
+        -----
+        This is an example implementation. In a real implementation,
+        an actual query should be made to the metadata service,
+        resulting in an array of Logical File Names (LFNs) being returned.
+        """
+        site = kwargs.get("site", "")
+        campaign = kwargs.get("campaign", "")
+
+        # Example implementation
+        if site and campaign:
+            return [Path("filecatalog") / campaign / site]
+        elif site:
+            return Path("filecatalog") / site
+        else:
+            return None

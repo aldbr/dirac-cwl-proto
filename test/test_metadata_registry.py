@@ -258,29 +258,32 @@ class TestGlobalRegistryFunctions:
         assert isinstance(instance, GlobalTestPlugin)
 
 
-class TestLegacyCompatibility:
-    """Test backward compatibility with legacy metadata models."""
+class TestPluginSystem:
+    """Test the modern plugin system functionality."""
 
-    def test_legacy_interface_wrapper(self):
-        """Test that legacy IMetadataModel interface is wrapped correctly."""
-        from dirac_cwl_proto.metadata_models import IMetadataModel
+    def test_direct_plugin_usage(self):
+        """Test using plugins directly without legacy wrapper."""
+        from dirac_cwl_proto.metadata.core import BaseMetadataModel
 
-        class LegacyPlugin(IMetadataModel):
+        class DirectPlugin(BaseMetadataModel):
+            metadata_type: ClassVar[str] = "DirectTest"
+            test_param: str = "default"
+
             def get_input_query(self, input_name: str, **kwargs: Any) -> Optional[Path]:
-                return Path(f"/legacy/{input_name}")
+                return Path(f"/direct/{input_name}/{self.test_param}")
 
-        # Register legacy plugin
-        register_metadata("LegacyTest", LegacyPlugin)
+        # Register plugin directly
+        register_metadata("DirectTest", DirectPlugin)
 
         # Should be able to instantiate
-        instance = instantiate_metadata("LegacyTest", {})
+        instance = instantiate_metadata("DirectTest", {"test_param": "custom"})
 
-        # Should work with legacy interface
+        # Should work with new interface
         result = instance.get_input_query("test_input")
-        assert result == Path("/legacy/test_input")
+        assert result == Path("/direct/test_input/custom")
 
-    def test_legacy_parameter_handling(self):
-        """Test that parameters are passed correctly to legacy plugins."""
+    def test_plugin_parameter_handling(self):
+        """Test that parameters are passed correctly to plugins."""
         from dirac_cwl_proto.metadata.core import BaseMetadataModel
 
         class ParameterTestPlugin(BaseMetadataModel):
