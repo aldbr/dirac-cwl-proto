@@ -15,6 +15,7 @@ from cwl_utils.pack import pack
 from cwl_utils.parser import load_document, save
 from cwl_utils.parser.cwl_v1_2 import (
     CommandLineTool,
+    ExpressionTool,
     File,
     Saveable,
     Workflow,
@@ -225,7 +226,7 @@ def submit_job_router(job: JobSubmissionModel) -> bool:
 
 
 def _pre_process(
-    executable: CommandLineTool | Workflow,
+    executable: CommandLineTool | Workflow | ExpressionTool,
     arguments: JobParameterModel | None,
     runtime_metadata: BaseMetadataModel | None,
     job_path: Path,

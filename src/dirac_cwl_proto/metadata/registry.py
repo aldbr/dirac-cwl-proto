@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 class MetadataPluginRegistry:
     """Registry for metadata plugin discovery and management."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._plugins: Dict[str, Type[BaseMetadataModel]] = {}
         self._experiment_plugins: Dict[str, Dict[str, Type[BaseMetadataModel]]] = {}
         self._plugin_info: Dict[str, Dict[str, Any]] = {}
@@ -256,14 +256,7 @@ _registry = MetadataPluginRegistry()
 # Public API functions for backward compatibility
 def register_metadata(name: str, cls: Type[BaseMetadataModel]) -> None:
     """Register a metadata class (backward compatibility)."""
-    if hasattr(cls, "metadata_type"):
-        _registry.register_plugin(cls)
-    else:
-        # For legacy classes, create a wrapper
-        class LegacyWrapper(cls, BaseMetadataModel):
-            metadata_type = name
-
-        _registry.register_plugin(LegacyWrapper)
+    _registry.register_plugin(cls)
 
 
 def get_metadata_class(name: str) -> Optional[Type[BaseMetadataModel]]:

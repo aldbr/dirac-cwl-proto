@@ -9,11 +9,14 @@ from __future__ import annotations
 import logging
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, ClassVar, Dict, List, Optional, Union
+from typing import Any, ClassVar, Dict, List, Mapping, Optional, TypeVar, Union
 
 from pydantic import BaseModel, ConfigDict, Field
 
 logger = logging.getLogger(__name__)
+
+# TypeVar for generic class methods
+T = TypeVar("T", bound="TaskDescriptor")
 
 
 class MetadataProcessor(ABC):
@@ -225,8 +228,8 @@ class MetadataDescriptor(BaseModel):
 
     def model_copy(
         self,
+        update: Optional[Mapping[str, Any]] = None,
         *,
-        update: Optional[Dict[str, Any]] = None,
         deep: bool = False,
     ) -> "MetadataDescriptor":
         """Enhanced model copy with intelligent merging of query_params."""
@@ -362,7 +365,7 @@ class TaskDescriptor(BaseModel):
     sites: Optional[List[str]] = Field(default=None, description="Candidate execution sites")
 
     @classmethod
-    def from_cwl_hints(cls, cwl_object: Any) -> "TaskDescriptor":
+    def from_cwl_hints(cls: type[T], cwl_object: Any) -> T:
         """Extract task descriptor from CWL hints."""
         descriptor = cls()
 
