@@ -1,8 +1,7 @@
 $schema: "http://json-schema.org/draft-07/schema#"
 title: "CTAO Transformation Metadata"
 type: "object"
-allOf:
-  - $ref: "package://dirac_cwl_proto/schemas/transformation_meta.yaml"
+description: "CTAO-specific transformation metadata schema"
 properties:
   campaign:
     type: "object"
@@ -12,7 +11,7 @@ properties:
         enum: ["="]
       value:
         type: "string"
-        pattern: "^PROD\\d+$"  # Matches "PROD" followed by one or more digits
+        pattern: "^PROD\\d+$" # Matches "PROD" followed by one or more digits
   site:
     type: "object"
     properties:
@@ -21,4 +20,5 @@ properties:
         enum: ["="]
       value:
         type: "string"
-        enum: ["LaPalma", "Paranal"]  # CTAO sites
+        enum: ["LaPalma", "Paranal"] # CTAO sites
+additionalProperties: true

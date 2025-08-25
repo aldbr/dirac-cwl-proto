@@ -19,13 +19,12 @@ from schema_salad.exceptions import ValidationException
 
 from dirac_cwl_proto.job import submit_job_router
 from dirac_cwl_proto.submission_models import (
-    JobDescriptionModel,
     JobParameterModel,
     JobSubmissionModel,
+    TaskDescriptionModel,
     TransformationMetadataModel,
     TransformationSubmissionModel,
 )
-from dirac_cwl_proto.utils import _get_metadata
 
 app = typer.Typer()
 console = Console()
@@ -59,9 +58,7 @@ def submit_transformation_client(
     try:
         task = load_document(pack(task_path))
     except FileNotFoundError as ex:
-        console.print(
-            f"[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to load the task:\n{ex}"
-        )
+        console.print(f"[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to load the task:\n{ex}")
         return typer.Exit(code=1)
     except ValidationException as ex:
         console.print(f"[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to validate the task:\n{ex}")
@@ -78,7 +75,7 @@ def submit_transformation_client(
         metadata_model = TransformationMetadataModel()
     console.print("\t[green]:heavy_check_mark:[/green] Metadata")
 
-    transformation_description = JobDescriptionModel(
+    transformation_description = TaskDescriptionModel(
         platform=platform,
         priority=priority,
         sites=sites,
@@ -129,7 +126,7 @@ def submit_transformation_router(transformation: TransformationSubmissionModel) 
     job_model_params = []
     if transformation.metadata.query_params and transformation.metadata.group_size:
         # Get the metadata class
-        transformation_metadata = _get_metadata(transformation)
+        transformation_metadata = transformation.metadata.to_runtime(transformation)
 
         # Build the input cwl for the jobs to submit
         logger.info("Getting the input data for the transformation...")

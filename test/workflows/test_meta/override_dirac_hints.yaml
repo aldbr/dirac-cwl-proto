@@ -1,14 +1,14 @@
 $namespaces:
-  dirac: "./schemas/dirac-metadata.yaml#"
+  dirac: "./schemas/dirac-metadata.json#"
 cwltool:overrides:
   test_meta.cwl#:
     hints:
       dirac:metadata:
-        type: 'TaskWithMetadataQuery'
+        type: "TaskWithMetadataQuery"
         query_params:
-          site: 'Paranal'
+          site: "Paranal"
 
       dirac:description:
         platform: x86_64
         priority: 5
-        sites: ['CSCS', 'PIC']
+        sites: ["CSCS", "PIC"]
