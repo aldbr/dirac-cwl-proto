@@ -8,7 +8,6 @@ abstract interfaces.
 
 from pathlib import Path
 from typing import Any, List, Optional, Union
-from unittest.mock import Mock
 
 import pytest
 
@@ -176,10 +175,10 @@ class TestDataManager:
         assert descriptor.version == "2.0"
         assert descriptor.custom_param == "value"
 
-    def test_from_cwl_hints(self):
+    def test_from_cwl_hints(self, mocker):
         """Test extraction from CWL hints."""
         # Mock CWL document
-        mock_cwl = Mock()
+        mock_cwl = mocker.Mock()
         mock_cwl.hints = [
             {"class": "dirac:data-management", "metadata_class": "QueryBased", "vo": "lhcb", "campaign": "Run3"},
             {"class": "ResourceRequirement", "coresMin": 2},
@@ -191,9 +190,9 @@ class TestDataManager:
         assert descriptor.vo == "lhcb"
         assert descriptor.campaign == "Run3"
 
-    def test_from_cwl_hints_no_hints(self):
+    def test_from_cwl_hints_no_hints(self, mocker):
         """Test extraction when no hints are present."""
-        mock_cwl = Mock()
+        mock_cwl = mocker.Mock()
         mock_cwl.hints = None
 
         descriptor = DataManager.from_cwl_hints(mock_cwl)
@@ -201,9 +200,9 @@ class TestDataManager:
         # Should create default descriptor
         assert descriptor.metadata_class == "User"
 
-    def test_from_cwl_hints_no_dirac_hints(self):
+    def test_from_cwl_hints_no_dirac_hints(self, mocker):
         """Test extraction when no DIRAC hints are present."""
-        mock_cwl = Mock()
+        mock_cwl = mocker.Mock()
         mock_cwl.hints = [{"class": "ResourceRequirement", "coresMin": 2}]
 
         descriptor = DataManager.from_cwl_hints(mock_cwl)
@@ -248,9 +247,9 @@ class TestJobExecutor:
         assert descriptor.priority == 5
         assert descriptor.sites == ["LCG.CERN.ch", "LCG.IN2P3.fr"]
 
-    def test_from_cwl_hints(self):
+    def test_from_cwl_hints(self, mocker):
         """Test extraction from CWL hints."""
-        mock_cwl = Mock()
+        mock_cwl = mocker.Mock()
         mock_cwl.hints = [
             {"class": "dirac:job-execution", "platform": "DIRAC-v8", "priority": 8, "sites": ["LCG.CERN.ch"]}
         ]

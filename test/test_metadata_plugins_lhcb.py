@@ -6,7 +6,6 @@ reconstruction, and analysis metadata implementations.
 """
 
 from pathlib import Path
-from unittest.mock import patch
 
 from dirac_cwl_proto.metadata.plugins.lhcb import (
     LHCbAnalysisMetadata,
@@ -93,14 +92,14 @@ class TestLHCbSimulationMetadata:
         assert result[0] == "lhcb-simulation"
         assert result[1] == "workflow.cwl"
 
-    @patch("dirac_cwl_proto.metadata.plugins.lhcb.load_inputfile")
-    @patch("builtins.open")
-    @patch("dirac_cwl_proto.metadata.plugins.lhcb.YAML")
-    def test_update_job_parameters(self, mock_yaml, mock_open, mock_load_inputfile):
+    def test_update_job_parameters(self, mocker):
         """Test job parameter updates."""
         metadata = LHCbSimulationMetadata(task_id=123, run_id=1)
 
         # Mock parameter file loading
+        mock_load_inputfile = mocker.patch("dirac_cwl_proto.metadata.plugins.lhcb.load_inputfile")
+        mock_open = mocker.patch("builtins.open")
+        mock_yaml = mocker.patch("dirac_cwl_proto.metadata.plugins.lhcb.YAML")
         mock_load_inputfile.return_value = {"n_events": 1500, "generator": "Pythia8"}
 
         job_path = Path("/tmp/job")
@@ -115,14 +114,14 @@ class TestLHCbSimulationMetadata:
         # Should have dumped YAML content
         mock_yaml.return_value.dump.assert_called_once()
 
-    @patch("dirac_cwl_proto.metadata.plugins.lhcb.load_inputfile")
-    @patch("builtins.open")
-    @patch("dirac_cwl_proto.metadata.plugins.lhcb.YAML")
-    def test_update_job_parameters_file_error(self, mock_yaml, mock_open, mock_load_inputfile):
+    def test_update_job_parameters_file_error(self, mocker):
         """Test job parameter update with file error."""
         metadata = LHCbSimulationMetadata(task_id=123, run_id=1)
 
         # Mock file loading error
+        mock_load_inputfile = mocker.patch("dirac_cwl_proto.metadata.plugins.lhcb.load_inputfile")
+        mock_open = mocker.patch("builtins.open")
+        mock_yaml = mocker.patch("dirac_cwl_proto.metadata.plugins.lhcb.YAML")
         mock_load_inputfile.side_effect = Exception("File not found")
 
         job_path = Path("/tmp/job")
@@ -151,15 +150,15 @@ class TestLHCbSimulationMetadata:
         # The number of events is calculated and stored in the metadata
         assert metadata.number_of_events >= 0  # Should have calculated events
 
-    @patch("dirac_cwl_proto.metadata.plugins.lhcb.glob.glob")
-    @patch("dirac_cwl_proto.metadata.core.DataCatalogInterface.store_output")
-    def test_post_process(self, mock_store, mock_glob):
+    def test_post_process(self, mocker):
         """Test simulation post_process method."""
         metadata = LHCbSimulationMetadata(task_id=123, run_id=1)
 
         job_path = Path("/tmp/job")
 
         # Mock glob to find simulation files
+        mock_glob = mocker.patch("dirac_cwl_proto.metadata.plugins.lhcb.glob.glob")
+        mock_store = mocker.patch("dirac_cwl_proto.metadata.core.DataCatalogInterface.store_output")
         mock_glob.side_effect = [
             ["/tmp/job/output.sim"],  # sim files
             ["/tmp/job/pool_xml_catalog.xml"],  # catalog files
@@ -284,15 +283,15 @@ class TestLHCbAnalysisMetadata:
         assert "--user" in result
         assert "alice" in result
 
-    @patch("dirac_cwl_proto.metadata.plugins.lhcb.glob.glob")
-    @patch("dirac_cwl_proto.metadata.core.DataCatalogInterface.store_output")
-    def test_post_process_with_user_output(self, mock_store, mock_glob):
+    def test_post_process_with_user_output(self, mocker):
         """Test analysis post_process with user-specific output handling."""
         metadata = LHCbAnalysisMetadata(task_id=789, run_id=1, user_name="alice", analysis_name="TestAnalysis")
 
         job_path = Path("/tmp/job")
 
         # Mock glob to find ROOT files and plot files
+        mock_glob = mocker.patch("dirac_cwl_proto.metadata.plugins.lhcb.glob.glob")
+        mock_store = mocker.patch("dirac_cwl_proto.metadata.core.DataCatalogInterface.store_output")
         mock_glob.side_effect = [
             ["/tmp/job/results.root"],  # ROOT files
             [],  # PNG files

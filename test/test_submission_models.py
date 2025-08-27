@@ -5,8 +5,6 @@ This module tests the enhanced submission models that extend the core
 metadata system with additional functionality for CWL integration.
 """
 
-from unittest.mock import Mock, patch
-
 import pytest
 
 from dirac_cwl_proto.metadata.core import DataManager, JobExecutor
@@ -85,19 +83,19 @@ class TestDataManager:
         assert runtime.get_metadata_class() == "Admin"
         assert runtime.admin_level == 7
 
-    def test_to_runtime_with_submission(self):
+    def test_to_runtime_with_submission(self, mocker):
         """Test to_runtime with submission context."""
         descriptor = DataManager(metadata_class="QueryBased", query_params={"campaign": "Run3"})
 
         # Mock submission model
-        mock_submission = Mock()
-        mock_task = Mock()
-        mock_input = Mock()
+        mock_submission = mocker.Mock()
+        mock_task = mocker.Mock()
+        mock_input = mocker.Mock()
         mock_input.id = "task#campaign"
         mock_input.default = "default_campaign"
         mock_task.inputs = [mock_input]
         mock_submission.task = mock_task
-        mock_submission.parameters = [Mock(cwl={"campaign": "override_campaign"})]
+        mock_submission.parameters = [mocker.Mock(cwl={"campaign": "override_campaign"})]
 
         runtime = descriptor.to_runtime(mock_submission)
 
@@ -115,11 +113,11 @@ class TestDataManager:
         assert hasattr(runtime, "query_root") or runtime.query_root == "/data"
         assert hasattr(runtime, "data_type") or runtime.data_type == "AOD"
 
-    @patch("dirac_cwl_proto.submission_models.DataManager.from_cwl_hints")
-    def test_from_hints(self, mock_from_cwl_hints):
+    def test_from_hints(self, mocker):
         """Test from_hints class method."""
-        mock_cwl = Mock()
+        mock_cwl = mocker.Mock()
         mock_descriptor = DataManager(metadata_class="QueryBased")
+        mock_from_cwl_hints = mocker.patch("dirac_cwl_proto.submission_models.DataManager.from_cwl_hints")
         mock_from_cwl_hints.return_value = mock_descriptor
 
         # Actually call the method - it returns base DataManager, not Enhanced

@@ -7,7 +7,6 @@ usage scenarios.
 """
 
 from pathlib import Path
-from unittest.mock import Mock
 
 import pytest
 
@@ -243,10 +242,10 @@ class TestErrorHandling:
         with pytest.raises(ValueError, match="already registered"):
             registry.register_plugin(ConflictTestPlugin)
 
-    def test_malformed_cwl_hints(self):
+    def test_malformed_cwl_hints(self, mocker):
         """Test handling of malformed CWL hints."""
         # Test with None hints
-        mock_cwl = Mock()
+        mock_cwl = mocker.Mock()
         mock_cwl.hints = None
 
         descriptor = DataManager.from_hints(mock_cwl)
