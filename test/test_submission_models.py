@@ -232,9 +232,7 @@ class TestSubmissionModelsIntegration:
     def test_cwl_hints_integration(self):
         """Test integration with CWL hints extraction."""
         # Create an enhanced descriptor directly
-        descriptor = DataManager(
-            metadata_class="QueryBased", query_params={"campaign": "Run3", "data_type": "AOD"}
-        )
+        descriptor = DataManager(metadata_class="QueryBased", query_params={"campaign": "Run3", "data_type": "AOD"})
         runtime = descriptor.to_runtime()
 
         # Should use the QueryBased type

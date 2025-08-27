@@ -65,3 +65,106 @@ enable_error_code = ["import", "attr-defined"]
 [tool.pytest.ini_options]
 addopts = ["-v"]
 asyncio_mode = "auto"
+
+# Pixi configuration for task management
+[tool.pixi.project]
+channels = ["conda-forge", "pydantic"]
+platforms = ["win-64", "linux-64", "osx-64", "osx-arm64"]
+
+[tool.pixi.dependencies]
+python = ">=3.12"
+# Core dependencies
+cwl-utils = "*"
+cwlformat = "*"
+cwltool = "*"
+lbprodrun = "*"
+mypy = "*"
+pydantic = "*"
+pyyaml = "*"
+typer = "*"
+referencing = ">=0.30"
+rich = "*"
+ruamel.yaml = "*"
+# Testing dependencies
+pytest = ">=6"
+pytest-mock = "*"
+# Schema validation
+jsonschema = "*"
+
+[tool.pixi.tasks]
+# Help task
+help = "echo 'Available tasks: install, test, lint, schemas, schemas-json, schemas-yaml, clean-schemas, test-schemas, test-meta, check-schemas, validate-schemas, dev-setup, ci-check'"
+
+# Installation
+install = "pip install -e . && pip install -e .[testing]"
+
+# Testing tasks
+test = "pytest test/ -v"
+test-meta = "pytest test/test_metadata*.py test/test_workflows.py::test_run_job_success -k 'test_meta' -v"
+test-schemas = "pytest test/test_workflows.py::test_run_job_success -k 'test_meta' -v"
+
+# Linting
+lint = "mypy src"
+
+# Schema generation tasks
+schemas-json = """
+echo "Generating JSON schemas..." && \
+python scripts/generate_schemas.py \
+  --output-dir generated_schemas \
+  --format json \
+  --individual \
+  --unified && \
+echo "Copying schemas to test locations..." && \
+cp generated_schemas/dirac-metadata.json test/workflows/test_meta/schemas/dirac-metadata.json
+"""
+
+schemas-yaml = """
+echo "Generating YAML schemas..." && \
+python scripts/generate_schemas.py \
+  --output-dir generated_schemas \
+  --format yaml \
+  --unified
+"""
+
+schemas = { depends_on = ["schemas-json", "schemas-yaml"] }
+
+# Cleanup
+clean-schemas = """
+echo "Cleaning generated schemas..." && \
+rm -rf generated_schemas/ && \
+rm -f test/workflows/test_meta/schemas/dirac-metadata.json
+"""
+
+# Schema validation
+check-schemas = """
+echo "Checking if schemas are up to date..." && \
+python scripts/generate_schemas.py --output-dir /tmp/check_schemas --format json --unified > /dev/null 2>&1 && \
+if ! diff -q generated_schemas/dirac-metadata.json /tmp/check_schemas/dirac-metadata.json > /dev/null 2>&1; then \
+  echo "❌ Schemas are out of date. Run 'pixi run schemas' to update them." && \
+  exit 1; \
+else \
+  echo "✅ Schemas are up to date."; \
+fi && \
+rm -rf /tmp/check_schemas
+"""
+
+validate-schemas = """
+echo "Validating generated schemas..." && \
+python -c "
+import json, yaml
+from pathlib import Path
+[print(f'✓ {f}') or json.load(open(f)) for f in Path('generated_schemas').glob('**/*.json')]
+[print(f'✓ {f}') or yaml.safe_load(open(f)) for f in Path('generated_schemas').glob('**/*.yaml')]
+print('All schemas are valid!')
+"
+"""
+
+# Development setup
+dev-setup = { depends_on = ["install", "schemas"], cmd = """
+echo "Development environment set up successfully!" && \
+echo "Generated schemas are in: generated_schemas/" && \
+echo "Run 'pixi run help' to see available commands."
+""" }
+
+# CI/CD pipeline
+ci-check = { depends_on = ["lint", "test", "check-schemas", "validate-schemas"] }
