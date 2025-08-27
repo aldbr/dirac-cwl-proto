@@ -12,7 +12,7 @@ import logging
 import pkgutil
 from typing import Any, Dict, List, Optional, Type
 
-from .core import BaseMetadataModel, MetadataDescriptor
+from .core import BaseMetadataModel, DataManager
 
 logger = logging.getLogger(__name__)
 
@@ -93,13 +93,13 @@ class MetadataPluginRegistry:
         # Fall back to global registry
         return self._plugins.get(plugin_key)
 
-    def instantiate_plugin(self, descriptor: MetadataDescriptor, **kwargs: Any) -> BaseMetadataModel:
+    def instantiate_plugin(self, descriptor: DataManager, **kwargs: Any) -> BaseMetadataModel:
         """Instantiate a metadata plugin from a descriptor.
 
         Parameters
         ----------
-        descriptor : MetadataDescriptor
-            The metadata descriptor containing configuration.
+        descriptor : DataManager
+            The data manager containing configuration.
         **kwargs : Any
             Additional parameters to pass to the plugin constructor.
 
@@ -217,13 +217,13 @@ class MetadataPluginRegistry:
 
         return discovered
 
-    def validate_descriptor(self, descriptor: MetadataDescriptor) -> List[str]:
-        """Validate a metadata descriptor against registered plugins.
+    def validate_descriptor(self, descriptor: DataManager) -> List[str]:
+        """Validate a data manager against registered plugins.
 
         Parameters
         ----------
-        descriptor : MetadataDescriptor
-            The descriptor to validate.
+        descriptor : DataManager
+            The data manager to validate.
 
         Returns
         -------

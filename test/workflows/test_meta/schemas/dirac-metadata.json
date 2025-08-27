@@ -68,6 +68,51 @@
       "title": "DIRAC Metadata Model",
       "type": "object"
     },
+    "DataManager": {
+      "additionalProperties": true,
+      "description": "Data management configuration for DIRAC jobs",
+      "properties": {
+        "metadata_class": {
+          "default": "User",
+          "description": "Registry key for the metadata implementation class",
+          "title": "Metadata Class",
+          "type": "string"
+        },
+        "query_params": {
+          "description": "Additional parameters for metadata plugins",
+          "title": "Query Params",
+          "type": "object"
+        },
+        "version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Metadata model version",
+          "title": "Version"
+        },
+        "vo": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Virtual Organization namespace (e.g., 'lhcb', 'ctao')",
+          "title": "Vo"
+        }
+      },
+      "title": "DIRAC Data Manager",
+      "type": "object"
+    },
     "GaussianFit": {
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "Gaussian fitting analysis on data sets",
@@ -104,6 +149,49 @@
       "title": "DIRAC Metadata Model",
       "type": "object"
     },
+    "JobExecutor": {
+      "additionalProperties": false,
+      "description": "Descriptor for job execution configuration.",
+      "properties": {
+        "platform": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Target platform (e.g., 'DIRAC', 'DIRACX')",
+          "title": "Platform"
+        },
+        "priority": {
+          "default": 10,
+          "description": "Job priority (higher values = higher priority)",
+          "title": "Priority",
+          "type": "integer"
+        },
+        "sites": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Candidate execution sites",
+          "title": "Sites"
+        }
+      },
+      "title": "JobExecutor",
+      "type": "object"
+    },
     "JobParameterModel": {
       "description": "Parameter of a job.",
       "properties": {
@@ -135,38 +223,9 @@
     },
     "JobSubmissionModel": {
       "$defs": {
-        "JobParameterModel": {
-          "description": "Parameter of a job.",
-          "properties": {
-            "cwl": {
-              "title": "Cwl",
-              "type": "object"
-            },
-            "sandbox": {
-              "anyOf": [
-                {
-                  "items": {
-                    "type": "string"
-                  },
-                  "type": "array"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Sandbox"
-            }
-          },
-          "required": [
-            "sandbox",
-            "cwl"
-          ],
-          "title": "JobParameterModel",
-          "type": "object"
-        },
-        "MetadataDescriptor": {
+        "DataManager": {
           "additionalProperties": true,
-          "description": "Metadata configuration for DIRAC jobs",
+          "description": "Data management configuration for DIRAC jobs",
           "properties": {
             "metadata_class": {
               "default": "User",
@@ -206,12 +265,41 @@
               "title": "Vo"
             }
           },
-          "title": "DIRAC Metadata Descriptor",
+          "title": "DIRAC Data Manager",
+          "type": "object"
+        },
+        "JobParameterModel": {
+          "description": "Parameter of a job.",
+          "properties": {
+            "cwl": {
+              "title": "Cwl",
+              "type": "object"
+            },
+            "sandbox": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sandbox"
+            }
+          },
+          "required": [
+            "sandbox",
+            "cwl"
+          ],
+          "title": "JobParameterModel",
           "type": "object"
         },
         "TaskDescriptionModel": {
           "additionalProperties": false,
-          "description": "Description of a task (job/transformation/production step).\n\nThis class extends the core TaskDescriptor with additional methods\nfor CWL integration and backward compatibility.\n\nParameters\n----------\nplatform : str | None\n    Target platform name (for example ``\"DIRAC\"``). If ``None``, no\n    platform preference is encoded.\npriority : int, optional\n    Scheduling priority. Higher values indicate higher priority.\n    Defaults to ``10``.\nsites : list[str] | None\n    Optional list of candidate site names where the task may run.\n\nNotes\n-----\nThis is a serialisable Pydantic descriptor intended to carry CWL hints\nrelated to runtime placement and scheduling. Prefer using the class\nfactory ``TaskDescriptionModel.from_hints(cwl)`` when extracting hints\nfrom parsed CWL objects.",
+          "description": "Description of a task (job/transformation/production step).\n\nThis class extends the core JobExecutor with additional methods\nfor CWL integration and backward compatibility.\n\nParameters\n----------\nplatform : str | None\n    Target platform name (for example ``\"DIRAC\"``). If ``None``, no\n    platform preference is encoded.\npriority : int, optional\n    Scheduling priority. Higher values indicate higher priority.\n    Defaults to ``10``.\nsites : list[str] | None\n    Optional list of candidate site names where the task may run.\n\nNotes\n-----\nThis is a serialisable Pydantic descriptor intended to carry CWL hints\nrelated to runtime placement and scheduling. Prefer using the class\nfactory ``TaskDescriptionModel.from_hints(cwl)`` when extracting hints\nfrom parsed CWL objects.",
           "properties": {
             "platform": {
               "anyOf": [
@@ -259,7 +347,7 @@
           "$ref": "#/$defs/TaskDescriptionModel"
         },
         "metadata": {
-          "$ref": "#/$defs/MetadataDescriptor"
+          "$ref": "#/$defs/DataManager"
         },
         "parameters": {
           "anyOf": [
@@ -636,51 +724,6 @@
       "title": "DIRAC Metadata Model",
       "type": "object"
     },
-    "MetadataDescriptor": {
-      "additionalProperties": true,
-      "description": "Metadata configuration for DIRAC jobs",
-      "properties": {
-        "metadata_class": {
-          "default": "User",
-          "description": "Registry key for the metadata implementation class",
-          "title": "Metadata Class",
-          "type": "string"
-        },
-        "query_params": {
-          "description": "Additional parameters for metadata plugins",
-          "title": "Query Params",
-          "type": "object"
-        },
-        "version": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "Metadata model version",
-          "title": "Version"
-        },
-        "vo": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "Virtual Organization namespace (e.g., 'lhcb', 'ctao')",
-          "title": "Vo"
-        }
-      },
-      "title": "DIRAC Metadata Descriptor",
-      "type": "object"
-    },
     "PiGather": {
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "PI result gathering and aggregation metadata",
@@ -754,7 +797,7 @@
       "$defs": {
         "TaskDescriptionModel": {
           "additionalProperties": false,
-          "description": "Description of a task (job/transformation/production step).\n\nThis class extends the core TaskDescriptor with additional methods\nfor CWL integration and backward compatibility.\n\nParameters\n----------\nplatform : str | None\n    Target platform name (for example ``\"DIRAC\"``). If ``None``, no\n    platform preference is encoded.\npriority : int, optional\n    Scheduling priority. Higher values indicate higher priority.\n    Defaults to ``10``.\nsites : list[str] | None\n    Optional list of candidate site names where the task may run.\n\nNotes\n-----\nThis is a serialisable Pydantic descriptor intended to carry CWL hints\nrelated to runtime placement and scheduling. Prefer using the class\nfactory ``TaskDescriptionModel.from_hints(cwl)`` when extracting hints\nfrom parsed CWL objects.",
+          "description": "Description of a task (job/transformation/production step).\n\nThis class extends the core JobExecutor with additional methods\nfor CWL integration and backward compatibility.\n\nParameters\n----------\nplatform : str | None\n    Target platform name (for example ``\"DIRAC\"``). If ``None``, no\n    platform preference is encoded.\npriority : int, optional\n    Scheduling priority. Higher values indicate higher priority.\n    Defaults to ``10``.\nsites : list[str] | None\n    Optional list of candidate site names where the task may run.\n\nNotes\n-----\nThis is a serialisable Pydantic descriptor intended to carry CWL hints\nrelated to runtime placement and scheduling. Prefer using the class\nfactory ``TaskDescriptionModel.from_hints(cwl)`` when extracting hints\nfrom parsed CWL objects.",
           "properties": {
             "platform": {
               "anyOf": [
@@ -797,7 +840,7 @@
         },
         "TransformationMetadataModel": {
           "additionalProperties": true,
-          "description": "Metadata configuration for DIRAC jobs",
+          "description": "Data management configuration for DIRAC jobs",
           "properties": {
             "group_size": {
               "anyOf": [
@@ -852,7 +895,7 @@
               "title": "Vo"
             }
           },
-          "title": "DIRAC Metadata Descriptor",
+          "title": "DIRAC Data Manager",
           "type": "object"
         }
       },
@@ -955,7 +998,7 @@
     },
     "TaskDescriptionModel": {
       "additionalProperties": false,
-      "description": "Description of a task (job/transformation/production step).\n\nThis class extends the core TaskDescriptor with additional methods\nfor CWL integration and backward compatibility.\n\nParameters\n----------\nplatform : str | None\n    Target platform name (for example ``\"DIRAC\"``). If ``None``, no\n    platform preference is encoded.\npriority : int, optional\n    Scheduling priority. Higher values indicate higher priority.\n    Defaults to ``10``.\nsites : list[str] | None\n    Optional list of candidate site names where the task may run.\n\nNotes\n-----\nThis is a serialisable Pydantic descriptor intended to carry CWL hints\nrelated to runtime placement and scheduling. Prefer using the class\nfactory ``TaskDescriptionModel.from_hints(cwl)`` when extracting hints\nfrom parsed CWL objects.",
+      "description": "Description of a task (job/transformation/production step).\n\nThis class extends the core JobExecutor with additional methods\nfor CWL integration and backward compatibility.\n\nParameters\n----------\nplatform : str | None\n    Target platform name (for example ``\"DIRAC\"``). If ``None``, no\n    platform preference is encoded.\npriority : int, optional\n    Scheduling priority. Higher values indicate higher priority.\n    Defaults to ``10``.\nsites : list[str] | None\n    Optional list of candidate site names where the task may run.\n\nNotes\n-----\nThis is a serialisable Pydantic descriptor intended to carry CWL hints\nrelated to runtime placement and scheduling. Prefer using the class\nfactory ``TaskDescriptionModel.from_hints(cwl)`` when extracting hints\nfrom parsed CWL objects.",
       "properties": {
         "platform": {
           "anyOf": [
@@ -996,49 +1039,6 @@
       "title": "TaskDescriptionModel",
       "type": "object"
     },
-    "TaskDescriptor": {
-      "additionalProperties": false,
-      "description": "Descriptor for task execution configuration.",
-      "properties": {
-        "platform": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "Target platform (e.g., 'DIRAC', 'DIRACX')",
-          "title": "Platform"
-        },
-        "priority": {
-          "default": 10,
-          "description": "Job priority (higher values = higher priority)",
-          "title": "Priority",
-          "type": "integer"
-        },
-        "sites": {
-          "anyOf": [
-            {
-              "items": {
-                "type": "string"
-              },
-              "type": "array"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "Candidate execution sites",
-          "title": "Sites"
-        }
-      },
-      "title": "TaskDescriptor",
-      "type": "object"
-    },
     "TaskWithMetadataQueryPlugin": {
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "Example metadata plugin with query-based input resolution",
@@ -1048,9 +1048,9 @@
       "title": "DIRAC Metadata Model",
       "type": "object"
     },
-    "TransformationMetadataDescriptor": {
+    "TransformationDataManager": {
       "additionalProperties": true,
-      "description": "Metadata configuration for DIRAC jobs",
+      "description": "Data management configuration for DIRAC jobs",
       "properties": {
         "group_size": {
           "anyOf": [
@@ -1106,14 +1106,14 @@
           "title": "Vo"
         }
       },
-      "title": "DIRAC Metadata Descriptor",
+      "title": "DIRAC Data Manager",
       "type": "object"
     },
     "TransformationSubmissionModel": {
       "$defs": {
         "TaskDescriptionModel": {
           "additionalProperties": false,
-          "description": "Description of a task (job/transformation/production step).\n\nThis class extends the core TaskDescriptor with additional methods\nfor CWL integration and backward compatibility.\n\nParameters\n----------\nplatform : str | None\n    Target platform name (for example ``\"DIRAC\"``). If ``None``, no\n    platform preference is encoded.\npriority : int, optional\n    Scheduling priority. Higher values indicate higher priority.\n    Defaults to ``10``.\nsites : list[str] | None\n    Optional list of candidate site names where the task may run.\n\nNotes\n-----\nThis is a serialisable Pydantic descriptor intended to carry CWL hints\nrelated to runtime placement and scheduling. Prefer using the class\nfactory ``TaskDescriptionModel.from_hints(cwl)`` when extracting hints\nfrom parsed CWL objects.",
+          "description": "Description of a task (job/transformation/production step).\n\nThis class extends the core JobExecutor with additional methods\nfor CWL integration and backward compatibility.\n\nParameters\n----------\nplatform : str | None\n    Target platform name (for example ``\"DIRAC\"``). If ``None``, no\n    platform preference is encoded.\npriority : int, optional\n    Scheduling priority. Higher values indicate higher priority.\n    Defaults to ``10``.\nsites : list[str] | None\n    Optional list of candidate site names where the task may run.\n\nNotes\n-----\nThis is a serialisable Pydantic descriptor intended to carry CWL hints\nrelated to runtime placement and scheduling. Prefer using the class\nfactory ``TaskDescriptionModel.from_hints(cwl)`` when extracting hints\nfrom parsed CWL objects.",
           "properties": {
             "platform": {
               "anyOf": [
@@ -1156,7 +1156,7 @@
         },
         "TransformationMetadataModel": {
           "additionalProperties": true,
-          "description": "Metadata configuration for DIRAC jobs",
+          "description": "Data management configuration for DIRAC jobs",
           "properties": {
             "group_size": {
               "anyOf": [
@@ -1211,7 +1211,7 @@
               "title": "Vo"
             }
           },
-          "title": "DIRAC Metadata Descriptor",
+          "title": "DIRAC Data Manager",
           "type": "object"
         }
       },

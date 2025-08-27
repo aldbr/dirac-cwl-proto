@@ -40,17 +40,17 @@ def collect_pydantic_models() -> Dict[str, Type[BaseModel]]:
     try:
         from dirac_cwl_proto.metadata.core import (
             BaseMetadataModel,
-            MetadataDescriptor,
-            TaskDescriptor,
-            TransformationMetadataDescriptor,
+            DataManager,
+            JobExecutor,
+            TransformationDataManager,
         )
 
         models.update(
             {
                 "BaseMetadataModel": BaseMetadataModel,
-                "MetadataDescriptor": MetadataDescriptor,
-                "TaskDescriptor": TaskDescriptor,
-                "TransformationMetadataDescriptor": TransformationMetadataDescriptor,
+                "DataManager": DataManager,
+                "JobExecutor": JobExecutor,
+                "TransformationDataManager": TransformationDataManager,
             }
         )
         logger.info("Collected core metadata models")

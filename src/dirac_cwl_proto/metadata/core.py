@@ -16,7 +16,7 @@ from pydantic import BaseModel, ConfigDict, Field
 logger = logging.getLogger(__name__)
 
 # TypeVar for generic class methods
-T = TypeVar("T", bound="TaskDescriptor")
+T = TypeVar("T", bound="JobExecutor")
 
 
 class MetadataProcessor(ABC):
@@ -174,10 +174,10 @@ class BaseMetadataModel(BaseModel, DataCatalogInterface, MetadataProcessor):
         }
 
 
-class MetadataDescriptor(BaseModel):
-    """Descriptor for metadata configuration in CWL hints.
+class DataManager(BaseModel):
+    """Descriptor for data management configuration in CWL hints.
 
-    This class represents the serializable metadata configuration that
+    This class represents the serializable data management configuration that
     can be embedded in CWL hints and later instantiated into concrete
     metadata models.
 
@@ -188,8 +188,8 @@ class MetadataDescriptor(BaseModel):
         extra="allow",  # Allow vo-specific fields
         validate_assignment=True,
         json_schema_extra={
-            "title": "DIRAC Metadata Descriptor",
-            "description": "Metadata configuration for DIRAC jobs",
+            "title": "DIRAC Data Manager",
+            "description": "Data management configuration for DIRAC jobs",
         },
     )
 
@@ -207,7 +207,7 @@ class MetadataDescriptor(BaseModel):
         *,
         update: Optional[Dict[str, Any]] = None,
         deep: bool = False,
-    ) -> "MetadataDescriptor":
+    ) -> "DataManager":
         """Create a copy with intelligent merging of nested dictionaries."""
         if update is None:
             return self.model_copy(deep=deep)
@@ -229,7 +229,7 @@ class MetadataDescriptor(BaseModel):
         update: Optional[Mapping[str, Any]] = None,
         *,
         deep: bool = False,
-    ) -> "MetadataDescriptor":
+    ) -> "DataManager":
         """Enhanced model copy with intelligent merging of query_params."""
         if update is None:
             update = {}
@@ -279,7 +279,7 @@ class MetadataDescriptor(BaseModel):
             return s.replace("-", "_")
 
         if submitted is None:
-            descriptor = MetadataDescriptor(metadata_class=self.metadata_class, **self.query_params)
+            descriptor = DataManager(metadata_class=self.metadata_class, **self.query_params)
             return get_registry().instantiate_plugin(descriptor)
 
         # Build inputs from task defaults and parameter overrides
@@ -298,11 +298,11 @@ class MetadataDescriptor(BaseModel):
 
         params = {_dash_to_snake(key): value for key, value in inputs.items()}
 
-        descriptor = MetadataDescriptor(metadata_class=self.metadata_class, **params)
+        descriptor = DataManager(metadata_class=self.metadata_class, **params)
         return get_registry().instantiate_plugin(descriptor)
 
     @classmethod
-    def from_cwl_hints(cls, cwl_object: Any) -> "MetadataDescriptor":
+    def from_cwl_hints(cls, cwl_object: Any) -> "DataManager":
         """Extract metadata descriptor from CWL hints.
 
         Parameters
@@ -312,23 +312,23 @@ class MetadataDescriptor(BaseModel):
 
         Returns
         -------
-        MetadataDescriptor
-            Extracted metadata descriptor with defaults for missing fields.
+        DataManager
+            Extracted data manager with defaults for missing fields.
         """
         descriptor = cls()
 
         hints = getattr(cwl_object, "hints", []) or []
         for hint in hints:
-            if hint.get("class") == "dirac:metadata":
+            if hint.get("class") == "dirac:data-management":
                 hint_data = {k: v for k, v in hint.items() if k != "class"}
                 descriptor = descriptor.model_copy_with_merge(update=hint_data)
 
         return descriptor
 
     @classmethod
-    def from_hints(cls, cwl_object: Any) -> "MetadataDescriptor":
+    def from_hints(cls, cwl_object: Any) -> "DataManager":
         """
-        Create a MetadataDescriptor from CWL hints.
+        Create a DataManager from CWL hints.
 
         Alias for from_cwl_hints for backward compatibility.
 
@@ -339,22 +339,22 @@ class MetadataDescriptor(BaseModel):
 
         Returns
         -------
-        MetadataDescriptor
+        DataManager
             Descriptor populated from CWL hints; unknown hints are ignored.
         """
         return cls.from_cwl_hints(cwl_object)
 
 
-class TransformationMetadataDescriptor(MetadataDescriptor):
-    """Extended metadata descriptor for transformations."""
+class TransformationDataManager(DataManager):
+    """Extended data manager for transformations."""
 
     group_size: Optional[Dict[str, int]] = Field(
         default=None, description="Input grouping configuration for transformation jobs"
     )
 
 
-class TaskDescriptor(BaseModel):
-    """Descriptor for task execution configuration."""
+class JobExecutor(BaseModel):
+    """Descriptor for job execution configuration."""
 
     model_config = ConfigDict(extra="forbid", validate_assignment=True)
 
@@ -371,7 +371,7 @@ class TaskDescriptor(BaseModel):
 
         hints = getattr(cwl_object, "hints", []) or []
         for hint in hints:
-            if hint.get("class") == "dirac:description":
+            if hint.get("class") == "dirac:job-execution":
                 hint_data = {k: v for k, v in hint.items() if k != "class"}
                 descriptor = descriptor.model_copy(update=hint_data)
 

@@ -10,10 +10,10 @@ providing enhanced functionality through the new plugin system.
 from .core import (
     BaseMetadataModel,
     DataCatalogInterface,
-    MetadataDescriptor,
+    DataManager,
+    JobExecutor,
     MetadataProcessor,
-    TaskDescriptor,
-    TransformationMetadataDescriptor,
+    TransformationDataManager,
 )
 from .registry import (
     MetadataPluginRegistry,
@@ -35,10 +35,10 @@ __all__ = [
     # Core classes
     "BaseMetadataModel",
     "DataCatalogInterface",
-    "MetadataDescriptor",
+    "DataManager",
     "MetadataProcessor",
-    "TaskDescriptor",
-    "TransformationMetadataDescriptor",
+    "JobExecutor",
+    "TransformationDataManager",
     # Registry functions
     "MetadataPluginRegistry",
     "discover_plugins",

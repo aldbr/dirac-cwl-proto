@@ -18,8 +18,8 @@ from cwl_utils.parser.cwl_v1_2 import (
 from pydantic import BaseModel, ConfigDict, field_serializer, model_validator
 
 from dirac_cwl_proto.metadata import (
-    MetadataDescriptor,
-    TaskDescriptor,
+    DataManager,
+    JobExecutor,
 )
 
 # Local imports
@@ -29,11 +29,11 @@ from dirac_cwl_proto.metadata import (
 # -----------------------------------------------------------------------------
 
 
-class TaskDescriptionModel(TaskDescriptor):
+class TaskDescriptionModel(JobExecutor):
     """
     Description of a task (job/transformation/production step).
 
-    This class extends the core TaskDescriptor with additional methods
+    This class extends the core JobExecutor with additional methods
     for CWL integration and backward compatibility.
 
     Parameters
@@ -103,7 +103,7 @@ class JobSubmissionModel(BaseModel):
     task: CommandLineTool | Workflow | ExpressionTool
     parameters: list[JobParameterModel] | None = None
     description: TaskDescriptionModel
-    metadata: MetadataDescriptor
+    metadata: DataManager
 
     @field_serializer("task")
     def serialize_task(self, value):
@@ -118,7 +118,7 @@ class JobSubmissionModel(BaseModel):
 # -----------------------------------------------------------------------------
 
 
-class TransformationMetadataModel(MetadataDescriptor):
+class TransformationMetadataModel(DataManager):
     """Transformation metadata."""
 
     # Number of data to group together in a transformation
@@ -196,11 +196,11 @@ class ProductionSubmissionModel(BaseModel):
 # -----------------------------------------------------------------------------
 
 
-def extract_dirac_hints(cwl: Any) -> tuple[MetadataDescriptor, TaskDescriptionModel]:
-    """Thin wrapper that returns (MetadataDescriptor, TaskDescriptionModel).
+def extract_dirac_hints(cwl: Any) -> tuple[DataManager, TaskDescriptionModel]:
+    """Thin wrapper that returns (DataManager, TaskDescriptionModel).
 
-    Prefer the class-factory APIs `MetadataDescriptor.from_hints` and
+    Prefer the class-factory APIs `DataManager.from_hints` and
     `TaskDescriptionModel.from_hints` for new code. This helper remains for
     convenience.
     """
-    return MetadataDescriptor.from_hints(cwl), TaskDescriptionModel.from_hints(cwl)
+    return DataManager.from_hints(cwl), TaskDescriptionModel.from_hints(cwl)

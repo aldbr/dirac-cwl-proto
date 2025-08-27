@@ -10,7 +10,7 @@ from typing import Any, ClassVar, Optional
 
 import pytest
 
-from dirac_cwl_proto.metadata.core import BaseMetadataModel, MetadataDescriptor
+from dirac_cwl_proto.metadata.core import BaseMetadataModel, DataManager
 from dirac_cwl_proto.metadata.registry import (
     MetadataPluginRegistry,
     get_registry,
@@ -129,7 +129,7 @@ class TestMetadataPluginRegistry:
 
         registry.register_plugin(TestPluginMetadata)
 
-        descriptor = MetadataDescriptor(metadata_class="TestPlugin", test_param="custom")
+        descriptor = DataManager(metadata_class="TestPlugin", test_param="custom")
         instance = registry.instantiate_plugin(descriptor)
 
         assert isinstance(instance, TestPluginMetadata)
@@ -141,7 +141,7 @@ class TestMetadataPluginRegistry:
 
         registry.register_plugin(TestVOPlugin)
 
-        descriptor = MetadataDescriptor(metadata_class="TestVOPlugin", vo="test_exp", exp_param=99)
+        descriptor = DataManager(metadata_class="TestVOPlugin", vo="test_exp", exp_param=99)
         instance = registry.instantiate_plugin(descriptor)
 
         assert isinstance(instance, TestVOPlugin)
@@ -151,7 +151,7 @@ class TestMetadataPluginRegistry:
         """Test instantiation of non-existent plugin."""
         registry = MetadataPluginRegistry()
 
-        descriptor = MetadataDescriptor(metadata_class="NonExistent")
+        descriptor = DataManager(metadata_class="NonExistent")
 
         with pytest.raises(KeyError, match="Unknown metadata plugin"):
             registry.instantiate_plugin(descriptor)
@@ -231,7 +231,7 @@ class TestPluginSystem:
         registry.register_plugin(DirectPlugin)
 
         # Should be able to instantiate
-        descriptor = MetadataDescriptor(metadata_class="DirectPlugin", test_param="custom")
+        descriptor = DataManager(metadata_class="DirectPlugin", test_param="custom")
         instance = registry.instantiate_plugin(descriptor)
 
         # Should work with new interface
@@ -250,7 +250,7 @@ class TestPluginSystem:
         registry.register_plugin(ParameterTestPlugin)
 
         # Test with snake_case parameters (should work)
-        descriptor = MetadataDescriptor(
+        descriptor = DataManager(
             metadata_class="ParameterTestPlugin", test_param="value1", another_param="value2"
         )
         instance = registry.instantiate_plugin(descriptor)

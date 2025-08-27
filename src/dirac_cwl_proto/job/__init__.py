@@ -94,8 +94,8 @@ def submit_job_client(
             if overrides:
                 override_hints = overrides[next(iter(overrides))].get("hints", {})
                 if override_hints:
-                    job_description = job_description.model_copy(update=override_hints.pop("dirac:description", {}))
-                    job_metadata = job_metadata.model_copy(update=override_hints.pop("dirac:metadata", {}))
+                    job_description = job_description.model_copy(update=override_hints.pop("dirac:job-execution", {}))
+                    job_metadata = job_metadata.model_copy(update=override_hints.pop("dirac:data-management", {}))
 
             # Upload the local files to the sandbox store
             sandbox_id = upload_local_input_files(parameter)
