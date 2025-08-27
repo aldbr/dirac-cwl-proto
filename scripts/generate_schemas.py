@@ -90,7 +90,7 @@ def collect_pydantic_models() -> Dict[str, Type[BaseModel]]:
         registry.discover_plugins()
 
         # Get all registered plugins
-        all_experiments = registry.list_experiments()
+        all_experiments = registry.list_virtual_organizations()
         logger.info(f"Found experiments: {all_experiments}")
 
         for experiment in all_experiments + [None]:  # Include global plugins
@@ -111,18 +111,73 @@ def collect_pydantic_models() -> Dict[str, Type[BaseModel]]:
     return models
 
 
+def create_cwl_schema_shim(model_class: Type[BaseModel], model_name: str) -> Dict[str, Any]:
+    """Create a schema shim for models containing CWL types."""
+    # Create a custom schema that references CWL schemas and handles the fields we can
+    schema = {
+        "title": model_name,
+        "description": f"Schema for {model_name} with CWL type references",
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": False,
+    }
+
+    # Get the model fields using Pydantic's field info
+    for field_name, field_info in model_class.model_fields.items():
+        annotation = field_info.annotation
+
+        # Handle CWL Workflow type specifically
+        if hasattr(annotation, "__name__") and annotation.__name__ == "Workflow":
+            schema["properties"][field_name] = {
+                "description": "CWL Workflow definition",
+                "$ref": "https://json.schemastore.org/cwl-workflow.json",
+            }
+        # Handle other CWL types
+        elif hasattr(annotation, "__module__") and "cwl_utils.parser" in str(annotation.__module__):
+            schema["properties"][field_name] = {
+                "description": f"CWL {annotation.__name__} definition",
+                "$ref": "https://json.schemastore.org/cwlc.json",
+            }
+        # Handle dict types
+        elif hasattr(annotation, "__origin__") and annotation.__origin__ is dict:
+            # Try to get the value type for dict[str, SomeType]
+            args = getattr(annotation, "__args__", [])
+            if len(args) == 2:
+                value_type = args[1]
+                if hasattr(value_type, "__name__"):
+                    schema["properties"][field_name] = {
+                        "type": "object",
+                        "description": f"Dictionary mapping strings to {value_type.__name__}",
+                        "additionalProperties": {"$ref": f"#/$defs/{value_type.__name__}"},
+                    }
+                else:
+                    schema["properties"][field_name] = {"type": "object", "description": "Dictionary with string keys"}
+            else:
+                schema["properties"][field_name] = {"type": "object", "description": "Dictionary"}
+        else:
+            # For other types, create a generic schema
+            schema["properties"][field_name] = {"description": f"Field of type {annotation}"}
+
+        # Add to required if the field is required
+        if field_info.is_required():
+            schema["required"].append(field_name)
+
+    return schema
+
+
 def generate_schema(model_class: Type[BaseModel], model_name: str) -> Dict[str, Any]:
     """Generate JSON schema for a Pydantic model."""
     try:
         schema = model_class.model_json_schema()
 
         # Add metadata if available
-        if hasattr(model_class, "metadata_type"):
-            schema["dirac_metadata_type"] = model_class.metadata_type
         if hasattr(model_class, "description"):
             schema["dirac_description"] = model_class.description
-        if hasattr(model_class, "experiment"):
-            schema["dirac_experiment"] = model_class.experiment
+        if hasattr(model_class, "vo"):
+            schema["dirac_vo"] = model_class.vo
+        if hasattr(model_class, "get_metadata_class"):
+            schema["dirac_metadata_class"] = model_class.get_metadata_class()
 
         # Set title if not present
         if "title" not in schema:
@@ -130,7 +185,12 @@ def generate_schema(model_class: Type[BaseModel], model_name: str) -> Dict[str, 
 
         return schema
     except Exception as e:
-        logger.error(f"Failed to generate schema for {model_name}: {e}")
+        # Handle CWL-related models specially
+        if "cwl_utils.parser" in str(e) or "IsInstanceSchema" in str(e) or "Workflow" in str(e):
+            logger.info(f"Creating CWL schema reference for {model_name}")
+            return create_cwl_schema_shim(model_class, model_name)
+
+        logger.warning(f"Skipping schema generation for {model_name}: {e}")
         return {}
 
 
@@ -162,7 +222,7 @@ def generate_unified_dirac_schema(models: Dict[str, Type[BaseModel]]) -> Dict[st
     # Add all model schemas to definitions
     for name, model_class in models.items():
         model_schema = generate_schema(model_class, name)
-        if model_schema:
+        if model_schema:  # Only add schemas that were successfully generated
             schema["$defs"][name] = model_schema
 
     return schema
@@ -234,22 +294,28 @@ def main():
         save_schema(unified_schema, unified_file, args.format)
 
     # Generate plugin summary
-    plugin_models = {k: v for k, v in models.items() if hasattr(v, "metadata_type")}
+    plugin_models = {k: v for k, v in models.items() if hasattr(v, "get_metadata_class")}
     if plugin_models:
         summary = {
             "plugins": {
                 name: {
                     "class": model_class.__name__,
-                    "metadata_type": getattr(model_class, "metadata_type", None),
+                    "metadata_class": (
+                        model_class.get_metadata_class() if hasattr(model_class, "get_metadata_class") else None
+                    ),
                     "description": getattr(model_class, "description", None),
-                    "experiment": getattr(model_class, "experiment", None),
+                    "vo": getattr(model_class, "vo", None),
                     "module": model_class.__module__,
                 }
                 for name, model_class in plugin_models.items()
             },
             "total_plugins": len(plugin_models),
-            "experiments": list(
-                set(getattr(m, "experiment", None) for m in plugin_models.values() if hasattr(m, "experiment"))
+            "virtual_organizations": list(
+                set(
+                    getattr(m, "vo", None)
+                    for m in plugin_models.values()
+                    if hasattr(m, "vo") and getattr(m, "vo", None)
+                )
             ),
         }
         summary_file = args.output_dir / f"plugins-summary.{args.format}"

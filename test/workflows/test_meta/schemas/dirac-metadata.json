@@ -3,6 +3,7 @@
     "Admin": {
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "Administrative metadata with enhanced logging",
+      "dirac_metadata_class": "Admin",
       "dirac_vo": null,
       "properties": {
         "admin_level": {
@@ -27,6 +28,7 @@
     "BaseMetadataModel": {
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "Base metadata model",
+      "dirac_metadata_class": "BaseMetadataModel",
       "dirac_vo": null,
       "properties": {},
       "title": "DIRAC Metadata Model",
@@ -35,6 +37,7 @@
     "DataGeneration": {
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "Data generation for Gaussian fitting workflows",
+      "dirac_metadata_class": "DataGeneration",
       "dirac_vo": null,
       "properties": {
         "output_file_name_1": {
@@ -65,9 +68,10 @@
       "title": "DIRAC Metadata Model",
       "type": "object"
     },
-    "GaussianFitModel": {
+    "GaussianFit": {
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "Gaussian fitting analysis on data sets",
+      "dirac_metadata_class": "GaussianFit",
       "dirac_vo": null,
       "properties": {
         "data1": {
@@ -164,19 +168,6 @@
           "additionalProperties": true,
           "description": "Metadata configuration for DIRAC jobs",
           "properties": {
-            "vo": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "description": "vo namespace (e.g., 'lhcb', 'ctao')",
-              "title": "vo"
-            },
             "metadata_class": {
               "default": "User",
               "description": "Registry key for the metadata implementation class",
@@ -187,12 +178,6 @@
               "description": "Additional parameters for metadata plugins",
               "title": "Query Params",
               "type": "object"
-            },
-            "type": {
-              "default": "User",
-              "description": "Legacy field for backward compatibility (alias for metadata_class)",
-              "title": "Type",
-              "type": "string"
             },
             "version": {
               "anyOf": [
@@ -206,6 +191,19 @@
               "default": null,
               "description": "Metadata model version",
               "title": "Version"
+            },
+            "vo": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Virtual Organization namespace (e.g., 'lhcb', 'ctao')",
+              "title": "Vo"
             }
           },
           "title": "DIRAC Metadata Descriptor",
@@ -291,9 +289,34 @@
       "title": "JobSubmissionModel",
       "type": "object"
     },
+    "LHCb": {
+      "description": "Base metadata model for DIRAC jobs",
+      "dirac_description": "Base metadata model",
+      "dirac_metadata_class": "LHCb",
+      "dirac_vo": "lhcb",
+      "properties": {
+        "run_id": {
+          "description": "LHCb run identifier",
+          "title": "Run Id",
+          "type": "integer"
+        },
+        "task_id": {
+          "description": "LHCb task identifier",
+          "title": "Task Id",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "task_id",
+        "run_id"
+      ],
+      "title": "DIRAC Metadata Model",
+      "type": "object"
+    },
     "LHCbAnalysis": {
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "LHCb analysis metadata for user analysis jobs",
+      "dirac_metadata_class": "LHCbAnalysis",
       "dirac_vo": "lhcb",
       "properties": {
         "analysis_name": {
@@ -371,6 +394,7 @@
     "LHCbReconstruction": {
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "LHCb reconstruction metadata with file management",
+      "dirac_metadata_class": "LHCbReconstruction",
       "dirac_vo": "lhcb",
       "properties": {
         "input_data_type": {
@@ -419,6 +443,7 @@
     "LHCbSimulation": {
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "LHCb simulation metadata with dynamic resource allocation",
+      "dirac_metadata_class": "LHCbSimulation",
       "dirac_vo": "lhcb",
       "properties": {
         "beam_energy": {
@@ -487,6 +512,7 @@
     "MandelBrotGeneration": {
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "Mandelbrot set generation with configurable parameters",
+      "dirac_metadata_class": "MandelBrotGeneration",
       "dirac_vo": null,
       "properties": {
         "height": {
@@ -543,6 +569,7 @@
     "MandelBrotMerging": {
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "Mandelbrot image merging and composite generation",
+      "dirac_metadata_class": "MandelBrotMerging",
       "dirac_vo": null,
       "properties": {
         "data": {
@@ -613,19 +640,6 @@
       "additionalProperties": true,
       "description": "Metadata configuration for DIRAC jobs",
       "properties": {
-        "vo": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "vo namespace (e.g., 'lhcb', 'ctao')",
-          "title": "vo"
-        },
         "metadata_class": {
           "default": "User",
           "description": "Registry key for the metadata implementation class",
@@ -636,12 +650,6 @@
           "description": "Additional parameters for metadata plugins",
           "title": "Query Params",
           "type": "object"
-        },
-        "type": {
-          "default": "User",
-          "description": "Legacy field for backward compatibility (alias for metadata_class)",
-          "title": "Type",
-          "type": "string"
         },
         "version": {
           "anyOf": [
@@ -655,6 +663,19 @@
           "default": null,
           "description": "Metadata model version",
           "title": "Version"
+        },
+        "vo": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Virtual Organization namespace (e.g., 'lhcb', 'ctao')",
+          "title": "Vo"
         }
       },
       "title": "DIRAC Metadata Descriptor",
@@ -663,6 +684,7 @@
     "PiGather": {
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "PI result gathering and aggregation metadata",
+      "dirac_metadata_class": "PiGather",
       "dirac_vo": null,
       "properties": {
         "input_data": {
@@ -692,6 +714,7 @@
     "PiSimulate": {
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "PI simulation metadata with point-based output management",
+      "dirac_metadata_class": "PiSimulate",
       "dirac_vo": null,
       "properties": {
         "num_points": {
@@ -708,6 +731,7 @@
     "PiSimulateV2": {
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "Enhanced PI simulation metadata with custom output paths",
+      "dirac_metadata_class": "PiSimulateV2",
       "dirac_vo": null,
       "properties": {
         "num_points": {
@@ -775,19 +799,6 @@
           "additionalProperties": true,
           "description": "Metadata configuration for DIRAC jobs",
           "properties": {
-            "vo": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "description": "vo namespace (e.g., 'lhcb', 'ctao')",
-              "title": "vo"
-            },
             "group_size": {
               "anyOf": [
                 {
@@ -814,12 +825,6 @@
               "title": "Query Params",
               "type": "object"
             },
-            "type": {
-              "default": "User",
-              "description": "Legacy field for backward compatibility (alias for metadata_class)",
-              "title": "Type",
-              "type": "string"
-            },
             "version": {
               "anyOf": [
                 {
@@ -832,6 +837,19 @@
               "default": null,
               "description": "Metadata model version",
               "title": "Version"
+            },
+            "vo": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Virtual Organization namespace (e.g., 'lhcb', 'ctao')",
+              "title": "Vo"
             }
           },
           "title": "DIRAC Metadata Descriptor",
@@ -854,9 +872,33 @@
       "title": "ProductionStepMetadataModel",
       "type": "object"
     },
+    "ProductionSubmissionModel": {
+      "additionalProperties": false,
+      "description": "Schema for ProductionSubmissionModel with CWL type references",
+      "properties": {
+        "steps_metadata": {
+          "additionalProperties": {
+            "$ref": "#/$defs/ProductionStepMetadataModel"
+          },
+          "description": "Dictionary mapping strings to ProductionStepMetadataModel",
+          "type": "object"
+        },
+        "task": {
+          "$ref": "https://json.schemastore.org/cwl-workflow.json",
+          "description": "CWL Workflow definition"
+        }
+      },
+      "required": [
+        "task",
+        "steps_metadata"
+      ],
+      "title": "ProductionSubmissionModel",
+      "type": "object"
+    },
     "QueryBased": {
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "Metadata with query-based input resolution",
+      "dirac_metadata_class": "QueryBased",
       "dirac_vo": null,
       "properties": {
         "campaign": {
@@ -1000,6 +1042,7 @@
     "TaskWithMetadataQueryPlugin": {
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "Example metadata plugin with query-based input resolution",
+      "dirac_metadata_class": "TaskWithMetadataQueryPlugin",
       "dirac_vo": null,
       "properties": {},
       "title": "DIRAC Metadata Model",
@@ -1009,19 +1052,6 @@
       "additionalProperties": true,
       "description": "Metadata configuration for DIRAC jobs",
       "properties": {
-        "vo": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "vo namespace (e.g., 'lhcb', 'ctao')",
-          "title": "vo"
-        },
         "group_size": {
           "anyOf": [
             {
@@ -1049,12 +1079,6 @@
           "title": "Query Params",
           "type": "object"
         },
-        "type": {
-          "default": "User",
-          "description": "Legacy field for backward compatibility (alias for metadata_class)",
-          "title": "Type",
-          "type": "string"
-        },
         "version": {
           "anyOf": [
             {
@@ -1067,6 +1091,19 @@
           "default": null,
           "description": "Metadata model version",
           "title": "Version"
+        },
+        "vo": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Virtual Organization namespace (e.g., 'lhcb', 'ctao')",
+          "title": "Vo"
         }
       },
       "title": "DIRAC Metadata Descriptor",
@@ -1121,19 +1158,6 @@
           "additionalProperties": true,
           "description": "Metadata configuration for DIRAC jobs",
           "properties": {
-            "vo": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "description": "vo namespace (e.g., 'lhcb', 'ctao')",
-              "title": "vo"
-            },
             "group_size": {
               "anyOf": [
                 {
@@ -1160,12 +1184,6 @@
               "title": "Query Params",
               "type": "object"
             },
-            "type": {
-              "default": "User",
-              "description": "Legacy field for backward compatibility (alias for metadata_class)",
-              "title": "Type",
-              "type": "string"
-            },
             "version": {
               "anyOf": [
                 {
@@ -1178,6 +1196,19 @@
               "default": null,
               "description": "Metadata model version",
               "title": "Version"
+            },
+            "vo": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Virtual Organization namespace (e.g., 'lhcb', 'ctao')",
+              "title": "Vo"
             }
           },
           "title": "DIRAC Metadata Descriptor",
@@ -1208,14 +1239,16 @@
     "User": {
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "Basic user metadata with no special processing",
+      "dirac_metadata_class": "User",
       "dirac_vo": null,
       "properties": {},
       "title": "DIRAC Metadata Model",
       "type": "object"
     },
-    "base": {
+    "lhcb_LHCb": {
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "Base metadata model",
+      "dirac_metadata_class": "LHCb",
       "dirac_vo": "lhcb",
       "properties": {
         "run_id": {
@@ -1239,6 +1272,7 @@
     "lhcb_LHCbAnalysis": {
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "LHCb analysis metadata for user analysis jobs",
+      "dirac_metadata_class": "LHCbAnalysis",
       "dirac_vo": "lhcb",
       "properties": {
         "analysis_name": {
@@ -1316,6 +1350,7 @@
     "lhcb_LHCbReconstruction": {
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "LHCb reconstruction metadata with file management",
+      "dirac_metadata_class": "LHCbReconstruction",
       "dirac_vo": "lhcb",
       "properties": {
         "input_data_type": {
@@ -1364,6 +1399,7 @@
     "lhcb_LHCbSimulation": {
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "LHCb simulation metadata with dynamic resource allocation",
+      "dirac_metadata_class": "LHCbSimulation",
       "dirac_vo": "lhcb",
       "properties": {
         "beam_energy": {
@@ -1411,29 +1447,6 @@
           "title": "Number Of Events",
           "type": "integer"
         },
-        "run_id": {
-          "description": "LHCb run identifier",
-          "title": "Run Id",
-          "type": "integer"
-        },
-        "task_id": {
-          "description": "LHCb task identifier",
-          "title": "Task Id",
-          "type": "integer"
-        }
-      },
-      "required": [
-        "task_id",
-        "run_id"
-      ],
-      "title": "DIRAC Metadata Model",
-      "type": "object"
-    },
-    "lhcb_base": {
-      "description": "Base metadata model for DIRAC jobs",
-      "dirac_description": "Base metadata model",
-      "dirac_vo": "lhcb",
-      "properties": {
         "run_id": {
           "description": "LHCb run identifier",
           "title": "Run Id",

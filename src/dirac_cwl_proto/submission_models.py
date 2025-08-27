@@ -185,7 +185,7 @@ class ProductionSubmissionModel(BaseModel):
 
     @field_serializer("task")
     def serialize_task(self, value):
-        if isinstance(value, (CommandLineTool, Workflow)):
+        if isinstance(value, (ExpressionTool, CommandLineTool, Workflow)):
             return save(value)
         else:
             raise TypeError(f"Cannot serialize type {type(value)}")
