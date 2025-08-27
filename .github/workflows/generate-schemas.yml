@@ -53,25 +53,14 @@ jobs:
       - name: Generate schemas
         run: |
           echo "Generating JSON schemas from Pydantic models..."
-          python scripts/generate_schemas.py \
-            --output-dir generated_schemas \
-            --format json \
-            --individual \
-            --unified
-      
-      - name: Generate YAML schemas (for convenience)
-        run: |
-          echo "Generating YAML schemas from Pydantic models..."
-          python scripts/generate_schemas.py \
-            --output-dir generated_schemas \
-            --format yaml \
-            --unified
+          python scripts/generate_schemas.py
       
       - name: Copy schemas to test locations
         run: |
           echo "Copying generated schemas to test locations..."
-          # Update test meta schemas
+          # Update test meta schemas from the generated output
           cp generated_schemas/dirac-metadata.json test/workflows/test_meta/schemas/dirac-metadata.json
+          cp generated_schemas/plugins-summary.json test/workflows/test_meta/schemas/plugins-summary.json
           echo "Updated test schemas"
       
       - name: Check for schema changes
@@ -81,25 +70,24 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           
-          # Check if there are changes in the generated schemas
-          if git diff --quiet generated_schemas/ test/workflows/test_meta/schemas/; then
+          # Check if there are changes in the test schemas
+          if git diff --quiet test/workflows/test_meta/schemas/; then
             echo "changes=false" >> $GITHUB_OUTPUT
             echo "No schema changes detected"
           else
             echo "changes=true" >> $GITHUB_OUTPUT
             echo "Schema changes detected"
-            git diff --name-only generated_schemas/ test/workflows/test_meta/schemas/
+            git diff --name-only test/workflows/test_meta/schemas/
           fi
       
       - name: Commit and push schema changes
         if: steps.check_changes.outputs.changes == 'true' && github.event_name == 'push'
         run: |
           echo "Committing schema changes..."
-          git add generated_schemas/
           git add test/workflows/test_meta/schemas/
           git commit -m "Auto-generate schemas from Pydantic models
 
-          This commit contains automatically generated JSON/YAML schemas from:
+          This commit contains automatically generated JSON schemas from:
           - Core metadata models
           - Submission models  
           - All registered metadata plugins
@@ -116,11 +104,10 @@ jobs:
           echo "Verifying generated schemas..."
           python -c "
           import json
-          import yaml
           from pathlib import Path
           
-          # Verify JSON schemas
-          json_schemas = list(Path('generated_schemas').glob('**/*.json'))
+          # Verify JSON schemas in test directory
+          json_schemas = list(Path('test/workflows/test_meta/schemas').glob('**/*.json'))
           for schema_file in json_schemas:
               try:
                   with open(schema_file) as f:
@@ -130,18 +117,7 @@ jobs:
                   print(f'✗ Invalid JSON: {schema_file} - {e}')
                   exit(1)
           
-          # Verify YAML schemas
-          yaml_schemas = list(Path('generated_schemas').glob('**/*.yaml'))
-          for schema_file in yaml_schemas:
-              try:
-                  with open(schema_file) as f:
-                      yaml.safe_load(f)
-                  print(f'✓ Valid YAML: {schema_file}')
-              except Exception as e:
-                  print(f'✗ Invalid YAML: {schema_file} - {e}')
-                  exit(1)
-          
-          print(f'All schemas are valid! Generated {len(json_schemas)} JSON and {len(yaml_schemas)} YAML files.')
+          print(f'All schemas are valid! Verified {len(json_schemas)} JSON files.')
           "
       
       - name: Upload schema artifacts
@@ -149,7 +125,6 @@ jobs:
         with:
           name: generated-schemas
           path: |
-            generated_schemas/
             test/workflows/test_meta/schemas/
           retention-days: 90
       
@@ -179,7 +154,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: generated-schemas
-          path: .
+          path: test/workflows/test_meta/schemas/
       
       - name: Run tests with generated schemas
         run: |

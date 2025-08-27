@@ -1,9 +1,0 @@
-{
-  "description": "Base metadata model for DIRAC jobs",
-  "dirac_description": "Example metadata plugin with query-based input resolution",
-  "dirac_experiment": null,
-  "dirac_metadata_type": "TaskWithMetadataQuery",
-  "properties": {},
-  "title": "DIRAC Metadata Model",
-  "type": "object"
-}

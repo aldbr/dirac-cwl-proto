@@ -1,9 +1,0 @@
-{
-  "description": "Base metadata model for DIRAC jobs",
-  "dirac_description": "Base metadata model",
-  "dirac_experiment": null,
-  "dirac_metadata_type": "base",
-  "properties": {},
-  "title": "DIRAC Metadata Model",
-  "type": "object"
-}
