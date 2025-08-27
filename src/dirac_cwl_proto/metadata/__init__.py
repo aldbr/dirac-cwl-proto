@@ -18,11 +18,7 @@ from .core import (
 from .registry import (
     MetadataPluginRegistry,
     discover_plugins,
-    get_metadata_class,
     get_registry,
-    instantiate_metadata,
-    list_registered,
-    register_metadata,
 )
 
 # Initialize the registry and discover core plugins
@@ -46,9 +42,5 @@ __all__ = [
     # Registry functions
     "MetadataPluginRegistry",
     "discover_plugins",
-    "get_metadata_class",
     "get_registry",
-    "instantiate_metadata",
-    "list_registered",
-    "register_metadata",
 ]

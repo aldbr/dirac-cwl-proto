@@ -13,9 +13,6 @@ import pytest
 
 from dirac_cwl_proto.metadata import (
     get_registry,
-    instantiate_metadata,
-    list_registered,
-    register_metadata,
 )
 from dirac_cwl_proto.metadata.core import BaseMetadataModel, MetadataDescriptor
 from dirac_cwl_proto.submission_models import (
@@ -33,7 +30,8 @@ class TestSystemIntegration:
         assert registry is not None
 
         # Test that core plugins are registered
-        plugins = list_registered()
+        registry = get_registry()
+        plugins = registry.list_plugins()
         core_plugins = {"User", "Admin", "QueryBased"}
         assert core_plugins.issubset(set(plugins))
 
@@ -48,7 +46,9 @@ class TestSystemIntegration:
 
         for plugin_type, params in test_cases:
             # Test direct instantiation
-            instance = instantiate_metadata(plugin_type, params)
+            registry = get_registry()
+            descriptor = MetadataDescriptor(metadata_class=plugin_type, **params)
+            instance = registry.instantiate_plugin(descriptor)
             assert instance.get_metadata_class() == plugin_type
 
             # Test via descriptor
@@ -85,7 +85,8 @@ class TestSystemIntegration:
         # Test that legacy models are still accessible
         legacy_plugins = ["PiSimulate", "PiGather", "LHCbSimulation", "MandelBrotGeneration", "GaussianFit"]
 
-        registered = list_registered()
+        registry = get_registry()
+        registered = registry.list_plugins()
         for plugin in legacy_plugins:
             assert plugin in registered
 
@@ -237,11 +238,12 @@ class TestErrorHandling:
             description = "Test plugin for conflict testing"
 
         # Register it
-        register_metadata("ConflictTest", ConflictTestPlugin)
+        registry = get_registry()
+        registry.register_plugin(ConflictTestPlugin)
 
         # Try to register again (should raise error)
         with pytest.raises(ValueError, match="already registered"):
-            register_metadata("ConflictTest", ConflictTestPlugin)
+            registry.register_plugin(ConflictTestPlugin)
 
     def test_malformed_cwl_hints(self):
         """Test handling of malformed CWL hints."""

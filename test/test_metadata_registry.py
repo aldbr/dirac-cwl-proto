@@ -14,9 +14,6 @@ from dirac_cwl_proto.metadata.core import BaseMetadataModel, MetadataDescriptor
 from dirac_cwl_proto.metadata.registry import (
     MetadataPluginRegistry,
     get_registry,
-    instantiate_metadata,
-    list_registered,
-    register_metadata,
 )
 
 
@@ -40,7 +37,6 @@ class TestVOPlugin(BaseMetadataModel):
 class TestSecondVOPlugin(BaseMetadataModel):
     """Test plugin for second vo."""
 
-    metadata_type: ClassVar[str] = "SecondExpTest"
     description: ClassVar[str] = "Test plugin for second VO"
     vo: ClassVar[Optional[str]] = "exp2"
 
@@ -216,44 +212,6 @@ class TestGlobalRegistryFunctions:
         registry2 = get_registry()
         assert registry is registry2
 
-    def test_list_registered(self):
-        """Test listing registered plugins globally."""
-        # This test depends on the global registry state
-        plugins = list_registered()
-        assert isinstance(plugins, list)
-        # Should include core plugins
-        assert "User" in plugins
-        assert "Admin" in plugins
-
-    def test_instantiate_metadata(self):
-        """Test global metadata instantiation."""
-        # Test with core plugin
-        instance = instantiate_metadata("User", {})
-        assert instance.get_metadata_class() == "User"
-
-    def test_instantiate_metadata_with_vo(self):
-        """Test global metadata instantiation with vo."""
-        # This would need to be tested with actual vo plugins
-        # For now, just test the function signature
-        try:
-            instantiate_metadata("User", {}, vo="test")
-        except ValueError:
-            # Expected if vo plugin doesn't exist
-            pass
-
-    def test_register_metadata(self):
-        """Test global metadata registration."""
-        # Test registering a new plugin
-
-        class GlobalTestPlugin(BaseMetadataModel):
-            description: ClassVar[str] = "Global test plugin"
-
-        register_metadata("GlobalTestPlugin", GlobalTestPlugin)
-
-        # Should be able to instantiate it
-        instance = instantiate_metadata("GlobalTestPlugin", {})
-        assert isinstance(instance, GlobalTestPlugin)
-
 
 class TestPluginSystem:
     """Test the modern plugin system functionality."""
@@ -269,10 +227,12 @@ class TestPluginSystem:
                 return Path(f"/direct/{input_name}/{self.test_param}")
 
         # Register plugin directly
-        register_metadata("DirectPlugin", DirectPlugin)
+        registry = get_registry()
+        registry.register_plugin(DirectPlugin)
 
         # Should be able to instantiate
-        instance = instantiate_metadata("DirectPlugin", {"test_param": "custom"})
+        descriptor = MetadataDescriptor(metadata_class="DirectPlugin", test_param="custom")
+        instance = registry.instantiate_plugin(descriptor)
 
         # Should work with new interface
         result = instance.get_input_query("test_input")
@@ -286,10 +246,14 @@ class TestPluginSystem:
             test_param: str = "default"
             another_param: str = "default"
 
-        register_metadata("ParameterTestPlugin", ParameterTestPlugin)
+        registry = get_registry()
+        registry.register_plugin(ParameterTestPlugin)
 
         # Test with snake_case parameters (should work)
-        instance = instantiate_metadata("ParameterTestPlugin", {"test_param": "value1", "another_param": "value2"})
+        descriptor = MetadataDescriptor(
+            metadata_class="ParameterTestPlugin", test_param="value1", another_param="value2"
+        )
+        instance = registry.instantiate_plugin(descriptor)
 
         assert instance.test_param == "value1"
         assert instance.another_param == "value2"

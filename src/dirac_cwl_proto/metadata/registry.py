@@ -10,7 +10,7 @@ from __future__ import annotations
 import importlib
 import logging
 import pkgutil
-from typing import Any, Dict, Iterable, List, Optional, Type
+from typing import Any, Dict, List, Optional, Type
 
 from .core import BaseMetadataModel, MetadataDescriptor
 
@@ -253,29 +253,7 @@ class MetadataPluginRegistry:
 _registry = MetadataPluginRegistry()
 
 
-# Public API functions for backward compatibility
-def register_metadata(name: str, cls: Type[BaseMetadataModel]) -> None:
-    """Register a metadata class (backward compatibility)."""
-    _registry.register_plugin(cls)
-
-
-def get_metadata_class(name: str) -> Optional[Type[BaseMetadataModel]]:
-    """Get metadata class by name (backward compatibility)."""
-    return _registry.get_plugin(name)
-
-
-def instantiate_metadata(name: str, params: Dict[str, Any], vo: str | None = None) -> BaseMetadataModel:
-    """Instantiate metadata from name and params (backward compatibility)."""
-    descriptor = MetadataDescriptor(metadata_class=name, vo=vo, **params)
-    return _registry.instantiate_plugin(descriptor)
-
-
-def list_registered() -> Iterable[str]:
-    """List registered metadata types (backward compatibility)."""
-    return _registry.list_plugins()
-
-
-# New public API
+# Public API
 def get_registry() -> MetadataPluginRegistry:
     """Get the global metadata plugin registry."""
     return _registry

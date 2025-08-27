@@ -272,14 +272,15 @@ class MetadataDescriptor(BaseModel):
             Runtime metadata implementation instantiated from the registry.
         """
         # Import here to avoid circular imports
-        from .registry import instantiate_metadata
+        from .registry import get_registry
 
         # Quick helper to convert dash-case to snake_case without importing utils
         def _dash_to_snake(s: str) -> str:
             return s.replace("-", "_")
 
         if submitted is None:
-            return instantiate_metadata(self.metadata_class, self.query_params)
+            descriptor = MetadataDescriptor(metadata_class=self.metadata_class, **self.query_params)
+            return get_registry().instantiate_plugin(descriptor)
 
         # Build inputs from task defaults and parameter overrides
         inputs: dict[str, Any] = {}
@@ -297,7 +298,8 @@ class MetadataDescriptor(BaseModel):
 
         params = {_dash_to_snake(key): value for key, value in inputs.items()}
 
-        return instantiate_metadata(self.metadata_class, params)
+        descriptor = MetadataDescriptor(metadata_class=self.metadata_class, **params)
+        return get_registry().instantiate_plugin(descriptor)
 
     @classmethod
     def from_cwl_hints(cls, cwl_object: Any) -> "MetadataDescriptor":
