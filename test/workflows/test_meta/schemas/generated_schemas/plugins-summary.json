@@ -1,0 +1,148 @@
+{
+  "plugins": {
+    "Admin": {
+      "class": "AdminMetadata",
+      "description": "Administrative metadata with enhanced logging",
+      "metadata_class": "Admin",
+      "module": "dirac_cwl_proto.metadata.plugins.core",
+      "vo": null
+    },
+    "BaseMetadataModel": {
+      "class": "BaseMetadataModel",
+      "description": "Base metadata model",
+      "metadata_class": "BaseMetadataModel",
+      "module": "dirac_cwl_proto.metadata.core",
+      "vo": null
+    },
+    "DataGeneration": {
+      "class": "DataGenerationMetadata",
+      "description": "Data generation for Gaussian fitting workflows",
+      "metadata_class": "DataGeneration",
+      "module": "dirac_cwl_proto.metadata.plugins.gaussian",
+      "vo": null
+    },
+    "GaussianFit": {
+      "class": "GaussianFitMetadata",
+      "description": "Gaussian fitting analysis on data sets",
+      "metadata_class": "GaussianFit",
+      "module": "dirac_cwl_proto.metadata.plugins.gaussian",
+      "vo": null
+    },
+    "LHCb": {
+      "class": "LHCbMetadata",
+      "description": "Base metadata model",
+      "metadata_class": "LHCb",
+      "module": "dirac_cwl_proto.metadata.plugins.lhcb",
+      "vo": "lhcb"
+    },
+    "LHCbAnalysis": {
+      "class": "LHCbAnalysisMetadata",
+      "description": "LHCb analysis metadata for user analysis jobs",
+      "metadata_class": "LHCbAnalysis",
+      "module": "dirac_cwl_proto.metadata.plugins.lhcb",
+      "vo": "lhcb"
+    },
+    "LHCbReconstruction": {
+      "class": "LHCbReconstructionMetadata",
+      "description": "LHCb reconstruction metadata with file management",
+      "metadata_class": "LHCbReconstruction",
+      "module": "dirac_cwl_proto.metadata.plugins.lhcb",
+      "vo": "lhcb"
+    },
+    "LHCbSimulation": {
+      "class": "LHCbSimulationMetadata",
+      "description": "LHCb simulation metadata with dynamic resource allocation",
+      "metadata_class": "LHCbSimulation",
+      "module": "dirac_cwl_proto.metadata.plugins.lhcb",
+      "vo": "lhcb"
+    },
+    "MandelBrotGeneration": {
+      "class": "MandelBrotGenerationMetadata",
+      "description": "Mandelbrot set generation with configurable parameters",
+      "metadata_class": "MandelBrotGeneration",
+      "module": "dirac_cwl_proto.metadata.plugins.mandelbrot",
+      "vo": null
+    },
+    "MandelBrotMerging": {
+      "class": "MandelBrotMergingMetadata",
+      "description": "Mandelbrot image merging and composite generation",
+      "metadata_class": "MandelBrotMerging",
+      "module": "dirac_cwl_proto.metadata.plugins.mandelbrot",
+      "vo": null
+    },
+    "PiGather": {
+      "class": "PiGatherMetadata",
+      "description": "PI result gathering and aggregation metadata",
+      "metadata_class": "PiGather",
+      "module": "dirac_cwl_proto.metadata.plugins.pi",
+      "vo": null
+    },
+    "PiSimulate": {
+      "class": "PiSimulateMetadata",
+      "description": "PI simulation metadata with point-based output management",
+      "metadata_class": "PiSimulate",
+      "module": "dirac_cwl_proto.metadata.plugins.pi",
+      "vo": null
+    },
+    "PiSimulateV2": {
+      "class": "PiSimulateV2Metadata",
+      "description": "Enhanced PI simulation metadata with custom output paths",
+      "metadata_class": "PiSimulateV2",
+      "module": "dirac_cwl_proto.metadata.plugins.pi",
+      "vo": null
+    },
+    "QueryBased": {
+      "class": "QueryBasedMetadata",
+      "description": "Metadata with query-based input resolution",
+      "metadata_class": "QueryBased",
+      "module": "dirac_cwl_proto.metadata.plugins.core",
+      "vo": null
+    },
+    "TaskWithMetadataQueryPlugin": {
+      "class": "TaskWithMetadataQueryPlugin",
+      "description": "Example metadata plugin with query-based input resolution",
+      "metadata_class": "TaskWithMetadataQueryPlugin",
+      "module": "dirac_cwl_proto.metadata.plugins.core",
+      "vo": null
+    },
+    "User": {
+      "class": "UserMetadata",
+      "description": "Basic user metadata with no special processing",
+      "metadata_class": "User",
+      "module": "dirac_cwl_proto.metadata.plugins.core",
+      "vo": null
+    },
+    "lhcb_LHCb": {
+      "class": "LHCbMetadata",
+      "description": "Base metadata model",
+      "metadata_class": "LHCb",
+      "module": "dirac_cwl_proto.metadata.plugins.lhcb",
+      "vo": "lhcb"
+    },
+    "lhcb_LHCbAnalysis": {
+      "class": "LHCbAnalysisMetadata",
+      "description": "LHCb analysis metadata for user analysis jobs",
+      "metadata_class": "LHCbAnalysis",
+      "module": "dirac_cwl_proto.metadata.plugins.lhcb",
+      "vo": "lhcb"
+    },
+    "lhcb_LHCbReconstruction": {
+      "class": "LHCbReconstructionMetadata",
+      "description": "LHCb reconstruction metadata with file management",
+      "metadata_class": "LHCbReconstruction",
+      "module": "dirac_cwl_proto.metadata.plugins.lhcb",
+      "vo": "lhcb"
+    },
+    "lhcb_LHCbSimulation": {
+      "class": "LHCbSimulationMetadata",
+      "description": "LHCb simulation metadata with dynamic resource allocation",
+      "metadata_class": "LHCbSimulation",
+      "module": "dirac_cwl_proto.metadata.plugins.lhcb",
+      "vo": "lhcb"
+    }
+  },
+  "total_plugins": 20,
+  "virtual_organizations": [
+    "lhcb"
+  ]
+}

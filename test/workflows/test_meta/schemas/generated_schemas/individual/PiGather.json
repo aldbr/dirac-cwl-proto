@@ -1,0 +1,30 @@
+{
+  "description": "Base metadata model for DIRAC jobs",
+  "dirac_description": "PI result gathering and aggregation metadata",
+  "dirac_experiment": null,
+  "dirac_metadata_type": "PiGather",
+  "properties": {
+    "input_data": {
+      "anyOf": [
+        {
+          "items": {},
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Input Data"
+    },
+    "num_points": {
+      "title": "Num Points",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "num_points"
+  ],
+  "title": "DIRAC Metadata Model",
+  "type": "object"
+}

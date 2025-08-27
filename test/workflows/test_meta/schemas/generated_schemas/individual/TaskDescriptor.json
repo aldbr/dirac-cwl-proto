@@ -1,0 +1,43 @@
+{
+  "additionalProperties": false,
+  "description": "Descriptor for task execution configuration.",
+  "properties": {
+    "platform": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Target platform (e.g., 'DIRAC', 'DIRACX')",
+      "title": "Platform"
+    },
+    "priority": {
+      "default": 10,
+      "description": "Job priority (higher values = higher priority)",
+      "title": "Priority",
+      "type": "integer"
+    },
+    "sites": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Candidate execution sites",
+      "title": "Sites"
+    }
+  },
+  "title": "TaskDescriptor",
+  "type": "object"
+}

@@ -1,0 +1,9 @@
+{
+  "description": "Base metadata model for DIRAC jobs",
+  "dirac_description": "Basic user metadata with no special processing",
+  "dirac_experiment": null,
+  "dirac_metadata_type": "User",
+  "properties": {},
+  "title": "DIRAC Metadata Model",
+  "type": "object"
+}

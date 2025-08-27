@@ -1,0 +1,34 @@
+{
+  "description": "Base metadata model for DIRAC jobs",
+  "dirac_description": "Data generation for Gaussian fitting workflows",
+  "dirac_experiment": null,
+  "dirac_metadata_type": "DataGenerationModel",
+  "properties": {
+    "output_file_name_1": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Output File Name 1"
+    },
+    "output_file_name_2": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Output File Name 2"
+    }
+  },
+  "title": "DIRAC Metadata Model",
+  "type": "object"
+}

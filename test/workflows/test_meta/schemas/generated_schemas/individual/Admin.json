@@ -1,0 +1,25 @@
+{
+  "description": "Base metadata model for DIRAC jobs",
+  "dirac_description": "Administrative metadata with enhanced logging",
+  "dirac_experiment": null,
+  "dirac_metadata_type": "Admin",
+  "properties": {
+    "admin_level": {
+      "default": 1,
+      "title": "Admin Level",
+      "type": "integer"
+    },
+    "enable_monitoring": {
+      "default": true,
+      "title": "Enable Monitoring",
+      "type": "boolean"
+    },
+    "log_level": {
+      "default": "INFO",
+      "title": "Log Level",
+      "type": "string"
+    }
+  },
+  "title": "DIRAC Metadata Model",
+  "type": "object"
+}
