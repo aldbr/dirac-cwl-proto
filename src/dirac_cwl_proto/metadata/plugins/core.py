@@ -19,7 +19,6 @@ class UserMetadata(BaseMetadataModel):
     processing and is suitable for basic job execution.
     """
 
-    metadata_type: ClassVar[str] = "User"
     description: ClassVar[str] = "Basic user metadata with no special processing"
 
 
@@ -39,7 +38,6 @@ class AdminMetadata(BaseMetadataModel):
         Administrative privilege level. Defaults to 1.
     """
 
-    metadata_type: ClassVar[str] = "Admin"
     description: ClassVar[str] = "Administrative metadata with enhanced logging"
 
     log_level: str = "INFO"
@@ -67,7 +65,6 @@ class QueryBasedMetadata(BaseMetadataModel):
     using metadata parameters.
     """
 
-    metadata_type: ClassVar[str] = "QueryBased"
     description: ClassVar[str] = "Metadata with query-based input resolution"
 
     # Query parameters
@@ -129,7 +126,6 @@ class TaskWithMetadataQueryPlugin(BaseMetadataModel):
     data discovery in the DIRAC metadata system.
     """
 
-    metadata_type: ClassVar[str] = "TaskWithMetadataQuery"
     description: ClassVar[str] = "Example metadata plugin with query-based input resolution"
 
     def get_input_query(self, input_name: str, **kwargs: Any) -> Union[Path, List[Path], None]:

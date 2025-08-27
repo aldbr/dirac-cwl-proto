@@ -64,7 +64,7 @@ class TestLHCbSimulationMetadata:
     def test_creation(self):
         """Test LHCbSimulationMetadata creation."""
         metadata = LHCbSimulationMetadata(task_id=123, run_id=1)
-        assert metadata.metadata_type == "LHCbSimulate"
+        assert metadata.get_metadata_class() == "LHCbSimulation"
         assert "LHCb simulation" in metadata.description
 
     def test_creation_with_simulation_parameters(self):
@@ -178,7 +178,7 @@ class TestLHCbReconstructionMetadata:
     def test_creation(self):
         """Test LHCbReconstructionMetadata creation."""
         metadata = LHCbReconstructionMetadata(task_id=456, run_id=1)
-        assert metadata.metadata_type == "LHCbReconstruct"
+        assert metadata.get_metadata_class() == "LHCbReconstruction"
         assert "LHCb reconstruction" in metadata.description
 
     def test_creation_with_reconstruction_parameters(self):
@@ -239,7 +239,7 @@ class TestLHCbAnalysisMetadata:
     def test_creation(self):
         """Test LHCbAnalysisMetadata creation."""
         metadata = LHCbAnalysisMetadata(task_id=789, run_id=1, analysis_name="TestAnalysis", user_name="testuser")
-        assert metadata.metadata_type == "LHCbAnalysis"
+        assert metadata.get_metadata_class() == "LHCbAnalysis"
         assert "LHCb analysis" in metadata.description
 
     def test_creation_with_analysis_parameters(self):
@@ -326,17 +326,6 @@ class TestLHCbPluginIntegration:
 
         for plugin_class in plugins:
             assert issubclass(plugin_class, LHCbMetadata)
-
-    def test_lhcb_plugins_unique_metadata_types(self):
-        """Test that all LHCb plugins have unique metadata types."""
-        plugins = [
-            LHCbSimulationMetadata(task_id=1, run_id=1),
-            LHCbReconstructionMetadata(task_id=2, run_id=2),
-            LHCbAnalysisMetadata(task_id=3, run_id=3, analysis_name="test", user_name="test"),
-        ]
-
-        metadata_types = [plugin.metadata_type for plugin in plugins]
-        assert len(metadata_types) == len(set(metadata_types))
 
     def test_lhcb_path_consistency(self):
         """Test that all LHCb plugins generate consistent paths."""

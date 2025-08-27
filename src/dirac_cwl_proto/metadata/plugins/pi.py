@@ -25,7 +25,6 @@ class PiSimulateMetadata(BaseMetadataModel):
         Number of points to simulate.
     """
 
-    metadata_type: ClassVar[str] = "PiSimulate"
     description: ClassVar[str] = "PI simulation metadata with point-based output management"
 
     num_points: int
@@ -58,7 +57,6 @@ class PiSimulateV2Metadata(BaseMetadataModel):
         Custom output path for simulation results.
     """
 
-    metadata_type: ClassVar[str] = "PiSimulate_v2"
     description: ClassVar[str] = "Enhanced PI simulation metadata with custom output paths"
 
     num_points: int
@@ -93,7 +91,6 @@ class PiGatherMetadata(BaseMetadataModel):
         List of input data files to process.
     """
 
-    metadata_type: ClassVar[str] = "PiGather"
     description: ClassVar[str] = "PI result gathering and aggregation metadata"
 
     # Query parameters

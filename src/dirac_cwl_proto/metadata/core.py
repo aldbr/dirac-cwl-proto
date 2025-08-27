@@ -133,10 +133,18 @@ class BaseMetadataModel(BaseModel, DataCatalogInterface, MetadataProcessor):
     )
 
     # Class-level metadata for plugin discovery
-    metadata_type: ClassVar[str] = "base"
     vo: ClassVar[Optional[str]] = None
     version: ClassVar[str] = "1.0.0"
     description: ClassVar[str] = "Base metadata model"
+
+    @classmethod
+    def get_metadata_class(cls) -> str:
+        """Auto-derive metadata class identifier from class name."""
+        name = cls.__name__
+        # LHCbSimulationMetadata → LHCbSimulation
+        if name.endswith("Metadata"):
+            name = name[:-8]  # Remove "Metadata" suffix
+        return name
 
     def pre_process(self, job_path: Path, command: List[str]) -> List[str]:
         """Default pre-processing: return command unchanged."""
@@ -158,7 +166,7 @@ class BaseMetadataModel(BaseModel, DataCatalogInterface, MetadataProcessor):
     def get_schema_info(cls) -> Dict[str, Any]:
         """Get schema information for this metadata model."""
         return {
-            "type": cls.metadata_type,
+            "metadata_class": cls.get_metadata_class(),
             "vo": cls.vo,
             "version": cls.version,
             "description": cls.description,

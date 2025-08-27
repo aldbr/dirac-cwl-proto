@@ -43,7 +43,7 @@ class MetadataPluginRegistry:
         if not issubclass(plugin_class, BaseMetadataModel):
             raise ValueError(f"Plugin {plugin_class} must inherit from BaseMetadataModel")
 
-        plugin_key = plugin_class.metadata_type
+        plugin_key = plugin_class.get_metadata_class()
         vo = plugin_class.vo
 
         # Check for conflicts

@@ -4,7 +4,6 @@
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "Administrative metadata with enhanced logging",
       "dirac_vo": null,
-      "dirac_metadata_type": "Admin",
       "properties": {
         "admin_level": {
           "default": 1,
@@ -29,16 +28,14 @@
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "Base metadata model",
       "dirac_vo": null,
-      "dirac_metadata_type": "base",
       "properties": {},
       "title": "DIRAC Metadata Model",
       "type": "object"
     },
-    "DataGenerationModel": {
+    "DataGeneration": {
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "Data generation for Gaussian fitting workflows",
       "dirac_vo": null,
-      "dirac_metadata_type": "DataGenerationModel",
       "properties": {
         "output_file_name_1": {
           "anyOf": [
@@ -72,7 +69,6 @@
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "Gaussian fitting analysis on data sets",
       "dirac_vo": null,
-      "dirac_metadata_type": "GaussianFitModel",
       "properties": {
         "data1": {
           "anyOf": [
@@ -299,7 +295,6 @@
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "LHCb analysis metadata for user analysis jobs",
       "dirac_vo": "lhcb",
-      "dirac_metadata_type": "LHCbAnalysis",
       "properties": {
         "analysis_name": {
           "description": "Name of the analysis",
@@ -373,11 +368,10 @@
       "title": "DIRAC Metadata Model",
       "type": "object"
     },
-    "LHCbReconstruct": {
+    "LHCbReconstruction": {
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "LHCb reconstruction metadata with file management",
       "dirac_vo": "lhcb",
-      "dirac_metadata_type": "LHCbReconstruct",
       "properties": {
         "input_data_type": {
           "default": "RAW",
@@ -422,11 +416,10 @@
       "title": "DIRAC Metadata Model",
       "type": "object"
     },
-    "LHCbSimulate": {
+    "LHCbSimulation": {
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "LHCb simulation metadata with dynamic resource allocation",
       "dirac_vo": "lhcb",
-      "dirac_metadata_type": "LHCbSimulate",
       "properties": {
         "beam_energy": {
           "anyOf": [
@@ -495,7 +488,6 @@
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "Mandelbrot set generation with configurable parameters",
       "dirac_vo": null,
-      "dirac_metadata_type": "MandelBrotGeneration",
       "properties": {
         "height": {
           "title": "Height",
@@ -552,7 +544,6 @@
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "Mandelbrot image merging and composite generation",
       "dirac_vo": null,
-      "dirac_metadata_type": "MandelBrotMerging",
       "properties": {
         "data": {
           "anyOf": [
@@ -673,7 +664,6 @@
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "PI result gathering and aggregation metadata",
       "dirac_vo": null,
-      "dirac_metadata_type": "PiGather",
       "properties": {
         "input_data": {
           "anyOf": [
@@ -703,7 +693,6 @@
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "PI simulation metadata with point-based output management",
       "dirac_vo": null,
-      "dirac_metadata_type": "PiSimulate",
       "properties": {
         "num_points": {
           "title": "Num Points",
@@ -716,11 +705,10 @@
       "title": "DIRAC Metadata Model",
       "type": "object"
     },
-    "PiSimulate_v2": {
+    "PiSimulateV2": {
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "Enhanced PI simulation metadata with custom output paths",
       "dirac_vo": null,
-      "dirac_metadata_type": "PiSimulate_v2",
       "properties": {
         "num_points": {
           "title": "Num Points",
@@ -870,7 +858,6 @@
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "Metadata with query-based input resolution",
       "dirac_vo": null,
-      "dirac_metadata_type": "QueryBased",
       "properties": {
         "campaign": {
           "anyOf": [
@@ -1010,11 +997,10 @@
       "title": "TaskDescriptor",
       "type": "object"
     },
-    "TaskWithMetadataQuery": {
+    "TaskWithMetadataQueryPlugin": {
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "Example metadata plugin with query-based input resolution",
       "dirac_vo": null,
-      "dirac_metadata_type": "TaskWithMetadataQuery",
       "properties": {},
       "title": "DIRAC Metadata Model",
       "type": "object"
@@ -1223,7 +1209,6 @@
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "Basic user metadata with no special processing",
       "dirac_vo": null,
-      "dirac_metadata_type": "User",
       "properties": {},
       "title": "DIRAC Metadata Model",
       "type": "object"
@@ -1232,7 +1217,6 @@
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "Base metadata model",
       "dirac_vo": "lhcb",
-      "dirac_metadata_type": "base",
       "properties": {
         "run_id": {
           "description": "LHCb run identifier",
@@ -1256,7 +1240,6 @@
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "LHCb analysis metadata for user analysis jobs",
       "dirac_vo": "lhcb",
-      "dirac_metadata_type": "LHCbAnalysis",
       "properties": {
         "analysis_name": {
           "description": "Name of the analysis",
@@ -1330,11 +1313,10 @@
       "title": "DIRAC Metadata Model",
       "type": "object"
     },
-    "lhcb_LHCbReconstruct": {
+    "lhcb_LHCbReconstruction": {
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "LHCb reconstruction metadata with file management",
       "dirac_vo": "lhcb",
-      "dirac_metadata_type": "LHCbReconstruct",
       "properties": {
         "input_data_type": {
           "default": "RAW",
@@ -1379,11 +1361,10 @@
       "title": "DIRAC Metadata Model",
       "type": "object"
     },
-    "lhcb_LHCbSimulate": {
+    "lhcb_LHCbSimulation": {
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "LHCb simulation metadata with dynamic resource allocation",
       "dirac_vo": "lhcb",
-      "dirac_metadata_type": "LHCbSimulate",
       "properties": {
         "beam_energy": {
           "anyOf": [
@@ -1452,7 +1433,6 @@
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "Base metadata model",
       "dirac_vo": "lhcb",
-      "dirac_metadata_type": "base",
       "properties": {
         "run_id": {
           "description": "LHCb run identifier",

@@ -1,9 +1,9 @@
 simulate_step1:
   metadata:
-    metadata_class: PiSimulate_v2
+    metadata_class: PiSimulateV2
 simulate_step2:
   metadata:
-    metadata_class: PiSimulate_v2
+    metadata_class: PiSimulateV2
 gathering:
   metadata:
     metadata_class: PiGather

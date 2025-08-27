@@ -41,7 +41,6 @@ class MandelBrotGenerationMetadata(BaseMetadataModel):
         Name for output files.
     """
 
-    metadata_type: ClassVar[str] = "MandelBrotGeneration"
     description: ClassVar[str] = "Mandelbrot set generation with configurable parameters"
 
     precision: float
@@ -99,7 +98,6 @@ class MandelBrotMergingMetadata(BaseMetadataModel):
         List of input data files to merge.
     """
 
-    metadata_type: ClassVar[str] = "MandelBrotMerging"
     description: ClassVar[str] = "Mandelbrot image merging and composite generation"
 
     # Query parameters

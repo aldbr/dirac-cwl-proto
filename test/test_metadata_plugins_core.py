@@ -22,7 +22,7 @@ class TestUserMetadata:
     def test_creation(self):
         """Test UserMetadata creation."""
         metadata = UserMetadata()
-        assert metadata.metadata_type == "User"
+        assert metadata.get_metadata_class() == "User"
         assert "basic user metadata" in metadata.description.lower()
 
     def test_default_behavior(self):
@@ -66,7 +66,7 @@ class TestAdminMetadata:
     def test_creation(self):
         """Test AdminMetadata creation."""
         metadata = AdminMetadata()
-        assert metadata.metadata_type == "Admin"
+        assert metadata.get_metadata_class() == "Admin"
         assert metadata.log_level == "INFO"
         assert metadata.enable_monitoring is True
         assert metadata.admin_level == 1
@@ -129,7 +129,7 @@ class TestQueryBasedMetadata:
     def test_creation(self):
         """Test QueryBasedMetadata creation."""
         metadata = QueryBasedMetadata()
-        assert metadata.metadata_type == "QueryBased"
+        assert metadata.get_metadata_class() == "QueryBased"
         assert metadata.query_root is None
         assert metadata.site is None
         assert metadata.campaign is None
@@ -254,15 +254,6 @@ class TestQueryBasedMetadata:
 
 class TestPluginIntegration:
     """Test integration between different core plugins."""
-
-    def test_all_plugins_have_metadata_type(self):
-        """Test that all core plugins have metadata_type set."""
-        plugins = [UserMetadata, AdminMetadata, QueryBasedMetadata]
-
-        for plugin_class in plugins:
-            assert hasattr(plugin_class, "metadata_type")
-            assert isinstance(plugin_class.metadata_type, str)
-            assert len(plugin_class.metadata_type) > 0
 
     def test_all_plugins_have_description(self):
         """Test that all core plugins have description set."""

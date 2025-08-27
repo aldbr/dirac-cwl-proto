@@ -1,8 +1,8 @@
 simulation:
   metadata:
-    metadata_class: LHCbSimulate
+    metadata_class: LHCbSimulation
 reconstruction:
   metadata:
-    metadata_class: LHCbReconstruct
+    metadata_class: LHCbReconstruction
     group_size:
       files: 1

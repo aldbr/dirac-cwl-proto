@@ -49,12 +49,12 @@ class TestSystemIntegration:
         for plugin_type, params in test_cases:
             # Test direct instantiation
             instance = instantiate_metadata(plugin_type, params)
-            assert instance.metadata_type == plugin_type
+            assert instance.get_metadata_class() == plugin_type
 
             # Test via descriptor
             descriptor = MetadataDescriptor(metadata_class=plugin_type, query_params=params)
             runtime = descriptor.to_runtime()
-            assert runtime.metadata_type == plugin_type
+            assert runtime.get_metadata_class() == plugin_type
 
     def test_vo_plugin_support(self):
         """Test VO-specific plugin functionality."""
@@ -77,13 +77,13 @@ class TestSystemIntegration:
 
         # Convert to runtime
         runtime_metadata = metadata_descriptor.to_runtime()
-        assert runtime_metadata.metadata_type == "QueryBased"  # Test that CWL parameters are available
+        assert runtime_metadata.get_metadata_class() == "QueryBased"  # Test that CWL parameters are available
         # (Note: exact parameter extraction depends on implementation)
 
     def test_legacy_compatibility_integration(self):
         """Test that legacy metadata models integrate correctly."""
         # Test that legacy models are still accessible
-        legacy_plugins = ["PiSimulate", "PiGather", "LHCbSimulate", "MandelBrotGeneration", "GaussianFitModel"]
+        legacy_plugins = ["PiSimulate", "PiGather", "LHCbSimulation", "MandelBrotGeneration", "GaussianFit"]
 
         registered = list_registered()
         for plugin in legacy_plugins:
@@ -153,7 +153,7 @@ class TestRealWorldScenarios:
         """Test an LHCb simulation workflow scenario."""
         # Test if LHCb simulation plugin is available
         lhcb_descriptor = MetadataDescriptor(
-            metadata_class="LHCbSimulate",
+            metadata_class="LHCbSimulation",
             query_params={
                 "task_id": 123,
                 "run_id": 2,
@@ -164,7 +164,7 @@ class TestRealWorldScenarios:
         lhcb_runtime = lhcb_descriptor.to_runtime()
 
         # Test LHCb-specific functionality
-        assert lhcb_runtime.metadata_type == "LHCbSimulate"
+        assert lhcb_runtime.get_metadata_class() == "LHCbSimulation"
 
         # Test path generation
         input_path = lhcb_runtime.get_input_query("gen_file")
@@ -225,8 +225,8 @@ class TestErrorHandling:
     def test_missing_required_parameters(self):
         """Test handling of missing required parameters."""
         # Some plugins might require specific parameters
-        with pytest.raises(ValueError, match="Failed to instantiate plugin 'LHCbSimulate'"):
-            descriptor = MetadataDescriptor(metadata_class="LHCbSimulate")
+        with pytest.raises(ValueError, match="Failed to instantiate plugin 'LHCbSimulation'"):
+            descriptor = MetadataDescriptor(metadata_class="LHCbSimulation")
             descriptor.to_runtime()
 
     def test_plugin_registration_conflicts(self):
@@ -234,7 +234,6 @@ class TestErrorHandling:
 
         # Create a test plugin
         class ConflictTestPlugin(BaseMetadataModel):
-            metadata_type = "ConflictTest"
             description = "Test plugin for conflict testing"
 
         # Register it

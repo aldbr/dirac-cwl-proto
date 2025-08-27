@@ -82,7 +82,7 @@ class TestMetadataDescriptor:
 
         runtime = descriptor.to_runtime()
 
-        assert runtime.metadata_type == "Admin"
+        assert runtime.get_metadata_class() == "Admin"
         assert runtime.admin_level == 7
 
     def test_to_runtime_with_submission(self):
@@ -101,7 +101,7 @@ class TestMetadataDescriptor:
 
         runtime = descriptor.to_runtime(mock_submission)
 
-        assert runtime.metadata_type == "QueryBased"
+        assert runtime.get_metadata_class() == "QueryBased"
         assert runtime.campaign == "Run3"
 
     def test_dash_to_snake_case_conversion(self):
@@ -182,7 +182,7 @@ class TestSubmissionModelsIntegration:
 
         for descriptor in descriptors:
             runtime = descriptor.to_runtime()
-            assert runtime.metadata_type == descriptor.metadata_class
+            assert runtime.get_metadata_class() == descriptor.metadata_class
 
     def test_task_description_with_different_metadata_types(self):
         """Test TaskDescriptionModel with different configurations."""
@@ -205,7 +205,7 @@ class TestSubmissionModelsIntegration:
     def test_backward_compatibility_with_legacy_models(self):
         """Test that enhanced models work with legacy metadata."""
         # Test that we can create descriptors for legacy metadata classes
-        legacy_types = ["PiSimulate", "LHCbSimulate", "MandelBrotGeneration"]
+        legacy_types = ["PiSimulate", "LHCbSimulation", "MandelBrotGeneration"]
 
         for legacy_type in legacy_types:
             try:
@@ -240,4 +240,4 @@ class TestSubmissionModelsIntegration:
         runtime = descriptor.to_runtime()
 
         # Should use the QueryBased type
-        assert runtime.metadata_type == "QueryBased"
+        assert runtime.get_metadata_class() == "QueryBased"

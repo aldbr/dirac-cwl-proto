@@ -1,4 +1,4 @@
-metadata_class: LHCbReconstruct
+metadata_class: LHCbReconstruction
 group_size:
   files: 3
 query_params:

@@ -45,7 +45,6 @@ class LHCbSimulationMetadata(LHCbMetadata):
     including dynamic event number calculation based on available resources.
     """
 
-    metadata_type: ClassVar[str] = "LHCbSimulate"
     description: ClassVar[str] = "LHCb simulation metadata with dynamic resource allocation"
 
     number_of_events: int = Field(default=0, description="Number of events to simulate")
@@ -189,7 +188,6 @@ class LHCbReconstructionMetadata(LHCbMetadata):
     management and output organization.
     """
 
-    metadata_type: ClassVar[str] = "LHCbReconstruct"
     description: ClassVar[str] = "LHCb reconstruction metadata with file management"
 
     # Reconstruction-specific parameters
@@ -277,7 +275,6 @@ class LHCbAnalysisMetadata(LHCbMetadata):
     handling and analysis-specific configurations.
     """
 
-    metadata_type: ClassVar[str] = "LHCbAnalysis"
     description: ClassVar[str] = "LHCb analysis metadata for user analysis jobs"
 
     # Analysis-specific parameters

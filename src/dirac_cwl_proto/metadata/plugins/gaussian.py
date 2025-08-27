@@ -27,7 +27,6 @@ class DataGenerationMetadata(BaseMetadataModel):
         Name of the second output file.
     """
 
-    metadata_type: ClassVar[str] = "DataGenerationModel"
     description: ClassVar[str] = "Data generation for Gaussian fitting workflows"
 
     output_file_name_1: Optional[str] = None
@@ -86,7 +85,6 @@ class GaussianFitMetadata(BaseMetadataModel):
         Second set of input data files.
     """
 
-    metadata_type: ClassVar[str] = "GaussianFitModel"
     description: ClassVar[str] = "Gaussian fitting analysis on data sets"
 
     # Input data
