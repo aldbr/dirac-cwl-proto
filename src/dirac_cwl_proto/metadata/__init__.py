@@ -1,7 +1,7 @@
 """Enhanced metadata registry for DIRAC CWL integration.
 
 This module provides a comprehensive plugin system for metadata models,
-supporting experiment-specific extensions and automatic discovery.
+supporting virtual organization-specific extensions and automatic discovery.
 
 The module maintains backward compatibility with the original API while
 providing enhanced functionality through the new plugin system.

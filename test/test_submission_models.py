@@ -167,15 +167,6 @@ class TestTaskDescriptionModel:
         assert model.priority == 8
         assert model.sites == ["CERN", "GRIDKA"]
 
-    def test_metadata_runtime_conversion(self):
-        """Test that metadata can be converted to runtime instances."""
-        metadata = MetadataDescriptor(type="Admin", query_params={"admin_level": 6})
-
-        runtime_metadata = metadata.to_runtime()
-
-        assert runtime_metadata.metadata_type == "Admin"
-        assert runtime_metadata.admin_level == 6
-
 
 class TestSubmissionModelsIntegration:
     """Test integration between submission models and metadata system."""

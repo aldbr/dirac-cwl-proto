@@ -27,7 +27,7 @@ class LHCbMetadata(BaseMetadataModel):
     including standard path structures and experiment-specific validation.
     """
 
-    experiment: ClassVar[str] = "lhcb"
+    vo: ClassVar[str] = "lhcb"
 
     # LHCb-specific fields
     task_id: int = Field(description="LHCb task identifier")

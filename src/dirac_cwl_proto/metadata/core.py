@@ -134,7 +134,7 @@ class BaseMetadataModel(BaseModel, DataCatalogInterface, MetadataProcessor):
 
     # Class-level metadata for plugin discovery
     metadata_type: ClassVar[str] = "base"
-    experiment: ClassVar[Optional[str]] = None
+    vo: ClassVar[Optional[str]] = None
     version: ClassVar[str] = "1.0.0"
     description: ClassVar[str] = "Base metadata model"
 
@@ -159,7 +159,7 @@ class BaseMetadataModel(BaseModel, DataCatalogInterface, MetadataProcessor):
         """Get schema information for this metadata model."""
         return {
             "type": cls.metadata_type,
-            "experiment": cls.experiment,
+            "vo": cls.vo,
             "version": cls.version,
             "description": cls.description,
             "schema": cls.model_json_schema(),
@@ -177,7 +177,7 @@ class MetadataDescriptor(BaseModel):
     """
 
     model_config = ConfigDict(
-        extra="allow",  # Allow experiment-specific fields
+        extra="allow",  # Allow vo-specific fields
         validate_assignment=True,
         json_schema_extra={
             "title": "DIRAC Metadata Descriptor",
@@ -187,12 +187,11 @@ class MetadataDescriptor(BaseModel):
 
     metadata_class: str = Field(default="User", description="Registry key for the metadata implementation class")
 
-    experiment: Optional[str] = Field(default=None, description="Experiment namespace (e.g., 'lhcb', 'ctao')")
+    vo: Optional[str] = Field(default=None, description="Virtual Organization namespace (e.g., 'lhcb', 'ctao')")
 
     version: Optional[str] = Field(default=None, description="Metadata model version")
 
     # Enhanced fields for submission functionality
-    type: str = Field(default="User", description="Legacy field for backward compatibility (alias for metadata_class)")
     query_params: Dict[str, Any] = Field(default_factory=dict, description="Additional parameters for metadata plugins")
 
     def __init__(self, **data):
@@ -214,7 +213,7 @@ class MetadataDescriptor(BaseModel):
         if update is None:
             return self.model_copy(deep=deep)
 
-        # Handle nested dictionary merging for experiment-specific fields
+        # Handle nested dictionary merging for vo-specific fields
         merged_update = {}
         for key, value in update.items():
             if hasattr(self, key) and isinstance(getattr(self, key), dict) and isinstance(value, dict):

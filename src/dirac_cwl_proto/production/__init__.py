@@ -11,6 +11,7 @@ from cwl_utils.pack import pack
 from cwl_utils.parser import load_document
 from cwl_utils.parser.cwl_v1_2 import (
     CommandLineTool,
+    ExpressionTool,
     Workflow,
     WorkflowInputParameter,
     WorkflowStep,
@@ -172,7 +173,7 @@ def _get_transformations(
 
 def _create_subworkflow(
     wf_step: WorkflowStep, cwlVersion: str, inputs: List[WorkflowInputParameter]
-) -> Workflow | CommandLineTool:
+) -> Workflow | CommandLineTool | ExpressionTool:
     """Create a CWL file for a given step.
 
     If the step is a workflow, a new workflow is created.

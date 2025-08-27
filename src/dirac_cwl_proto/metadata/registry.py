@@ -1,7 +1,7 @@
 """Enhanced plugin registry for metadata models.
 
 This module provides a sophisticated plugin discovery and registration system
-for DIRAC metadata models, supporting experiment-specific extensions and
+for DIRAC metadata models, supporting virtual organization-specific extensions and
 automatic discovery.
 """
 
@@ -22,7 +22,7 @@ class MetadataPluginRegistry:
 
     def __init__(self) -> None:
         self._plugins: Dict[str, Type[BaseMetadataModel]] = {}
-        self._experiment_plugins: Dict[str, Dict[str, Type[BaseMetadataModel]]] = {}
+        self._vo_plugins: Dict[str, Dict[str, Type[BaseMetadataModel]]] = {}
         self._plugin_info: Dict[str, Dict[str, Any]] = {}
 
     def register_plugin(self, plugin_class: Type[BaseMetadataModel], override: bool = False) -> None:
@@ -44,7 +44,7 @@ class MetadataPluginRegistry:
             raise ValueError(f"Plugin {plugin_class} must inherit from BaseMetadataModel")
 
         plugin_key = plugin_class.metadata_type
-        experiment = plugin_class.experiment
+        vo = plugin_class.vo
 
         # Check for conflicts
         if plugin_key in self._plugins and not override:
@@ -58,37 +58,37 @@ class MetadataPluginRegistry:
         self._plugins[plugin_key] = plugin_class
         self._plugin_info[plugin_key] = plugin_class.get_schema_info()
 
-        # Register by experiment if specified
-        if experiment:
-            if experiment not in self._experiment_plugins:
-                self._experiment_plugins[experiment] = {}
-            self._experiment_plugins[experiment][plugin_key] = plugin_class
+        # Register by VO if specified
+        if vo:
+            if vo not in self._vo_plugins:
+                self._vo_plugins[vo] = {}
+            self._vo_plugins[vo][plugin_key] = plugin_class
 
         logger.info(
             f"Registered metadata plugin '{plugin_key}' "
             f"from {plugin_class.__module__}.{plugin_class.__name__}"
-            f"{f' (experiment: {experiment})' if experiment else ''}"
+            f"{f' (VO: {vo})' if vo else ''}"
         )
 
-    def get_plugin(self, plugin_key: str, experiment: Optional[str] = None) -> Optional[Type[BaseMetadataModel]]:
+    def get_plugin(self, plugin_key: str, vo: Optional[str] = None) -> Optional[Type[BaseMetadataModel]]:
         """Get a registered plugin.
 
         Parameters
         ----------
         plugin_key : str
             The plugin identifier.
-        experiment : Optional[str], optional
-            Experiment namespace to search first, by default None.
+        vo : Optional[str], optional
+            Virtual Organization namespace to search first, by default None.
 
         Returns
         -------
         Optional[Type[BaseMetadataModel]]
             The plugin class or None if not found.
         """
-        # Try experiment-specific first if specified
-        if experiment and experiment in self._experiment_plugins:
-            if plugin_key in self._experiment_plugins[experiment]:
-                return self._experiment_plugins[experiment][plugin_key]
+        # Try VO-specific first if specified
+        if vo and vo in self._vo_plugins:
+            if plugin_key in self._vo_plugins[vo]:
+                return self._vo_plugins[vo][plugin_key]
 
         # Fall back to global registry
         return self._plugins.get(plugin_key)
@@ -115,18 +115,18 @@ class MetadataPluginRegistry:
         ValueError
             If plugin instantiation fails.
         """
-        plugin_class = self.get_plugin(descriptor.metadata_class, descriptor.experiment)
+        plugin_class = self.get_plugin(descriptor.metadata_class, descriptor.vo)
 
         if plugin_class is None:
-            available = self.list_plugins(descriptor.experiment)
+            available = self.list_plugins(descriptor.vo)
             raise KeyError(
                 f"Unknown metadata plugin: '{descriptor.metadata_class}'"
-                f"{f' for experiment {descriptor.experiment}' if descriptor.experiment else ''}. "
+                f"{f' for VO {descriptor.vo}' if descriptor.vo else ''}. "
                 f"Available: {available}"
             )
 
         # Extract plugin parameters from descriptor
-        plugin_params = descriptor.model_dump(exclude={"metadata_class", "experiment", "version"})
+        plugin_params = descriptor.model_dump(exclude={"metadata_class", "vo", "version"})
         plugin_params.update(kwargs)
 
         try:
@@ -134,26 +134,26 @@ class MetadataPluginRegistry:
         except Exception as e:
             raise ValueError(f"Failed to instantiate plugin '{descriptor.metadata_class}': {e}") from e
 
-    def list_plugins(self, experiment: Optional[str] = None) -> List[str]:
+    def list_plugins(self, vo: Optional[str] = None) -> List[str]:
         """List available plugins.
 
         Parameters
         ----------
-        experiment : Optional[str], optional
-            Filter by experiment, by default None.
+        vo : Optional[str], optional
+            Filter by Virtual Organization, by default None.
 
         Returns
         -------
         List[str]
             List of available plugin keys.
         """
-        if experiment and experiment in self._experiment_plugins:
-            return list(self._experiment_plugins[experiment].keys())
+        if vo and vo in self._vo_plugins:
+            return list(self._vo_plugins[vo].keys())
         return list(self._plugins.keys())
 
-    def list_experiments(self) -> List[str]:
-        """List available experiments."""
-        return list(self._experiment_plugins.keys())
+    def list_virtual_organizations(self) -> List[str]:
+        """List available Virtual Organizations."""
+        return list(self._vo_plugins.keys())
 
     def get_plugin_info(self, plugin_key: str) -> Optional[Dict[str, Any]]:
         """Get detailed information about a plugin."""
@@ -232,16 +232,16 @@ class MetadataPluginRegistry:
         """
         errors = []
 
-        plugin_class = self.get_plugin(descriptor.metadata_class, descriptor.experiment)
+        plugin_class = self.get_plugin(descriptor.metadata_class, descriptor.vo)
 
         if plugin_class is None:
-            available = self.list_plugins(descriptor.experiment)
+            available = self.list_plugins(descriptor.vo)
             errors.append(f"Unknown metadata plugin: '{descriptor.metadata_class}'. " f"Available: {available}")
             return errors
 
         # Validate descriptor against plugin schema
         try:
-            plugin_params = descriptor.model_dump(exclude={"metadata_class", "experiment", "version"})
+            plugin_params = descriptor.model_dump(exclude={"metadata_class", "vo", "version"})
             plugin_class.model_validate(plugin_params)
         except Exception as e:
             errors.append(f"Plugin validation failed: {e}")
@@ -264,9 +264,9 @@ def get_metadata_class(name: str) -> Optional[Type[BaseMetadataModel]]:
     return _registry.get_plugin(name)
 
 
-def instantiate_metadata(name: str, params: Dict[str, Any], experiment: str | None = None) -> BaseMetadataModel:
+def instantiate_metadata(name: str, params: Dict[str, Any], vo: str | None = None) -> BaseMetadataModel:
     """Instantiate metadata from name and params (backward compatibility)."""
-    descriptor = MetadataDescriptor(metadata_class=name, experiment=experiment, **params)
+    descriptor = MetadataDescriptor(metadata_class=name, vo=vo, **params)
     return _registry.instantiate_plugin(descriptor)
 
 
