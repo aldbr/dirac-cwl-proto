@@ -21,13 +21,13 @@ class TestMetadataDescriptor:
     def test_creation(self):
         """Test MetadataDescriptor creation."""
         descriptor = MetadataDescriptor()
-        assert descriptor.type == "User"
+        assert descriptor.metadata_class == "User"
         assert descriptor.query_params == {}
 
     def test_creation_with_parameters(self):
         """Test creation with custom parameters."""
-        descriptor = MetadataDescriptor(type="Admin", query_params={"admin_level": 5, "log_level": "DEBUG"})
-        assert descriptor.type == "Admin"
+        descriptor = MetadataDescriptor(metadata_class="Admin", query_params={"admin_level": 5, "log_level": "DEBUG"})
+        assert descriptor.metadata_class == "Admin"
         assert descriptor.query_params["admin_level"] == 5
         assert descriptor.query_params["log_level"] == "DEBUG"
 
@@ -41,21 +41,21 @@ class TestMetadataDescriptor:
     def test_type_validation(self):
         """Test type validation during runtime instantiation."""
         # Valid type (should be registered by default)
-        descriptor = MetadataDescriptor(type="User")
-        assert descriptor.type == "User"
+        descriptor = MetadataDescriptor(metadata_class="User")
+        assert descriptor.metadata_class == "User"
 
         # Invalid type should raise error during runtime instantiation
-        descriptor_with_invalid_type = MetadataDescriptor(type="NonExistentType")
+        descriptor_with_invalid_type = MetadataDescriptor(metadata_class="NonExistentType")
         with pytest.raises(KeyError, match="Unknown metadata plugin"):
             descriptor_with_invalid_type.to_runtime()
 
     def test_model_copy(self):
         """Test model_copy functionality."""
-        original = MetadataDescriptor(type="Admin", query_params={"admin_level": 3})
+        original = MetadataDescriptor(metadata_class="Admin", query_params={"admin_level": 3})
 
         # Test basic copy
         copied = original.model_copy()
-        assert copied.type == original.type
+        assert copied.metadata_class == original.metadata_class
         assert copied.query_params == original.query_params
         assert copied is not original
         # Note: Pydantic may optimize dict sharing for immutable content
@@ -63,22 +63,22 @@ class TestMetadataDescriptor:
 
     def test_model_copy_with_update(self):
         """Test model_copy with updates."""
-        original = MetadataDescriptor(type="Admin", query_params={"admin_level": 3, "log_level": "INFO"})
+        original = MetadataDescriptor(metadata_class="Admin", query_params={"admin_level": 3, "log_level": "INFO"})
 
         # Test copy with type update
-        copied = original.model_copy(update={"type": "User"})
-        assert copied.type == "User"
+        copied = original.model_copy(update={"metadata_class": "User"})
+        assert copied.metadata_class == "User"
         assert copied.query_params == original.query_params
 
         # Test copy with query_params update
         copied = original.model_copy(update={"query_params": {"admin_level": 5}})
-        assert copied.type == original.type
+        assert copied.metadata_class == original.metadata_class
         assert copied.query_params["admin_level"] == 5
         assert copied.query_params["log_level"] == "INFO"  # Should merge
 
     def test_to_runtime_no_submission(self):
         """Test to_runtime without submission context."""
-        descriptor = MetadataDescriptor(type="Admin", query_params={"admin_level": 7})
+        descriptor = MetadataDescriptor(metadata_class="Admin", query_params={"admin_level": 7})
 
         runtime = descriptor.to_runtime()
 
@@ -87,7 +87,7 @@ class TestMetadataDescriptor:
 
     def test_to_runtime_with_submission(self):
         """Test to_runtime with submission context."""
-        descriptor = MetadataDescriptor(type="QueryBased", query_params={"campaign": "Run3"})
+        descriptor = MetadataDescriptor(metadata_class="QueryBased", query_params={"campaign": "Run3"})
 
         # Mock submission model
         mock_submission = Mock()
@@ -107,7 +107,7 @@ class TestMetadataDescriptor:
     def test_dash_to_snake_case_conversion(self):
         """Test dash-case to snake_case parameter conversion."""
         descriptor = MetadataDescriptor(
-            type="QueryBased",
+            metadata_class="QueryBased",
             query_params={"query_root": "/data", "data_type": "AOD"},  # Already in snake_case
         )
 
@@ -131,11 +131,11 @@ class TestMetadataDescriptor:
 
     def test_serialization_compatibility(self):
         """Test that serialization works correctly."""
-        descriptor = MetadataDescriptor(type="Admin", query_params={"admin_level": 5})
+        descriptor = MetadataDescriptor(metadata_class="Admin", query_params={"admin_level": 5})
 
         # Test dict conversion
         data = descriptor.model_dump()
-        assert data["type"] == "Admin"
+        assert data["metadata_class"] == "Admin"
         assert data["query_params"]["admin_level"] == 5
 
         # Test JSON schema
@@ -175,14 +175,14 @@ class TestSubmissionModelsIntegration:
         """Test that MetadataDescriptor integrates with the registry."""
         # Create descriptor for each core plugin type
         descriptors = [
-            MetadataDescriptor(type="User"),
-            MetadataDescriptor(type="Admin", query_params={"admin_level": 3}),
-            MetadataDescriptor(type="QueryBased", query_params={"campaign": "Test"}),
+            MetadataDescriptor(metadata_class="User"),
+            MetadataDescriptor(metadata_class="Admin", query_params={"admin_level": 3}),
+            MetadataDescriptor(metadata_class="QueryBased", query_params={"campaign": "Test"}),
         ]
 
         for descriptor in descriptors:
             runtime = descriptor.to_runtime()
-            assert runtime.metadata_type == descriptor.type
+            assert runtime.metadata_type == descriptor.metadata_class
 
     def test_task_description_with_different_metadata_types(self):
         """Test TaskDescriptionModel with different configurations."""
@@ -204,12 +204,12 @@ class TestSubmissionModelsIntegration:
 
     def test_backward_compatibility_with_legacy_models(self):
         """Test that enhanced models work with legacy metadata."""
-        # Test that we can create descriptors for legacy metadata types
+        # Test that we can create descriptors for legacy metadata classes
         legacy_types = ["PiSimulate", "LHCbSimulate", "MandelBrotGeneration"]
 
         for legacy_type in legacy_types:
             try:
-                descriptor = MetadataDescriptor(type=legacy_type)
+                descriptor = MetadataDescriptor(metadata_class=legacy_type)
                 # If creation succeeds, test runtime conversion
                 # (may fail due to missing parameters, which is expected)
                 descriptor.to_runtime()
@@ -234,7 +234,9 @@ class TestSubmissionModelsIntegration:
     def test_cwl_hints_integration(self):
         """Test integration with CWL hints extraction."""
         # Create an enhanced descriptor directly
-        descriptor = MetadataDescriptor(type="QueryBased", query_params={"campaign": "Run3", "data_type": "AOD"})
+        descriptor = MetadataDescriptor(
+            metadata_class="QueryBased", query_params={"campaign": "Run3", "data_type": "AOD"}
+        )
         runtime = descriptor.to_runtime()
 
         # Should use the QueryBased type

@@ -24,7 +24,7 @@ class TestLHCbMetadata:
         metadata = LHCbMetadata(task_id=123, run_id=456)
         assert metadata.task_id == 123
         assert metadata.run_id == 456
-        assert metadata.experiment == "lhcb"
+        assert metadata.vo == "lhcb"
 
     def test_creation_with_parameters(self):
         """Test LHCbMetadata creation with custom parameters."""
@@ -312,13 +312,13 @@ class TestLHCbAnalysisMetadata:
 class TestLHCbPluginIntegration:
     """Test integration between LHCb plugins."""
 
-    def test_all_lhcb_plugins_have_experiment_namespace(self):
-        """Test that all LHCb plugins have the correct experiment namespace."""
+    def test_all_lhcb_plugins_have_vo_namespace(self):
+        """Test that all LHCb plugins have the correct VO namespace."""
         plugins = [LHCbMetadata, LHCbSimulationMetadata, LHCbReconstructionMetadata, LHCbAnalysisMetadata]
 
         for plugin_class in plugins:
-            assert hasattr(plugin_class, "experiment")
-            assert plugin_class.experiment == "lhcb"
+            assert hasattr(plugin_class, "vo")
+            assert plugin_class.vo == "lhcb"
 
     def test_lhcb_plugins_inheritance(self):
         """Test that all LHCb plugins inherit from LHCbMetadata."""

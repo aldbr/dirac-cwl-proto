@@ -165,16 +165,14 @@ class TestMetadataDescriptor:
         """Test MetadataDescriptor creation."""
         descriptor = MetadataDescriptor(metadata_class="User")
         assert descriptor.metadata_class == "User"
-        assert descriptor.experiment is None
+        assert descriptor.vo is None
         assert descriptor.version is None
 
     def test_creation_with_all_fields(self):
         """Test MetadataDescriptor creation with all fields."""
-        descriptor = MetadataDescriptor(
-            metadata_class="LHCbSimulation", experiment="lhcb", version="2.0", custom_param="value"
-        )
+        descriptor = MetadataDescriptor(metadata_class="LHCbSimulation", vo="lhcb", version="2.0", custom_param="value")
         assert descriptor.metadata_class == "LHCbSimulation"
-        assert descriptor.experiment == "lhcb"
+        assert descriptor.vo == "lhcb"
         assert descriptor.version == "2.0"
         assert descriptor.custom_param == "value"
 
@@ -183,14 +181,14 @@ class TestMetadataDescriptor:
         # Mock CWL document
         mock_cwl = Mock()
         mock_cwl.hints = [
-            {"class": "dirac:metadata", "metadata_class": "QueryBased", "experiment": "lhcb", "campaign": "Run3"},
+            {"class": "dirac:metadata", "metadata_class": "QueryBased", "vo": "lhcb", "campaign": "Run3"},
             {"class": "ResourceRequirement", "coresMin": 2},
         ]
 
         descriptor = MetadataDescriptor.from_cwl_hints(mock_cwl)
 
         assert descriptor.metadata_class == "QueryBased"
-        assert descriptor.experiment == "lhcb"
+        assert descriptor.vo == "lhcb"
         assert descriptor.campaign == "Run3"
 
     def test_from_cwl_hints_no_hints(self):
@@ -215,21 +213,21 @@ class TestMetadataDescriptor:
 
     def test_model_copy_with_merge(self):
         """Test model_copy_with_merge functionality."""
-        descriptor = MetadataDescriptor(metadata_class="LHCbSimulation", experiment="lhcb")
+        descriptor = MetadataDescriptor(metadata_class="LHCbSimulation", vo="lhcb")
 
         # Test basic update
         updated = descriptor.model_copy_with_merge(update={"metadata_class": "NewClass", "new_field": "value"})
 
         assert updated.metadata_class == "NewClass"
-        assert updated.experiment == "lhcb"
+        assert updated.vo == "lhcb"
         assert getattr(updated, "new_field", None) == "value"
 
     def test_default_values(self):
-        """Test default values without experiment."""
+        """Test default values without VO."""
         descriptor = MetadataDescriptor(metadata_class="User", user_id="test123")
 
         assert descriptor.metadata_class == "User"
-        assert descriptor.experiment is None
+        assert descriptor.vo is None
         assert getattr(descriptor, "user_id", None) == "test123"
 
 
@@ -287,12 +285,12 @@ class TestTransformationMetadataDescriptor:
     def test_inheritance(self):
         """Test that it inherits from MetadataDescriptor."""
         descriptor = TransformationMetadataDescriptor(
-            metadata_class="LHCbSimulation", experiment="lhcb", group_size={"sim_data": 50}, n_events=1000
+            metadata_class="LHCbSimulation", vo="lhcb", group_size={"sim_data": 50}, n_events=1000
         )
 
         # Test that it has the fields from both classes
         assert descriptor.metadata_class == "LHCbSimulation"
-        assert descriptor.experiment == "lhcb"
+        assert descriptor.vo == "lhcb"
         assert descriptor.group_size == {"sim_data": 50}
         assert getattr(descriptor, "n_events", None) == 1000
 

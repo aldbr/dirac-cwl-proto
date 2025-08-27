@@ -29,22 +29,22 @@ class TestMetadataPlugin(BaseMetadataModel):
     test_param: str = "default"
 
 
-class TestExperimentPlugin(BaseMetadataModel):
-    """Test experiment-specific plugin."""
+class TestVOPlugin(BaseMetadataModel):
+    """Test vo-specific plugin."""
 
-    metadata_type: ClassVar[str] = "ExperimentTest"
-    description: ClassVar[str] = "Test experiment plugin"
-    experiment: ClassVar[Optional[str]] = "test_exp"
+    metadata_type: ClassVar[str] = "VOTest"
+    description: ClassVar[str] = "Test VO plugin"
+    vo: ClassVar[Optional[str]] = "test_exp"
 
     exp_param: int = 42
 
 
-class TestSecondExperimentPlugin(BaseMetadataModel):
-    """Test plugin for second experiment."""
+class TestSecondvoPlugin(BaseMetadataModel):
+    """Test plugin for second vo."""
 
     metadata_type: ClassVar[str] = "SecondExpTest"
-    description: ClassVar[str] = "Test plugin for second experiment"
-    experiment: ClassVar[Optional[str]] = "exp2"
+    description: ClassVar[str] = "Test plugin for second VO"
+    vo: ClassVar[Optional[str]] = "exp2"
 
     param2: str = "test"
 
@@ -56,7 +56,7 @@ class TestMetadataPluginRegistry:
         """Test registry creation."""
         registry = MetadataPluginRegistry()
         assert len(registry.list_plugins()) == 0
-        assert len(registry.list_experiments()) == 0
+        assert len(registry.list_virtual_organizations()) == 0
 
     def test_register_plugin(self):
         """Test plugin registration."""
@@ -68,20 +68,20 @@ class TestMetadataPluginRegistry:
         assert "TestPlugin" in plugins
         assert len(plugins) == 1
 
-    def test_register_plugin_with_experiment(self):
-        """Test experiment-specific plugin registration."""
+    def test_register_plugin_with_vo(self):
+        """Test vo-specific plugin registration."""
         registry = MetadataPluginRegistry()
 
-        registry.register_plugin(TestExperimentPlugin)
+        registry.register_plugin(TestVOPlugin)
 
         plugins = registry.list_plugins()
-        assert "ExperimentTest" in plugins
+        assert "VOTest" in plugins
 
-        experiments = registry.list_experiments()
-        assert "test_exp" in experiments
+        vos = registry.list_virtual_organizations()
+        assert "test_exp" in vos
 
-        exp_plugins = registry.list_plugins(experiment="test_exp")
-        assert "ExperimentTest" in exp_plugins
+        exp_plugins = registry.list_plugins(vo="test_exp")
+        assert "VOTest" in exp_plugins
 
     def test_register_duplicate_plugin(self):
         """Test that duplicate registration raises error."""
@@ -120,14 +120,14 @@ class TestMetadataPluginRegistry:
         plugin = registry.get_plugin("NonExistent")
         assert plugin is None
 
-    def test_get_plugin_with_experiment(self):
-        """Test getting experiment-specific plugin."""
+    def test_get_plugin_with_vo(self):
+        """Test getting vo-specific plugin."""
         registry = MetadataPluginRegistry()
 
-        registry.register_plugin(TestExperimentPlugin)
+        registry.register_plugin(TestVOPlugin)
 
-        plugin_class = registry.get_plugin("ExperimentTest", experiment="test_exp")
-        assert plugin_class is TestExperimentPlugin
+        plugin_class = registry.get_plugin("VOTest", vo="test_exp")
+        assert plugin_class is TestVOPlugin
 
     def test_instantiate_plugin(self):
         """Test plugin instantiation."""
@@ -141,16 +141,16 @@ class TestMetadataPluginRegistry:
         assert isinstance(instance, TestMetadataPlugin)
         assert instance.test_param == "custom"
 
-    def test_instantiate_plugin_with_experiment(self):
-        """Test experiment plugin instantiation."""
+    def test_instantiate_plugin_with_vo(self):
+        """Test vo plugin instantiation."""
         registry = MetadataPluginRegistry()
 
-        registry.register_plugin(TestExperimentPlugin)
+        registry.register_plugin(TestVOPlugin)
 
-        descriptor = MetadataDescriptor(metadata_class="ExperimentTest", experiment="test_exp", exp_param=99)
+        descriptor = MetadataDescriptor(metadata_class="VOTest", vo="test_exp", exp_param=99)
         instance = registry.instantiate_plugin(descriptor)
 
-        assert isinstance(instance, TestExperimentPlugin)
+        assert isinstance(instance, TestVOPlugin)
         assert instance.exp_param == 99
 
     def test_instantiate_nonexistent_plugin(self):
@@ -174,35 +174,35 @@ class TestMetadataPluginRegistry:
         plugins = registry.list_plugins()
         assert isinstance(plugins, list)
 
-    def test_list_experiments(self):
-        """Test listing experiments."""
+    def test_list_virtual_organizations(self):
+        """Test listing vos."""
         registry = MetadataPluginRegistry()
 
-        assert len(registry.list_experiments()) == 0
+        assert len(registry.list_virtual_organizations()) == 0
 
-        registry.register_plugin(TestExperimentPlugin)  # exp1 = test_exp
-        registry.register_plugin(TestSecondExperimentPlugin)  # exp2
+        registry.register_plugin(TestVOPlugin)  # exp1 = test_exp
+        registry.register_plugin(TestSecondvoPlugin)  # exp2
 
-        experiments = registry.list_experiments()
-        assert "test_exp" in experiments
-        assert "exp2" in experiments
-        assert len(experiments) == 2
+        vos = registry.list_virtual_organizations()
+        assert "test_exp" in vos
+        assert "exp2" in vos
+        assert len(vos) == 2
 
-    def test_list_plugins_by_experiment(self):
-        """Test listing plugins by experiment."""
+    def test_list_plugins_by_vo(self):
+        """Test listing plugins by vo."""
         registry = MetadataPluginRegistry()
 
-        registry.register_plugin(TestMetadataPlugin)  # No experiment
-        registry.register_plugin(TestExperimentPlugin)  # test_exp experiment
+        registry.register_plugin(TestMetadataPlugin)  # No vo
+        registry.register_plugin(TestVOPlugin)  # test_exp vo
 
         # All plugins
         all_plugins = registry.list_plugins()
         assert "TestPlugin" in all_plugins
-        assert "ExperimentTest" in all_plugins
+        assert "VOTest" in all_plugins
 
-        # Experiment-specific plugins
-        exp_plugins = registry.list_plugins(experiment="test_exp")
-        assert "ExperimentTest" in exp_plugins
+        # vo-specific plugins
+        exp_plugins = registry.list_plugins(vo="test_exp")
+        assert "VOTest" in exp_plugins
         assert "TestPlugin" not in exp_plugins
 
 
@@ -233,14 +233,14 @@ class TestGlobalRegistryFunctions:
         instance = instantiate_metadata("User", {})
         assert instance.metadata_type == "User"
 
-    def test_instantiate_metadata_with_experiment(self):
-        """Test global metadata instantiation with experiment."""
-        # This would need to be tested with actual experiment plugins
+    def test_instantiate_metadata_with_vo(self):
+        """Test global metadata instantiation with vo."""
+        # This would need to be tested with actual vo plugins
         # For now, just test the function signature
         try:
-            instantiate_metadata("User", {}, experiment="test")
+            instantiate_metadata("User", {}, vo="test")
         except ValueError:
-            # Expected if experiment plugin doesn't exist
+            # Expected if vo plugin doesn't exist
             pass
 
     def test_register_metadata(self):

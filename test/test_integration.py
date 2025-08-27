@@ -52,27 +52,27 @@ class TestSystemIntegration:
             assert instance.metadata_type == plugin_type
 
             # Test via descriptor
-            descriptor = MetadataDescriptor(type=plugin_type, query_params=params)
+            descriptor = MetadataDescriptor(metadata_class=plugin_type, query_params=params)
             runtime = descriptor.to_runtime()
             assert runtime.metadata_type == plugin_type
 
-    def test_experiment_plugin_support(self):
-        """Test experiment-specific plugin functionality."""
+    def test_vo_plugin_support(self):
+        """Test VO-specific plugin functionality."""
         registry = get_registry()
-        experiments = registry.list_experiments()
+        vos = registry.list_virtual_organizations()
 
-        # Should have at least LHCb experiment
-        assert "lhcb" in experiments
+        # Should have at least LHCb VO
+        assert "lhcb" in vos
 
         # Test LHCb plugin access
-        lhcb_plugins = registry.list_plugins(experiment="lhcb")
+        lhcb_plugins = registry.list_plugins(vo="lhcb")
         assert len(lhcb_plugins) > 0
 
     def test_cwl_integration_workflow(self):
         """Test complete CWL integration workflow."""
         # Create an enhanced descriptor directly to test CWL integration
         metadata_descriptor = MetadataDescriptor(
-            type="QueryBased", query_params={"campaign": "Run3", "data_type": "AOD", "site": "CERN"}
+            metadata_class="QueryBased", query_params={"campaign": "Run3", "data_type": "AOD", "site": "CERN"}
         )
 
         # Convert to runtime
@@ -96,7 +96,7 @@ class TestRealWorldScenarios:
     def test_user_workflow_scenario(self):
         """Test a typical user workflow scenario."""
         # User creates a basic job with user metadata
-        user_descriptor = MetadataDescriptor(type="User")
+        user_descriptor = MetadataDescriptor(metadata_class="User")
         user_runtime = user_descriptor.to_runtime()
 
         # Simulate job execution
@@ -115,7 +115,7 @@ class TestRealWorldScenarios:
         """Test an administrative workflow scenario."""
         # Admin creates a job with enhanced logging
         admin_descriptor = MetadataDescriptor(
-            type="Admin", query_params={"admin_level": 8, "log_level": "DEBUG", "enable_monitoring": True}
+            metadata_class="Admin", query_params={"admin_level": 8, "log_level": "DEBUG", "enable_monitoring": True}
         )
         admin_runtime = admin_descriptor.to_runtime()
 
@@ -133,7 +133,7 @@ class TestRealWorldScenarios:
         """Test a data analysis workflow scenario."""
         # Analyst creates a job with query-based data discovery
         analysis_descriptor = MetadataDescriptor(
-            type="QueryBased",
+            metadata_class="QueryBased",
             query_params={"query_root": "/grid/data", "campaign": "Run3_2024", "data_type": "AOD", "site": "CERN"},
         )
         analysis_runtime = analysis_descriptor.to_runtime()
@@ -153,7 +153,7 @@ class TestRealWorldScenarios:
         """Test an LHCb simulation workflow scenario."""
         # Test if LHCb simulation plugin is available
         lhcb_descriptor = MetadataDescriptor(
-            type="LHCbSimulate",
+            metadata_class="LHCbSimulate",
             query_params={
                 "task_id": 123,
                 "run_id": 2,
@@ -192,7 +192,9 @@ class TestRealWorldScenarios:
     def test_parameter_override_scenario(self):
         """Test parameter override scenarios."""
         # Base descriptor with default parameters
-        base_descriptor = MetadataDescriptor(type="Admin", query_params={"admin_level": 3, "log_level": "INFO"})
+        base_descriptor = MetadataDescriptor(
+            metadata_class="Admin", query_params={"admin_level": 3, "log_level": "INFO"}
+        )
 
         # Create variants with different overrides
         variants = [
@@ -216,7 +218,7 @@ class TestErrorHandling:
     def test_invalid_plugin_type(self):
         """Test handling of invalid plugin types."""
         # Invalid types should raise error during runtime instantiation
-        descriptor = MetadataDescriptor(type="NonExistentPlugin")
+        descriptor = MetadataDescriptor(metadata_class="NonExistentPlugin")
         with pytest.raises(KeyError, match="Unknown metadata plugin"):
             descriptor.to_runtime()
 
@@ -224,7 +226,7 @@ class TestErrorHandling:
         """Test handling of missing required parameters."""
         # Some plugins might require specific parameters
         with pytest.raises(ValueError, match="Failed to instantiate plugin 'LHCbSimulate'"):
-            descriptor = MetadataDescriptor(type="LHCbSimulate")
+            descriptor = MetadataDescriptor(metadata_class="LHCbSimulate")
             descriptor.to_runtime()
 
     def test_plugin_registration_conflicts(self):
@@ -249,17 +251,17 @@ class TestErrorHandling:
         mock_cwl.hints = None
 
         descriptor = MetadataDescriptor.from_hints(mock_cwl)
-        assert descriptor.type == "User"  # Should use default
+        assert descriptor.metadata_class == "User"  # Should use default
 
         # Test with empty hints
         mock_cwl.hints = []
         descriptor = MetadataDescriptor.from_hints(mock_cwl)
-        assert descriptor.type == "User"  # Should use default
+        assert descriptor.metadata_class == "User"  # Should use default
 
         # Test with malformed hints
         mock_cwl.hints = [{"invalid": "hint"}]
         descriptor = MetadataDescriptor.from_hints(mock_cwl)
-        assert descriptor.type == "User"  # Should ignore and use default
+        assert descriptor.metadata_class == "User"  # Should ignore and use default
 
 
 class TestPerformance:
@@ -273,7 +275,7 @@ class TestPerformance:
         start_time = time.time()
 
         for _ in range(100):
-            descriptor = MetadataDescriptor(type="User")
+            descriptor = MetadataDescriptor(metadata_class="User")
             runtime = descriptor.to_runtime()
 
         end_time = time.time()

@@ -1,11 +1,11 @@
 image-prod:
   metadata:
     # This type does not exist
-    type: MandelBrotDoesNotExist
+    metadata_class: MandelBrotDoesNotExist
     group_size:
       data: 1
 image-merge:
   metadata:
-    type: MandelBrotMerging
+    metadata_class: MandelBrotMerging
     group_size:
       data: 5

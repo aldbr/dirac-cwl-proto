@@ -194,15 +194,6 @@ class MetadataDescriptor(BaseModel):
     # Enhanced fields for submission functionality
     query_params: Dict[str, Any] = Field(default_factory=dict, description="Additional parameters for metadata plugins")
 
-    def __init__(self, **data):
-        """Initialize with metadata_class/type field synchronization."""
-        # Synchronize metadata_class and type fields before calling super()
-        if "type" in data and "metadata_class" not in data:
-            data["metadata_class"] = data["type"]
-        elif "metadata_class" in data and "type" not in data:
-            data["type"] = data["metadata_class"]
-        super().__init__(**data)
-
     def model_copy_with_merge(
         self,
         *,
@@ -280,7 +271,7 @@ class MetadataDescriptor(BaseModel):
             return s.replace("-", "_")
 
         if submitted is None:
-            return instantiate_metadata(self.type, self.query_params)
+            return instantiate_metadata(self.metadata_class, self.query_params)
 
         # Build inputs from task defaults and parameter overrides
         inputs: dict[str, Any] = {}
@@ -298,7 +289,7 @@ class MetadataDescriptor(BaseModel):
 
         params = {_dash_to_snake(key): value for key, value in inputs.items()}
 
-        return instantiate_metadata(self.type, params)
+        return instantiate_metadata(self.metadata_class, params)
 
     @classmethod
     def from_cwl_hints(cls, cwl_object: Any) -> "MetadataDescriptor":

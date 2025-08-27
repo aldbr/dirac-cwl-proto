@@ -4,7 +4,7 @@ cwltool:overrides:
   test_meta.cwl#:
     hints:
       dirac:metadata:
-        type: "TaskWithMetadataQuery"
+        metadata_class: "TaskWithMetadataQuery"
         query_params:
           site: "Paranal"
 

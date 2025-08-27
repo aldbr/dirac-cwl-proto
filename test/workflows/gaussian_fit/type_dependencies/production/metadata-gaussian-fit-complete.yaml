@@ -1,9 +1,9 @@
 data-generation:
   metadata:
-    type: DataGenerationModel
+    metadata_class: DataGenerationModel
 fit:
   metadata:
-    type: GaussianFitModel
+    metadata_class: GaussianFitModel
     group_size:
       data1: 1
       data2: 1

@@ -13,7 +13,7 @@ $namespaces:
   dirac: "./schemas/dirac-metadata.json#" # Generated schema from Pydantic models
 hints:
   dirac:metadata:
-    type: "User"
+    metadata_class: "User"
     query_params:
       campaign: PROD5
       site: LaPalma

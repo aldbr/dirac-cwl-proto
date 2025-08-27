@@ -3,7 +3,7 @@
     "Admin": {
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "Administrative metadata with enhanced logging",
-      "dirac_experiment": null,
+      "dirac_vo": null,
       "dirac_metadata_type": "Admin",
       "properties": {
         "admin_level": {
@@ -28,7 +28,7 @@
     "BaseMetadataModel": {
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "Base metadata model",
-      "dirac_experiment": null,
+      "dirac_vo": null,
       "dirac_metadata_type": "base",
       "properties": {},
       "title": "DIRAC Metadata Model",
@@ -37,7 +37,7 @@
     "DataGenerationModel": {
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "Data generation for Gaussian fitting workflows",
-      "dirac_experiment": null,
+      "dirac_vo": null,
       "dirac_metadata_type": "DataGenerationModel",
       "properties": {
         "output_file_name_1": {
@@ -71,7 +71,7 @@
     "GaussianFitModel": {
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "Gaussian fitting analysis on data sets",
-      "dirac_experiment": null,
+      "dirac_vo": null,
       "dirac_metadata_type": "GaussianFitModel",
       "properties": {
         "data1": {
@@ -168,7 +168,7 @@
           "additionalProperties": true,
           "description": "Metadata configuration for DIRAC jobs",
           "properties": {
-            "experiment": {
+            "vo": {
               "anyOf": [
                 {
                   "type": "string"
@@ -178,8 +178,8 @@
                 }
               ],
               "default": null,
-              "description": "Experiment namespace (e.g., 'lhcb', 'ctao')",
-              "title": "Experiment"
+              "description": "vo namespace (e.g., 'lhcb', 'ctao')",
+              "title": "vo"
             },
             "metadata_class": {
               "default": "User",
@@ -298,7 +298,7 @@
     "LHCbAnalysis": {
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "LHCb analysis metadata for user analysis jobs",
-      "dirac_experiment": "lhcb",
+      "dirac_vo": "lhcb",
       "dirac_metadata_type": "LHCbAnalysis",
       "properties": {
         "analysis_name": {
@@ -376,7 +376,7 @@
     "LHCbReconstruct": {
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "LHCb reconstruction metadata with file management",
-      "dirac_experiment": "lhcb",
+      "dirac_vo": "lhcb",
       "dirac_metadata_type": "LHCbReconstruct",
       "properties": {
         "input_data_type": {
@@ -425,7 +425,7 @@
     "LHCbSimulate": {
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "LHCb simulation metadata with dynamic resource allocation",
-      "dirac_experiment": "lhcb",
+      "dirac_vo": "lhcb",
       "dirac_metadata_type": "LHCbSimulate",
       "properties": {
         "beam_energy": {
@@ -494,7 +494,7 @@
     "MandelBrotGeneration": {
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "Mandelbrot set generation with configurable parameters",
-      "dirac_experiment": null,
+      "dirac_vo": null,
       "dirac_metadata_type": "MandelBrotGeneration",
       "properties": {
         "height": {
@@ -551,7 +551,7 @@
     "MandelBrotMerging": {
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "Mandelbrot image merging and composite generation",
-      "dirac_experiment": null,
+      "dirac_vo": null,
       "dirac_metadata_type": "MandelBrotMerging",
       "properties": {
         "data": {
@@ -622,7 +622,7 @@
       "additionalProperties": true,
       "description": "Metadata configuration for DIRAC jobs",
       "properties": {
-        "experiment": {
+        "vo": {
           "anyOf": [
             {
               "type": "string"
@@ -632,8 +632,8 @@
             }
           ],
           "default": null,
-          "description": "Experiment namespace (e.g., 'lhcb', 'ctao')",
-          "title": "Experiment"
+          "description": "vo namespace (e.g., 'lhcb', 'ctao')",
+          "title": "vo"
         },
         "metadata_class": {
           "default": "User",
@@ -672,7 +672,7 @@
     "PiGather": {
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "PI result gathering and aggregation metadata",
-      "dirac_experiment": null,
+      "dirac_vo": null,
       "dirac_metadata_type": "PiGather",
       "properties": {
         "input_data": {
@@ -702,7 +702,7 @@
     "PiSimulate": {
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "PI simulation metadata with point-based output management",
-      "dirac_experiment": null,
+      "dirac_vo": null,
       "dirac_metadata_type": "PiSimulate",
       "properties": {
         "num_points": {
@@ -719,7 +719,7 @@
     "PiSimulate_v2": {
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "Enhanced PI simulation metadata with custom output paths",
-      "dirac_experiment": null,
+      "dirac_vo": null,
       "dirac_metadata_type": "PiSimulate_v2",
       "properties": {
         "num_points": {
@@ -787,7 +787,7 @@
           "additionalProperties": true,
           "description": "Metadata configuration for DIRAC jobs",
           "properties": {
-            "experiment": {
+            "vo": {
               "anyOf": [
                 {
                   "type": "string"
@@ -797,8 +797,8 @@
                 }
               ],
               "default": null,
-              "description": "Experiment namespace (e.g., 'lhcb', 'ctao')",
-              "title": "Experiment"
+              "description": "vo namespace (e.g., 'lhcb', 'ctao')",
+              "title": "vo"
             },
             "group_size": {
               "anyOf": [
@@ -869,7 +869,7 @@
     "QueryBased": {
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "Metadata with query-based input resolution",
-      "dirac_experiment": null,
+      "dirac_vo": null,
       "dirac_metadata_type": "QueryBased",
       "properties": {
         "campaign": {
@@ -1013,7 +1013,7 @@
     "TaskWithMetadataQuery": {
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "Example metadata plugin with query-based input resolution",
-      "dirac_experiment": null,
+      "dirac_vo": null,
       "dirac_metadata_type": "TaskWithMetadataQuery",
       "properties": {},
       "title": "DIRAC Metadata Model",
@@ -1023,7 +1023,7 @@
       "additionalProperties": true,
       "description": "Metadata configuration for DIRAC jobs",
       "properties": {
-        "experiment": {
+        "vo": {
           "anyOf": [
             {
               "type": "string"
@@ -1033,8 +1033,8 @@
             }
           ],
           "default": null,
-          "description": "Experiment namespace (e.g., 'lhcb', 'ctao')",
-          "title": "Experiment"
+          "description": "vo namespace (e.g., 'lhcb', 'ctao')",
+          "title": "vo"
         },
         "group_size": {
           "anyOf": [
@@ -1135,7 +1135,7 @@
           "additionalProperties": true,
           "description": "Metadata configuration for DIRAC jobs",
           "properties": {
-            "experiment": {
+            "vo": {
               "anyOf": [
                 {
                   "type": "string"
@@ -1145,8 +1145,8 @@
                 }
               ],
               "default": null,
-              "description": "Experiment namespace (e.g., 'lhcb', 'ctao')",
-              "title": "Experiment"
+              "description": "vo namespace (e.g., 'lhcb', 'ctao')",
+              "title": "vo"
             },
             "group_size": {
               "anyOf": [
@@ -1222,7 +1222,7 @@
     "User": {
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "Basic user metadata with no special processing",
-      "dirac_experiment": null,
+      "dirac_vo": null,
       "dirac_metadata_type": "User",
       "properties": {},
       "title": "DIRAC Metadata Model",
@@ -1231,7 +1231,7 @@
     "base": {
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "Base metadata model",
-      "dirac_experiment": "lhcb",
+      "dirac_vo": "lhcb",
       "dirac_metadata_type": "base",
       "properties": {
         "run_id": {
@@ -1255,7 +1255,7 @@
     "lhcb_LHCbAnalysis": {
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "LHCb analysis metadata for user analysis jobs",
-      "dirac_experiment": "lhcb",
+      "dirac_vo": "lhcb",
       "dirac_metadata_type": "LHCbAnalysis",
       "properties": {
         "analysis_name": {
@@ -1333,7 +1333,7 @@
     "lhcb_LHCbReconstruct": {
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "LHCb reconstruction metadata with file management",
-      "dirac_experiment": "lhcb",
+      "dirac_vo": "lhcb",
       "dirac_metadata_type": "LHCbReconstruct",
       "properties": {
         "input_data_type": {
@@ -1382,7 +1382,7 @@
     "lhcb_LHCbSimulate": {
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "LHCb simulation metadata with dynamic resource allocation",
-      "dirac_experiment": "lhcb",
+      "dirac_vo": "lhcb",
       "dirac_metadata_type": "LHCbSimulate",
       "properties": {
         "beam_energy": {
@@ -1451,7 +1451,7 @@
     "lhcb_base": {
       "description": "Base metadata model for DIRAC jobs",
       "dirac_description": "Base metadata model",
-      "dirac_experiment": "lhcb",
+      "dirac_vo": "lhcb",
       "dirac_metadata_type": "base",
       "properties": {
         "run_id": {
