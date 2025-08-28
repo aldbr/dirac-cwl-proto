@@ -1,4 +1,4 @@
-type: MandelBrotMerging
+metadata_class: MandelBrotMerging
 group_size:
   data: 3
 query_params:

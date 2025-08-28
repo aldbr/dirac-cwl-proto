@@ -1,6 +1,7 @@
 """
 CLI interface to run a workflow as a production.
 """
+
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, List, Optional
@@ -10,6 +11,7 @@ from cwl_utils.pack import pack
 from cwl_utils.parser import load_document
 from cwl_utils.parser.cwl_v1_2 import (
     CommandLineTool,
+    ExpressionTool,
     Workflow,
     WorkflowInputParameter,
     WorkflowStep,
@@ -20,9 +22,9 @@ from ruamel.yaml import YAML
 from schema_salad.exceptions import ValidationException
 
 from dirac_cwl_proto.submission_models import (
-    JobDescriptionModel,
     ProductionStepMetadataModel,
     ProductionSubmissionModel,
+    TaskDescriptionModel,
     TransformationMetadataModel,
     TransformationSubmissionModel,
 )
@@ -47,9 +49,7 @@ def submit_production_client(
         help="Path to metadata file used to generate the transformations (one entry per step)",
     ),
     # Specific parameter for the purpose of the prototype
-    local: Optional[bool] = typer.Option(
-        True, help="Run the job locally instead of submitting it to the router"
-    ),
+    local: Optional[bool] = typer.Option(True, help="Run the job locally instead of submitting it to the router"),
 ):
     """
     Correspond to the dirac-cli command to submit productions
@@ -59,20 +59,14 @@ def submit_production_client(
     - Start the production
     """
     # Validate the workflow
-    console.print(
-        "[blue]:information_source:[/blue] [bold]CLI:[/bold] Validating the production..."
-    )
+    console.print("[blue]:information_source:[/blue] [bold]CLI:[/bold] Validating the production...")
     try:
         task = load_document(pack(task_path))
     except FileNotFoundError as ex:
-        console.print(
-            f"[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to load the task:\n{ex}"
-        )
+        console.print(f"[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to load the task:\n{ex}")
         return typer.Exit(code=1)
     except ValidationException as ex:
-        console.print(
-            f"[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to validate the task:\n{ex}"
-        )
+        console.print(f"[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to validate the task:\n{ex}")
         return typer.Exit(code=1)
     console.print(f"\t[green]:heavy_check_mark:[/green] Task {task_path}")
 
@@ -95,23 +89,15 @@ def submit_production_client(
         task=task,
         steps_metadata=production_step_metadata,
     )
-    console.print(
-        "[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Production validated."
-    )
+    console.print("[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Production validated.")
 
     # Submit the tranaformation
-    console.print(
-        "[blue]:information_source:[/blue] [bold]CLI:[/bold] Submitting the production..."
-    )
+    console.print("[blue]:information_source:[/blue] [bold]CLI:[/bold] Submitting the production...")
     print_json(transformation.model_dump_json(indent=4))
     if not submit_production_router(transformation):
-        console.print(
-            "[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to run production."
-        )
+        console.print("[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to run production.")
         return typer.Exit(code=1)
-    console.print(
-        "[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Production done."
-    )
+    console.print("[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Production done.")
 
 
 # -----------------------------------------------------------------------------
@@ -161,9 +147,7 @@ def _get_transformations(
     # Create a subworkflow and a transformation for each step
     transformations = []
     for step in production.task.steps:
-        step_task = _create_subworkflow(
-            step, str(production.task.cwlVersion), production.task.inputs
-        )
+        step_task = _create_subworkflow(step, str(production.task.cwlVersion), production.task.inputs)
         query_params = _get_query_params(production.task)
 
         # Get the metadata & description for the step
@@ -171,7 +155,7 @@ def _get_transformations(
         step_data: ProductionStepMetadataModel = production.steps_metadata.get(
             step_id,
             ProductionStepMetadataModel(
-                description=JobDescriptionModel(),
+                description=TaskDescriptionModel(),
                 metadata=TransformationMetadataModel(),
             ),
         )
@@ -189,7 +173,7 @@ def _get_transformations(
 
 def _create_subworkflow(
     wf_step: WorkflowStep, cwlVersion: str, inputs: List[WorkflowInputParameter]
-) -> Workflow | CommandLineTool:
+) -> Workflow | CommandLineTool | ExpressionTool:
     """Create a CWL file for a given step.
 
     If the step is a workflow, a new workflow is created.

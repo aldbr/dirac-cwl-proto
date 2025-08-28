@@ -1,14 +1,14 @@
 $namespaces:
-  dirac: "./schemas/dirac-metadata.yaml#"
+  dirac: "./schemas/dirac-metadata.json#"
 cwltool:overrides:
   test_meta.cwl#:
     hints:
-      dirac:metadata:
-        type: 'TaskWithMetadataQuery'
+      dirac:data-management:
+        metadata_class: 'TaskWithMetadataQueryPlugin'
         query_params:
           site: 'Paranal'
 
-      dirac:description:
+      dirac:job-execution:
         platform: x86_64
         priority: 5
         sites: ['CSCS', 'PIC']
@@ -16,12 +16,12 @@ cwltool:overrides:
 cwltool:overrides:
   test_meta.cwl#:
     hints:
-      dirac:metadata:
-        type: 'TaskWithMetadataQuery'
+      dirac:data-management:
+        metadata_class: 'TaskWithMetadataQueryPlugin'
         query_params:
           site: 'LaPalma'
 
-      dirac:description:
+      dirac:job-execution:
         platform: arm64
         priority: 3
         sites: ['CSCS', 'PIC']

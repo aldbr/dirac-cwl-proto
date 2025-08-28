@@ -34,6 +34,11 @@ jobs:
         run: |
           pip install .
           pip install types-jsonschema types-PyYAML  # Install type stubs
+      - name: Generate and validate schemas
+        run: |
+          echo "Generating schemas to ensure they're up to date..."
+          python scripts/generate_schemas.py --output-dir generated_schemas --format json --unified
+          echo "Schema generation completed successfully"
       - name: Run mypy
         run: |
           mypy src

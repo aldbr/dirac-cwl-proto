@@ -1,35 +1,83 @@
 """
-CLI interface to run a CWL workflow from end to end (production/transformation/job).
+Enhanced submission models for DIRAC CWL integration.
+
+This module provides improved submission models with proper separation of concerns,
+modern Python typing, and comprehensive numpydoc documentation.
 """
 
-from typing import Any, Dict, List, Mapping
+from __future__ import annotations
+
+from typing import Any
 
 from cwl_utils.parser import save
 from cwl_utils.parser.cwl_v1_2 import (
     CommandLineTool,
+    ExpressionTool,
     Workflow,
 )
-from pydantic import (
-    BaseModel,
-    ConfigDict,
-    field_serializer,
-    field_validator,
-    model_validator,
+from pydantic import BaseModel, ConfigDict, field_serializer, model_validator
+
+from dirac_cwl_proto.metadata import (
+    DataManager,
+    JobExecutor,
 )
 
-from dirac_cwl_proto.metadata_models import IMetadataModel
+# Local imports
+
+# -----------------------------------------------------------------------------
+# Task models
+# -----------------------------------------------------------------------------
+
+
+class TaskDescriptionModel(JobExecutor):
+    """
+    Description of a task (job/transformation/production step).
+
+    This class extends the core JobExecutor with additional methods
+    for CWL integration and backward compatibility.
+
+    Parameters
+    ----------
+    platform : str | None
+        Target platform name (for example ``"DIRAC"``). If ``None``, no
+        platform preference is encoded.
+    priority : int, optional
+        Scheduling priority. Higher values indicate higher priority.
+        Defaults to ``10``.
+    sites : list[str] | None
+        Optional list of candidate site names where the task may run.
+
+    Notes
+    -----
+    This is a serialisable Pydantic descriptor intended to carry CWL hints
+    related to runtime placement and scheduling. Prefer using the class
+    factory ``TaskDescriptionModel.from_hints(cwl)`` when extracting hints
+    from parsed CWL objects.
+    """
+
+    @classmethod
+    def from_hints(cls, cwl: Any) -> "TaskDescriptionModel":
+        """
+        Create a ``TaskDescriptionModel`` from CWL hints.
+
+        Parameters
+        ----------
+        cwl : Any
+            A parsed CWL ``CommandLineTool`` or ``Workflow`` object (for
+            example from ``cwl-utils``).
+
+        Returns
+        -------
+        TaskDescriptionModel
+            Descriptor populated from CWL hints. Unknown or missing hints
+            are ignored and sensible defaults are used.
+        """
+        return cls.from_cwl_hints(cwl)
+
 
 # -----------------------------------------------------------------------------
 # Job models
 # -----------------------------------------------------------------------------
-
-
-class JobDescriptionModel(BaseModel):
-    """Description of a job."""
-
-    platform: str | None = None
-    priority: int = 10
-    sites: List[str] | None = None
 
 
 class JobParameterModel(BaseModel):
@@ -38,52 +86,12 @@ class JobParameterModel(BaseModel):
     # Allow arbitrary types to be passed to the model
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    sandbox: List[str] | None
-    cwl: Dict[str, Any]
+    sandbox: list[str] | None
+    cwl: dict[str, Any]
 
     @field_serializer("cwl")
     def serialize_cwl(self, value):
         return save(value)
-
-
-class JobMetadataModel(BaseModel):
-    """Job metadata."""
-
-    type: str = "User"
-    # Parameters used to build input/output queries
-    # Generally correspond to the inputs of the previous transformations
-    query_params: Dict[str, Any] = {}
-
-    # Validation to ensure type corresponds to a subclass of IMetadataModel
-    @field_validator("type")
-    def check_type(cls, value):
-        # Collect all subclass names of IMetadataModel
-        valid_types = {cls.__name__ for cls in IMetadataModel.__subclasses__()}
-
-        # Check if the provided value matches any of the subclass names
-        if value not in valid_types:
-            raise ValueError(f"Invalid type '{value}'. Must be one of: {', '.join(valid_types)}.")
-
-        return value
-
-    def model_copy(
-        self,
-        *,
-        update: Mapping[str, Any] | None = None,
-        deep: bool = False,
-    ) -> "JobMetadataModel":
-        if update is None:
-            update = {}
-        else:
-            update = dict(update)
-
-        # Handle merging of query_params
-        if "query_params" in update:
-            new_query_params = self.query_params.copy()
-            new_query_params.update(update.pop("query_params"))
-            update["query_params"] = new_query_params
-
-        return super().model_copy(update=update, deep=deep)
 
 
 class JobSubmissionModel(BaseModel):
@@ -92,14 +100,14 @@ class JobSubmissionModel(BaseModel):
     # Allow arbitrary types to be passed to the model
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    task: CommandLineTool | Workflow
-    parameters: List[JobParameterModel] | None = None
-    description: JobDescriptionModel
-    metadata: JobMetadataModel
+    task: CommandLineTool | Workflow | ExpressionTool
+    parameters: list[JobParameterModel] | None = None
+    description: TaskDescriptionModel
+    metadata: DataManager
 
     @field_serializer("task")
     def serialize_task(self, value):
-        if isinstance(value, (CommandLineTool, Workflow)):
+        if isinstance(value, (CommandLineTool, Workflow, ExpressionTool)):
             return save(value)
         else:
             raise TypeError(f"Cannot serialize type {type(value)}")
@@ -110,12 +118,12 @@ class JobSubmissionModel(BaseModel):
 # -----------------------------------------------------------------------------
 
 
-class TransformationMetadataModel(JobMetadataModel):
+class TransformationMetadataModel(DataManager):
     """Transformation metadata."""
 
     # Number of data to group together in a transformation
     # Key: input name, Value: group size
-    group_size: Dict[str, int] | None = None
+    group_size: dict[str, int] | None = None
 
 
 class TransformationSubmissionModel(BaseModel):
@@ -124,13 +132,13 @@ class TransformationSubmissionModel(BaseModel):
     # Allow arbitrary types to be passed to the model
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    task: CommandLineTool | Workflow
+    task: CommandLineTool | Workflow | ExpressionTool
     metadata: TransformationMetadataModel
-    description: JobDescriptionModel
+    description: TaskDescriptionModel
 
     @field_serializer("task")
     def serialize_task(self, value):
-        if isinstance(value, (CommandLineTool, Workflow)):
+        if isinstance(value, (CommandLineTool, Workflow, ExpressionTool)):
             return save(value)
         else:
             raise TypeError(f"Cannot serialize type {type(value)}")
@@ -144,7 +152,7 @@ class TransformationSubmissionModel(BaseModel):
 class ProductionStepMetadataModel(BaseModel):
     """Step metadata for a transformation."""
 
-    description: JobDescriptionModel
+    description: TaskDescriptionModel
     metadata: TransformationMetadataModel
 
 
@@ -156,7 +164,7 @@ class ProductionSubmissionModel(BaseModel):
 
     task: Workflow
     # Key: step name, Value: description & metadata of a transformation
-    steps_metadata: Dict[str, ProductionStepMetadataModel]
+    steps_metadata: dict[str, ProductionStepMetadataModel]
 
     @model_validator(mode="before")
     def validate_steps_metadata(cls, values):
@@ -177,7 +185,22 @@ class ProductionSubmissionModel(BaseModel):
 
     @field_serializer("task")
     def serialize_task(self, value):
-        if isinstance(value, (CommandLineTool, Workflow)):
+        if isinstance(value, (ExpressionTool, CommandLineTool, Workflow)):
             return save(value)
         else:
             raise TypeError(f"Cannot serialize type {type(value)}")
+
+
+# -----------------------------------------------------------------------------
+# Module helpers
+# -----------------------------------------------------------------------------
+
+
+def extract_dirac_hints(cwl: Any) -> tuple[DataManager, TaskDescriptionModel]:
+    """Thin wrapper that returns (DataManager, TaskDescriptionModel).
+
+    Prefer the class-factory APIs `DataManager.from_hints` and
+    `TaskDescriptionModel.from_hints` for new code. This helper remains for
+    convenience.
+    """
+    return DataManager.from_hints(cwl), TaskDescriptionModel.from_hints(cwl)
