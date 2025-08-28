@@ -9,9 +9,7 @@ description = "Prototype of CWL used as a production/job workflow language"
 readme = "README.md"
 requires-python = ">=3.12"
 license = {file = "LICENSE"}
-authors = [
-    { name="DIRAC consortium" }
-]
+authors = [{ name = "DIRAC consortium" }]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Science/Research",
@@ -21,12 +19,14 @@ classifiers = [
     "Topic :: Scientific/Engineering",
     "Topic :: System :: Distributed Computing"
 ]
+
+# Runtime dependencies (what your package needs when installed)
 dependencies = [
     "cwl-utils",
     "cwlformat",
     "cwltool",
     "lbprodrun",
-    "mypy",
+    "mypy",              # usually dev-only, see note below
     "pydantic",
     "pyyaml",
     "typer",
@@ -66,41 +66,31 @@ enable_error_code = ["import", "attr-defined"]
 addopts = ["-v"]
 asyncio_mode = "auto"
 
-# Pixi configuration for task management
+# -------------------------
+# Pixi configuration
+# -------------------------
 [tool.pixi.project]
-channels = ["conda-forge", "pydantic"]
+channels = ["conda-forge"]
 platforms = ["win-64", "linux-64", "osx-64", "osx-arm64"]
 
+# Additional dev-only dependencies (not published with your package)
 [tool.pixi.dependencies]
-python = ">=3.12"
-# Core dependencies
-cwl-utils = "*"
-cwlformat = "*"
-cwltool = "*"
-lbprodrun = "*"
-mypy = "*"
-pydantic = "*"
-pyyaml = "*"
-typer = "*"
-referencing = ">=0.30"
-rich = "*"
-ruamel.yaml = "*"
-# Testing dependencies
 pytest = ">=6"
 pytest-mock = "*"
-# Schema validation
-jsonschema = "*"
+jsonschema = "*"   # used in validation
+mypy = "*"         # if you prefer not to list it under [project].dependencies
+ruff = "*"         # linter, optional
+pre-commit = "*"   # git hooks manager
+
+# Ensure the package is installed in editable mode in the Pixi environment
+[tool.pixi.pypi-dependencies]
+dirac-cwl-proto = { path = ".", editable = true }
 
 [tool.pixi.tasks]
-# Help task
-help = "echo 'Available tasks: install, test, lint, schemas, schemas-json, schemas-yaml, clean-schemas, test-schemas, test-meta, check-schemas, validate-schemas, dev-setup, ci-check'"
+help = "echo 'Available tasks: test, lint, schemas, schemas-json, schemas-yaml, clean-schemas, test-schemas, check-schemas, validate-schemas'"
 
-# Installation
-install = "pip install -e . && pip install -e .[testing]"
-
-# Testing tasks
+# Testing
 test = "pytest test/ -v"
-test-meta = "pytest test/test_metadata*.py test/test_workflows.py::test_run_job_success -k 'test_meta' -v"
 test-schemas = "pytest test/test_workflows.py::test_run_job_success -k 'test_meta' -v"
 
 # Linting
@@ -115,7 +105,8 @@ python scripts/generate_schemas.py \
   --individual \
   --unified && \
 echo "Copying schemas to test locations..." && \
-cp generated_schemas/dirac-metadata.json test/workflows/test_meta/schemas/dirac-metadata.json
+cp generated_schemas/dirac-metadata.json test/workflows/test_meta/schemas/dirac-metadata.json && \
+cp generated_schemas/plugins-summary.json test/workflows/test_meta/schemas/plugins-summary.json
 """
 
 schemas-yaml = """
@@ -126,13 +117,14 @@ python scripts/generate_schemas.py \
   --unified
 """
 
-schemas = { depends_on = ["schemas-json", "schemas-yaml"] }
+schemas = { depends-on = ["schemas-json", "schemas-yaml"] }
 
 # Cleanup
 clean-schemas = """
 echo "Cleaning generated schemas..." && \
 rm -rf generated_schemas/ && \
-rm -f test/workflows/test_meta/schemas/dirac-metadata.json
+rm -f test/workflows/test_meta/schemas/dirac-metadata.json \
+      test/workflows/test_meta/schemas/plugins-summary.json
 """
 
 # Schema validation
@@ -159,12 +151,5 @@ print('All schemas are valid!')
 "
 """
 
-# Development setup
-dev-setup = { depends_on = ["install", "schemas"], cmd = """
-echo "Development environment set up successfully!" && \
-echo "Generated schemas are in: generated_schemas/" && \
-echo "Run 'pixi run help' to see available commands."
-""" }
-
-# CI/CD pipeline
-ci-check = { depends_on = ["lint", "test", "check-schemas", "validate-schemas"] }
+pre-commit-install = "pre-commit install"
+pre-commit-run = "pre-commit run -a"

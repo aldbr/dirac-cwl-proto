@@ -1,4 +1,3 @@
-
 <p align="center">
   <img alt="Dirac CWL Logo" src="public/CWLDiracX.png" width="300" >
 </p>
@@ -8,17 +7,6 @@
 ![Schema Generation](https://github.com/aldbr/dirac-cwl-proto/actions/workflows/generate-schemas.yml/badge.svg?branch=main)
 
 This Python prototype introduces a command-line interface (CLI) designed for the end-to-end execution of Common Workflow Language (CWL) workflows at different scales. It enables users to locally test CWL workflows, and then run them as jobs, transformations and/or productions.
-
-## 🚀 New: Automatic Schema Generation
-
-The prototype now features **automatic JSON/YAML schema generation** from Pydantic metadata models:
-
-- ✅ **Always synchronized** schemas with Python models
-- ✅ **Automatic discovery** of user plugins  
-- ✅ **CI/CD integration** for seamless updates
-- ✅ **CWL hint validation** support
-
-See [Schema Generation Documentation](docs/SCHEMA_GENERATION.md) for details.
 
 ## Prototype Workflow
 
@@ -53,24 +41,35 @@ Once the workflow passes local testing, the user can choose from 3 options for s
   >   - Dirac description (site, priority)
   >   - Metadata (job type, group size, query parameters)
 
-## Installation
+## Installation (with Pixi)
 
-To use this package, you first need to create a conda environment:
+This project uses [Pixi](https://pixi.sh) to manage the development environment and tasks.
 
-```bash
-mamba env create -f environment.yaml
-conda activate dirac-cwl
-```
+1) Install Pixi (see official docs for your platform)
 
-Then, install the package:
+2) Create and populate the environment
 
 ```bash
-pip install -e .
+pixi install
 ```
+
+3) Enter the environment (optional)
+
+```bash
+pixi shell
+```
+
+That’s it. You can now run commands either inside `pixi shell` or by prefixing with `pixi run`.
 
 ## Usage
 
+Inside the Pixi environment:
+
 ```bash
+# Either inside a shell
+pixi shell
+
+# Submit
 dirac-cwl job submit <workflow_path> [--parameter-path <input_path>] [--metadata-path <metadata_path>]
 
 dirac-cwl transformation submit <workflow_path> [--metadata-path <metadata_path>]
@@ -78,11 +77,23 @@ dirac-cwl transformation submit <workflow_path> [--metadata-path <metadata_path>
 dirac-cwl production submit <workflow_path> [--steps-metadata-path <steps_metadata_path>]
 ```
 
-This package contains modules and tools to manage CWL workflows:
+Or prefix individual commands:
 
-- `src/modules`: Python scripts for individual steps in workflows.
-- `src/cli`: Utility scripts for managing and executing CWL workflows.
-- `test/workflows`: CWL workflow definitions.
+```bash
+pixi run dirac-cwl job submit <workflow_path> --parameter-path <input_path>
+```
+
+Common tasks are defined in `pyproject.toml` and can be run with Pixi:
+
+```bash
+# Run tests
+pixi run test
+
+# Lint (mypy)
+pixi run lint
+```
+
+## Using cwltool directly
 
 To use the workflows and inputs directly with `cwltool`, you need to add the `modules` directory to the `$PATH`:
 
@@ -130,7 +141,7 @@ If your workflow requires calling a script, you can add this script as a module.
 
 - Add the script: Place your script in the `src/dirac_cwl_proto/modules` directory.
 - Update `pyproject.toml`: Add the script to the `pyproject.toml` file to create a command-line interface (CLI) command.
-- Reinstall the package: Run `pip install .` to reinstall the package and make the new script available as a command.
+- Reinstall the package: Run `pixi run pip install .` to reinstall the package and make the new script available as a command.
 - Usage in CWL Workflow: Reference the command in your `description.cwl` file.
 
 **Example**
@@ -162,8 +173,13 @@ if __name__ == "__main__":
 generic-command = "dirac_cwl_proto.modules.generic_command:app"
 ```
 
-- Reinstall the package with `pip install .`:
-- Reference in description.cwl:
+- Reinstall the package with:
+
+```bash
+pixi run pip install .
+```
+
+- Reference in `description.cwl`:
 
 ```yaml
 baseCommand: [generic-command]
@@ -171,9 +187,14 @@ baseCommand: [generic-command]
 
 ### Test your changes
 
-- Add your test in `test/test_workflows`.
-- Run `pytest`:
+- Run tests via Pixi:
 
 ```bash
-pytest test/test_workflows.py
+pixi run test
+```
+
+- Or directly:
+
+```bash
+pixi run pytest test/test_workflows.py -v
 ```
