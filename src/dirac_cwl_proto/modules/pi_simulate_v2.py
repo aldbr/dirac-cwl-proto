@@ -11,8 +11,7 @@ console = Console()
 @app.command()
 def simulate(
     num_points: int = typer.Argument(..., help="Number of random points to generate"),
-    output_path: str = typer.Argument(
-        None, help="Output file"),
+    output_path: str = typer.Argument(None, help="Output file"),
 ):
     """
     Simulate random points inside a square (Monte Carlo method).

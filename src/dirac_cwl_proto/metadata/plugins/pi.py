@@ -25,7 +25,9 @@ class PiSimulateMetadata(BaseMetadataModel):
         Number of points to simulate.
     """
 
-    description: ClassVar[str] = "PI simulation metadata with point-based output management"
+    description: ClassVar[
+        str
+    ] = "PI simulation metadata with point-based output management"
 
     num_points: int
 
@@ -57,7 +59,9 @@ class PiSimulateV2Metadata(BaseMetadataModel):
         Custom output path for simulation results.
     """
 
-    description: ClassVar[str] = "Enhanced PI simulation metadata with custom output paths"
+    description: ClassVar[
+        str
+    ] = "Enhanced PI simulation metadata with custom output paths"
 
     num_points: int
     output_path: str
@@ -98,7 +102,9 @@ class PiGatherMetadata(BaseMetadataModel):
     # Input data
     input_data: Optional[List] = None
 
-    def get_input_query(self, input_name: str, **kwargs: Any) -> Union[Path, List[Path], None]:
+    def get_input_query(
+        self, input_name: str, **kwargs: Any
+    ) -> Union[Path, List[Path], None]:
         """Get input query for simulation data."""
         if input_name == "input-data":
             # Reference the output from PiSimulate

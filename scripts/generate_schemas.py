@@ -22,17 +22,16 @@ import argparse
 import json
 import logging
 from pathlib import Path
-from typing import Any, Dict, Type
+from typing import Any, Dict, List, cast
 
 import yaml
-from pydantic import BaseModel
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
 
 
-def collect_pydantic_models() -> Dict[str, Type[BaseModel]]:
+def collect_pydantic_models() -> Dict[str, Any]:
     """Collect all Pydantic models from the metadata system."""
     models = {}
 
@@ -102,16 +101,26 @@ def collect_pydantic_models() -> Dict[str, Type[BaseModel]]:
                     models[key] = plugin_class
                     logger.info(f"Collected plugin: {key} ({plugin_class.__name__})")
 
-        logger.info(
-            f"Collected {len([k for k in models.keys() if not k.startswith(('BaseMetadata', 'MetadataDescriptor', 'TaskDescriptor', 'TaskDescription', 'Job', 'Transformation', 'Production'))])} metadata plugins"
+        excluded_prefixes = (
+            "BaseMetadata",
+            "MetadataDescriptor",
+            "TaskDescriptor",
+            "TaskDescription",
+            "Job",
+            "Transformation",
+            "Production",
         )
+        plugin_count = len(
+            [k for k in models.keys() if not k.startswith(excluded_prefixes)]
+        )
+        logger.info(f"Collected {plugin_count} metadata plugins")
     except ImportError as e:
         logger.error(f"Failed to import metadata registry: {e}")
 
     return models
 
 
-def create_cwl_schema_shim(model_class: Type[BaseModel], model_name: str) -> Dict[str, Any]:
+def create_cwl_schema_shim(model_class: Any, model_name: str) -> Dict[str, Any]:
     """Create a schema shim for models containing CWL types."""
     # Create a custom schema that references CWL schemas and handles the fields we can
     schema = {
@@ -128,45 +137,68 @@ def create_cwl_schema_shim(model_class: Type[BaseModel], model_name: str) -> Dic
         annotation = field_info.annotation
 
         # Handle CWL Workflow type specifically
-        if hasattr(annotation, "__name__") and annotation.__name__ == "Workflow":
-            schema["properties"][field_name] = {
+        if (
+            hasattr(annotation, "__name__")
+            and getattr(annotation, "__name__", None) == "Workflow"
+        ):
+            properties = cast(Dict[str, Any], schema["properties"])
+            properties[field_name] = {
                 "description": "CWL Workflow definition",
                 "$ref": "https://json.schemastore.org/cwl-workflow.json",
             }
         # Handle other CWL types
-        elif hasattr(annotation, "__module__") and "cwl_utils.parser" in str(annotation.__module__):
-            schema["properties"][field_name] = {
-                "description": f"CWL {annotation.__name__} definition",
+        elif hasattr(annotation, "__module__") and "cwl_utils.parser" in str(
+            getattr(annotation, "__module__", "")
+        ):
+            annotation_name = getattr(annotation, "__name__", "Unknown")
+            properties = cast(Dict[str, Any], schema["properties"])
+            properties[field_name] = {
+                "description": f"CWL {annotation_name} definition",
                 "$ref": "https://json.schemastore.org/cwlc.json",
             }
         # Handle dict types
-        elif hasattr(annotation, "__origin__") and annotation.__origin__ is dict:
+        elif (
+            hasattr(annotation, "__origin__")
+            and getattr(annotation, "__origin__", None) is dict
+        ):
             # Try to get the value type for dict[str, SomeType]
             args = getattr(annotation, "__args__", [])
             if len(args) == 2:
                 value_type = args[1]
-                if hasattr(value_type, "__name__"):
-                    schema["properties"][field_name] = {
+                value_type_name = getattr(value_type, "__name__", None)
+                if value_type_name:
+                    properties = cast(Dict[str, Any], schema["properties"])
+                    properties[field_name] = {
                         "type": "object",
-                        "description": f"Dictionary mapping strings to {value_type.__name__}",
-                        "additionalProperties": {"$ref": f"#/$defs/{value_type.__name__}"},
+                        "description": f"Dictionary mapping strings to {value_type_name}",
+                        "additionalProperties": {"$ref": f"#/$defs/{value_type_name}"},
                     }
                 else:
-                    schema["properties"][field_name] = {"type": "object", "description": "Dictionary with string keys"}
+                    properties = cast(Dict[str, Any], schema["properties"])
+                    properties[field_name] = {
+                        "type": "object",
+                        "description": "Dictionary with string keys",
+                    }
             else:
-                schema["properties"][field_name] = {"type": "object", "description": "Dictionary"}
+                properties = cast(Dict[str, Any], schema["properties"])
+                properties[field_name] = {
+                    "type": "object",
+                    "description": "Dictionary",
+                }
         else:
             # For other types, create a generic schema
-            schema["properties"][field_name] = {"description": f"Field of type {annotation}"}
+            properties = cast(Dict[str, Any], schema["properties"])
+            properties[field_name] = {"description": f"Field of type {annotation}"}
 
         # Add to required if the field is required
         if field_info.is_required():
-            schema["required"].append(field_name)
+            required_list = cast(List[str], schema["required"])
+            required_list.append(field_name)
 
     return schema
 
 
-def generate_schema(model_class: Type[BaseModel], model_name: str) -> Dict[str, Any]:
+def generate_schema(model_class: Any, model_name: str) -> Dict[str, Any]:
     """Generate JSON schema for a Pydantic model."""
     try:
         schema = model_class.model_json_schema()
@@ -186,7 +218,11 @@ def generate_schema(model_class: Type[BaseModel], model_name: str) -> Dict[str, 
         return schema
     except Exception as e:
         # Handle CWL-related models specially
-        if "cwl_utils.parser" in str(e) or "IsInstanceSchema" in str(e) or "Workflow" in str(e):
+        if (
+            "cwl_utils.parser" in str(e)
+            or "IsInstanceSchema" in str(e)
+            or "Workflow" in str(e)
+        ):
             logger.info(f"Creating CWL schema reference for {model_name}")
             return create_cwl_schema_shim(model_class, model_name)
 
@@ -194,7 +230,7 @@ def generate_schema(model_class: Type[BaseModel], model_name: str) -> Dict[str, 
         return {}
 
 
-def generate_unified_dirac_schema(models: Dict[str, Type[BaseModel]]) -> Dict[str, Any]:
+def generate_unified_dirac_schema(models: Dict[str, Any]) -> Dict[str, Any]:
     """Generate a unified DIRAC metadata schema that references all plugins."""
 
     # Base schema structure
@@ -223,12 +259,15 @@ def generate_unified_dirac_schema(models: Dict[str, Type[BaseModel]]) -> Dict[st
     for name, model_class in models.items():
         model_schema = generate_schema(model_class, name)
         if model_schema:  # Only add schemas that were successfully generated
-            schema["$defs"][name] = model_schema
+            defs = cast(Dict[str, Any], schema["$defs"])
+            defs[name] = model_schema
 
     return schema
 
 
-def save_schema(schema: Dict[str, Any], output_path: Path, format: str = "json") -> None:
+def save_schema(
+    schema: Dict[str, Any], output_path: Path, format: str = "json"
+) -> None:
     """Save schema to file in specified format."""
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -246,7 +285,9 @@ def save_schema(schema: Dict[str, Any], output_path: Path, format: str = "json")
 
 def main():
     """Main entry point for schema generation."""
-    parser = argparse.ArgumentParser(description="Generate JSON schemas from Pydantic metadata models")
+    parser = argparse.ArgumentParser(
+        description="Generate JSON schemas from Pydantic metadata models"
+    )
     parser.add_argument(
         "--output-dir",
         type=Path,
@@ -254,11 +295,21 @@ def main():
         help="Output directory for generated schemas (default: generated_schemas/)",
     )
     parser.add_argument(
-        "--format", choices=["json", "yaml"], default="json", help="Output format for schemas (default: json)"
+        "--format",
+        choices=["json", "yaml"],
+        default="json",
+        help="Output format for schemas (default: json)",
     )
-    parser.add_argument("--individual", action="store_true", help="Generate individual schema files for each model")
     parser.add_argument(
-        "--unified", action="store_true", default=True, help="Generate unified DIRAC schema (default: True)"
+        "--individual",
+        action="store_true",
+        help="Generate individual schema files for each model",
+    )
+    parser.add_argument(
+        "--unified",
+        action="store_true",
+        default=True,
+        help="Generate unified DIRAC schema (default: True)",
     )
 
     args = parser.parse_args()
@@ -294,14 +345,18 @@ def main():
         save_schema(unified_schema, unified_file, args.format)
 
     # Generate plugin summary
-    plugin_models = {k: v for k, v in models.items() if hasattr(v, "get_metadata_class")}
+    plugin_models = {
+        k: v for k, v in models.items() if hasattr(v, "get_metadata_class")
+    }
     if plugin_models:
         summary = {
             "plugins": {
                 name: {
                     "class": model_class.__name__,
                     "metadata_class": (
-                        model_class.get_metadata_class() if hasattr(model_class, "get_metadata_class") else None
+                        model_class.get_metadata_class()
+                        if hasattr(model_class, "get_metadata_class")
+                        else None
                     ),
                     "description": getattr(model_class, "description", None),
                     "vo": getattr(model_class, "vo", None),

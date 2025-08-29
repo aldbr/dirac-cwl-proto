@@ -24,7 +24,10 @@ class TestDataManager:
 
     def test_creation_with_parameters(self):
         """Test creation with custom parameters."""
-        descriptor = DataManager(metadata_class="Admin", query_params={"admin_level": 5, "log_level": "DEBUG"})
+        descriptor = DataManager(
+            metadata_class="Admin",
+            query_params={"admin_level": 5, "log_level": "DEBUG"},
+        )
         assert descriptor.metadata_class == "Admin"
         assert descriptor.query_params["admin_level"] == 5
         assert descriptor.query_params["log_level"] == "DEBUG"
@@ -61,7 +64,9 @@ class TestDataManager:
 
     def test_model_copy_with_update(self):
         """Test model_copy with updates."""
-        original = DataManager(metadata_class="Admin", query_params={"admin_level": 3, "log_level": "INFO"})
+        original = DataManager(
+            metadata_class="Admin", query_params={"admin_level": 3, "log_level": "INFO"}
+        )
 
         # Test copy with type update
         copied = original.model_copy(update={"metadata_class": "User"})
@@ -76,7 +81,9 @@ class TestDataManager:
 
     def test_to_runtime_no_submission(self):
         """Test to_runtime without submission context."""
-        descriptor = DataManager(metadata_class="Admin", query_params={"admin_level": 7})
+        descriptor = DataManager(
+            metadata_class="Admin", query_params={"admin_level": 7}
+        )
 
         runtime = descriptor.to_runtime()
 
@@ -85,7 +92,9 @@ class TestDataManager:
 
     def test_to_runtime_with_submission(self, mocker):
         """Test to_runtime with submission context."""
-        descriptor = DataManager(metadata_class="QueryBased", query_params={"campaign": "Run3"})
+        descriptor = DataManager(
+            metadata_class="QueryBased", query_params={"campaign": "Run3"}
+        )
 
         # Mock submission model
         mock_submission = mocker.Mock()
@@ -95,7 +104,9 @@ class TestDataManager:
         mock_input.default = "default_campaign"
         mock_task.inputs = [mock_input]
         mock_submission.task = mock_task
-        mock_submission.parameters = [mocker.Mock(cwl={"campaign": "override_campaign"})]
+        mock_submission.parameters = [
+            mocker.Mock(cwl={"campaign": "override_campaign"})
+        ]
 
         runtime = descriptor.to_runtime(mock_submission)
 
@@ -106,10 +117,15 @@ class TestDataManager:
         """Test dash-case to snake_case parameter conversion."""
         descriptor = DataManager(
             metadata_class="QueryBased",
-            query_params={"query_root": "/data", "data_type": "AOD"},  # Already in snake_case
+            query_params={
+                "query_root": "/data",
+                "data_type": "AOD",
+            },  # Already in snake_case
         )
 
-        runtime = descriptor.to_runtime()  # Parameters should be converted to snake_case
+        runtime = (
+            descriptor.to_runtime()
+        )  # Parameters should be converted to snake_case
         assert hasattr(runtime, "query_root") or runtime.query_root == "/data"
         assert hasattr(runtime, "data_type") or runtime.data_type == "AOD"
 
@@ -117,7 +133,9 @@ class TestDataManager:
         """Test from_hints class method."""
         mock_cwl = mocker.Mock()
         mock_descriptor = DataManager(metadata_class="QueryBased")
-        mock_from_cwl_hints = mocker.patch("dirac_cwl_proto.submission_models.DataManager.from_cwl_hints")
+        mock_from_cwl_hints = mocker.patch(
+            "dirac_cwl_proto.submission_models.DataManager.from_cwl_hints"
+        )
         mock_from_cwl_hints.return_value = mock_descriptor
 
         # Actually call the method - it returns base DataManager, not Enhanced
@@ -129,7 +147,9 @@ class TestDataManager:
 
     def test_serialization_compatibility(self):
         """Test that serialization works correctly."""
-        descriptor = DataManager(metadata_class="Admin", query_params={"admin_level": 5})
+        descriptor = DataManager(
+            metadata_class="Admin", query_params={"admin_level": 5}
+        )
 
         # Test dict conversion
         data = descriptor.model_dump()
@@ -159,7 +179,9 @@ class TestTaskDescriptionModel:
 
     def test_creation_with_metadata(self):
         """Test creation with custom task configuration."""
-        model = TaskDescriptionModel(platform="DIRAC", priority=8, sites=["CERN", "GRIDKA"])
+        model = TaskDescriptionModel(
+            platform="DIRAC", priority=8, sites=["CERN", "GRIDKA"]
+        )
 
         assert model.platform == "DIRAC"
         assert model.priority == 8
@@ -217,7 +239,9 @@ class TestSubmissionModelsIntegration:
 
     def test_model_serialization_round_trip(self):
         """Test that models can be serialized and deserialized."""
-        original = TaskDescriptionModel(platform="DIRAC", priority=7, sites=["CERN", "GRIDKA"])
+        original = TaskDescriptionModel(
+            platform="DIRAC", priority=7, sites=["CERN", "GRIDKA"]
+        )
 
         # Serialize to dict
         data = original.model_dump()
@@ -232,7 +256,10 @@ class TestSubmissionModelsIntegration:
     def test_cwl_hints_integration(self):
         """Test integration with CWL hints extraction."""
         # Create an enhanced descriptor directly
-        descriptor = DataManager(metadata_class="QueryBased", query_params={"campaign": "Run3", "data_type": "AOD"})
+        descriptor = DataManager(
+            metadata_class="QueryBased",
+            query_params={"campaign": "Run3", "data_type": "AOD"},
+        )
         runtime = descriptor.to_runtime()
 
         # Should use the QueryBased type

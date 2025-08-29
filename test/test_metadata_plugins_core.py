@@ -73,7 +73,9 @@ class TestAdminMetadata:
 
     def test_creation_with_parameters(self):
         """Test AdminMetadata creation with custom parameters."""
-        metadata = AdminMetadata(log_level="DEBUG", enable_monitoring=False, admin_level=5)
+        metadata = AdminMetadata(
+            log_level="DEBUG", enable_monitoring=False, admin_level=5
+        )
         assert metadata.log_level == "DEBUG"
         assert metadata.enable_monitoring is False
         assert metadata.admin_level == 5
@@ -137,7 +139,9 @@ class TestQueryBasedMetadata:
 
     def test_creation_with_parameters(self):
         """Test QueryBasedMetadata creation with parameters."""
-        metadata = QueryBasedMetadata(query_root="/data", site="CERN", campaign="Run3", data_type="AOD")
+        metadata = QueryBasedMetadata(
+            query_root="/data", site="CERN", campaign="Run3", data_type="AOD"
+        )
         assert metadata.query_root == "/data"
         assert metadata.site == "CERN"
         assert metadata.campaign == "Run3"
@@ -145,7 +149,9 @@ class TestQueryBasedMetadata:
 
     def test_get_input_query_with_parameters(self):
         """Test get_input_query with query parameters."""
-        metadata = QueryBasedMetadata(query_root="/data", campaign="Run3", site="CERN", data_type="AOD")
+        metadata = QueryBasedMetadata(
+            query_root="/data", campaign="Run3", site="CERN", data_type="AOD"
+        )
 
         result = metadata.get_input_query("test_input")
 
@@ -287,7 +293,11 @@ class TestPluginIntegration:
 
     def test_plugin_serialization_compatibility(self):
         """Test that all plugins can be serialized consistently."""
-        plugins = [UserMetadata(), AdminMetadata(admin_level=5), QueryBasedMetadata(campaign="Test")]
+        plugins = [
+            UserMetadata(),
+            AdminMetadata(admin_level=5),
+            QueryBasedMetadata(campaign="Test"),
+        ]
 
         for plugin in plugins:
             # Test dict serialization

@@ -38,13 +38,23 @@ console = Console()
 @app.command("submit")
 def submit_transformation_client(
     task_path: str = typer.Argument(..., help="Path to the CWL file"),
-    metadata_path: Optional[str] = typer.Option(None, help="Path to metadata file used to generate the input query"),
+    metadata_path: Optional[str] = typer.Option(
+        None, help="Path to metadata file used to generate the input query"
+    ),
     # Dirac-specific parameters that are used by the jobs
-    platform: Optional[str] = typer.Option(None, help="The platform required to run the transformation"),
-    priority: Optional[int] = typer.Option(10, help="The priority of the transformation"),
-    sites: Optional[List[str]] = typer.Option(None, help="The site to run the transformation"),
+    platform: Optional[str] = typer.Option(
+        None, help="The platform required to run the transformation"
+    ),
+    priority: Optional[int] = typer.Option(
+        10, help="The priority of the transformation"
+    ),
+    sites: Optional[List[str]] = typer.Option(
+        None, help="The site to run the transformation"
+    ),
     # Specific parameter for the purpose of the prototype
-    local: Optional[bool] = typer.Option(True, help="Run the jobs locally instead of submitting them to the router"),
+    local: Optional[bool] = typer.Option(
+        True, help="Run the jobs locally instead of submitting them to the router"
+    ),
 ):
     """
     Correspond to the dirac-cli command to submit transformations
@@ -54,14 +64,20 @@ def submit_transformation_client(
     - Start the transformation
     """
     # Validate the workflow
-    console.print("[blue]:information_source:[/blue] [bold]CLI:[/bold] Validating the transformation...")
+    console.print(
+        "[blue]:information_source:[/blue] [bold]CLI:[/bold] Validating the transformation..."
+    )
     try:
         task = load_document(pack(task_path))
     except FileNotFoundError as ex:
-        console.print(f"[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to load the task:\n{ex}")
+        console.print(
+            f"[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to load the task:\n{ex}"
+        )
         return typer.Exit(code=1)
     except ValidationException as ex:
-        console.print(f"[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to validate the task:\n{ex}")
+        console.print(
+            f"[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to validate the task:\n{ex}"
+        )
         return typer.Exit(code=1)
     console.print(f"\t[green]:heavy_check_mark:[/green] Task {task_path}")
 
@@ -87,15 +103,23 @@ def submit_transformation_client(
         metadata=metadata_model,
         description=transformation_description,
     )
-    console.print("[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Transformation validated.")
+    console.print(
+        "[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Transformation validated."
+    )
 
     # Submit the transformation
-    console.print("[blue]:information_source:[/blue] [bold]CLI:[/bold] Submitting the transformation...")
+    console.print(
+        "[blue]:information_source:[/blue] [bold]CLI:[/bold] Submitting the transformation..."
+    )
     print_json(transformation.model_dump_json(indent=4))
     if not submit_transformation_router(transformation):
-        console.print("[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to run transformation.")
+        console.print(
+            "[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to run transformation."
+        )
         return typer.Exit(code=1)
-    console.print("[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Transformation done.")
+    console.print(
+        "[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Transformation done."
+    )
 
 
 # -----------------------------------------------------------------------------
@@ -202,22 +226,31 @@ def _get_inputs(input_query: Path | list[Path], group_size: int) -> List[List[st
     num_full_groups = len_input_paths // group_size
 
     # Group the input paths into lists of size group_size
-    input_groups = [input_paths[i * group_size : (i + 1) * group_size] for i in range(num_full_groups)]
+    input_groups = [
+        input_paths[i * group_size : (i + 1) * group_size]
+        for i in range(num_full_groups)
+    ]
 
     return input_groups
 
 
-def _generate_job_model_parameter(input_data_dict: Dict[str, List[List[str]]]) -> List[JobParameterModel]:
+def _generate_job_model_parameter(
+    input_data_dict: Dict[str, List[List[str]]]
+) -> List[JobParameterModel]:
     """Generate job model parameters from input data provided."""
     job_model_params = []
 
     input_names = list(input_data_dict.keys())
     input_data_lists = [input_data_dict[input_name] for input_name in input_names]
-    grouped_input_data = [dict(zip(input_names, elements)) for elements in zip(*input_data_lists)]
+    grouped_input_data = [
+        dict(zip(input_names, elements)) for elements in zip(*input_data_lists)
+    ]
     for group in grouped_input_data:
         cwl_inputs = {}
         for input_name, input_data in group.items():
-            cwl_inputs[input_name] = [File(path=str(Path(path).resolve())) for path in input_data]
+            cwl_inputs[input_name] = [
+                File(path=str(Path(path).resolve())) for path in input_data
+            ]
 
         job_model_params.append(JobParameterModel(sandbox=None, cwl=cwl_inputs))
 

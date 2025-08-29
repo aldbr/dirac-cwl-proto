@@ -91,7 +91,9 @@ class GaussianFitMetadata(BaseMetadataModel):
     data1: Optional[List] = None
     data2: Optional[List] = None
 
-    def get_input_query(self, input_name: str, **kwargs: Any) -> Union[Path, List[Path], None]:
+    def get_input_query(
+        self, input_name: str, **kwargs: Any
+    ) -> Union[Path, List[Path], None]:
         """Get input query for data files to fit."""
         base_path = Path("filecatalog") / "gaussian_fit"
 

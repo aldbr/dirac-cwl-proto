@@ -25,7 +25,9 @@ class MetadataPluginRegistry:
         self._vo_plugins: Dict[str, Dict[str, Type[BaseMetadataModel]]] = {}
         self._plugin_info: Dict[str, Dict[str, Any]] = {}
 
-    def register_plugin(self, plugin_class: Type[BaseMetadataModel], override: bool = False) -> None:
+    def register_plugin(
+        self, plugin_class: Type[BaseMetadataModel], override: bool = False
+    ) -> None:
         """Register a metadata plugin.
 
         Parameters
@@ -41,7 +43,9 @@ class MetadataPluginRegistry:
             If plugin is already registered and override=False.
         """
         if not issubclass(plugin_class, BaseMetadataModel):
-            raise ValueError(f"Plugin {plugin_class} must inherit from BaseMetadataModel")
+            raise ValueError(
+                f"Plugin {plugin_class} must inherit from BaseMetadataModel"
+            )
 
         plugin_key = plugin_class.get_metadata_class()
         vo = plugin_class.vo
@@ -70,7 +74,9 @@ class MetadataPluginRegistry:
             f"{f' (VO: {vo})' if vo else ''}"
         )
 
-    def get_plugin(self, plugin_key: str, vo: Optional[str] = None) -> Optional[Type[BaseMetadataModel]]:
+    def get_plugin(
+        self, plugin_key: str, vo: Optional[str] = None
+    ) -> Optional[Type[BaseMetadataModel]]:
         """Get a registered plugin.
 
         Parameters
@@ -93,7 +99,9 @@ class MetadataPluginRegistry:
         # Fall back to global registry
         return self._plugins.get(plugin_key)
 
-    def instantiate_plugin(self, descriptor: DataManager, **kwargs: Any) -> BaseMetadataModel:
+    def instantiate_plugin(
+        self, descriptor: DataManager, **kwargs: Any
+    ) -> BaseMetadataModel:
         """Instantiate a metadata plugin from a descriptor.
 
         Parameters
@@ -126,13 +134,17 @@ class MetadataPluginRegistry:
             )
 
         # Extract plugin parameters from descriptor
-        plugin_params = descriptor.model_dump(exclude={"metadata_class", "vo", "version"})
+        plugin_params = descriptor.model_dump(
+            exclude={"metadata_class", "vo", "version"}
+        )
         plugin_params.update(kwargs)
 
         try:
             return plugin_class(**plugin_params)
         except Exception as e:
-            raise ValueError(f"Failed to instantiate plugin '{descriptor.metadata_class}': {e}") from e
+            raise ValueError(
+                f"Failed to instantiate plugin '{descriptor.metadata_class}': {e}"
+            ) from e
 
     def list_plugins(self, vo: Optional[str] = None) -> List[str]:
         """List available plugins.
@@ -208,7 +220,11 @@ class MetadataPluginRegistry:
                 # Look for metadata model classes
                 for attr_name in dir(module):
                     attr = getattr(module, attr_name)
-                    if isinstance(attr, type) and issubclass(attr, BaseMetadataModel) and attr is not BaseMetadataModel:
+                    if (
+                        isinstance(attr, type)
+                        and issubclass(attr, BaseMetadataModel)
+                        and attr is not BaseMetadataModel
+                    ):
                         self.register_plugin(attr)
                         discovered += 1
 
@@ -236,12 +252,17 @@ class MetadataPluginRegistry:
 
         if plugin_class is None:
             available = self.list_plugins(descriptor.vo)
-            errors.append(f"Unknown metadata plugin: '{descriptor.metadata_class}'. " f"Available: {available}")
+            errors.append(
+                f"Unknown metadata plugin: '{descriptor.metadata_class}'. "
+                f"Available: {available}"
+            )
             return errors
 
         # Validate descriptor against plugin schema
         try:
-            plugin_params = descriptor.model_dump(exclude={"metadata_class", "vo", "version"})
+            plugin_params = descriptor.model_dump(
+                exclude={"metadata_class", "vo", "version"}
+            )
             plugin_class.model_validate(plugin_params)
         except Exception as e:
             errors.append(f"Plugin validation failed: {e}")

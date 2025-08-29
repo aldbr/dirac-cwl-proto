@@ -81,7 +81,9 @@ class TestLHCbSimulationMetadata:
 
     def test_pre_process_simulation(self):
         """Test simulation pre_process method."""
-        metadata = LHCbSimulationMetadata(task_id=123, run_id=1, generator_config="Pythia8")
+        metadata = LHCbSimulationMetadata(
+            task_id=123, run_id=1, generator_config="Pythia8"
+        )
 
         command = ["lhcb-simulation", "workflow.cwl"]
         result = metadata.pre_process(Path("/tmp/job"), command)
@@ -97,7 +99,9 @@ class TestLHCbSimulationMetadata:
         metadata = LHCbSimulationMetadata(task_id=123, run_id=1)
 
         # Mock parameter file loading
-        mock_load_inputfile = mocker.patch("dirac_cwl_proto.metadata.plugins.lhcb.load_inputfile")
+        mock_load_inputfile = mocker.patch(
+            "dirac_cwl_proto.metadata.plugins.lhcb.load_inputfile"
+        )
         mock_open = mocker.patch("builtins.open")
         mock_yaml = mocker.patch("dirac_cwl_proto.metadata.plugins.lhcb.YAML")
         mock_load_inputfile.return_value = {"n_events": 1500, "generator": "Pythia8"}
@@ -119,7 +123,9 @@ class TestLHCbSimulationMetadata:
         metadata = LHCbSimulationMetadata(task_id=123, run_id=1)
 
         # Mock file loading error
-        mock_load_inputfile = mocker.patch("dirac_cwl_proto.metadata.plugins.lhcb.load_inputfile")
+        mock_load_inputfile = mocker.patch(
+            "dirac_cwl_proto.metadata.plugins.lhcb.load_inputfile"
+        )
         mock_open = mocker.patch("builtins.open")
         mock_yaml = mocker.patch("dirac_cwl_proto.metadata.plugins.lhcb.YAML")
         mock_load_inputfile.side_effect = Exception("File not found")
@@ -137,7 +143,9 @@ class TestLHCbSimulationMetadata:
 
     def test_pre_process(self):
         """Test simulation pre_process method."""
-        metadata = LHCbSimulationMetadata(task_id=123, run_id=1, generator_config="Pythia8")
+        metadata = LHCbSimulationMetadata(
+            task_id=123, run_id=1, generator_config="Pythia8"
+        )
 
         command = ["lhcb-simulation", "workflow.cwl"]
         result = metadata.pre_process(Path("/tmp/job"), command)
@@ -158,7 +166,9 @@ class TestLHCbSimulationMetadata:
 
         # Mock glob to find simulation files
         mock_glob = mocker.patch("dirac_cwl_proto.metadata.plugins.lhcb.glob.glob")
-        mock_store = mocker.patch("dirac_cwl_proto.metadata.core.DataCatalogInterface.store_output")
+        mock_store = mocker.patch(
+            "dirac_cwl_proto.metadata.core.DataCatalogInterface.store_output"
+        )
         mock_glob.side_effect = [
             ["/tmp/job/output.sim"],  # sim files
             ["/tmp/job/pool_xml_catalog.xml"],  # catalog files
@@ -196,13 +206,17 @@ class TestLHCbReconstructionMetadata:
     def test_validate_data_types(self):
         """Test data type validation."""
         # Valid data types
-        metadata = LHCbReconstructionMetadata(task_id=456, run_id=1, input_data_type="SIM", output_data_type="DST")
+        metadata = LHCbReconstructionMetadata(
+            task_id=456, run_id=1, input_data_type="SIM", output_data_type="DST"
+        )
         assert metadata.input_data_type == "SIM"
         assert metadata.output_data_type == "DST"
 
     def test_get_input_query_with_data_type(self):
         """Test input query with data type filtering."""
-        metadata = LHCbReconstructionMetadata(task_id=456, run_id=1, input_data_type="SIM")
+        metadata = LHCbReconstructionMetadata(
+            task_id=456, run_id=1, input_data_type="SIM"
+        )
 
         result = metadata.get_input_query("input_files")
         expected = Path("filecatalog/lhcb/456/1/sim")
@@ -210,7 +224,9 @@ class TestLHCbReconstructionMetadata:
 
     def test_get_output_query_with_data_type(self):
         """Test output query with data type specification."""
-        metadata = LHCbReconstructionMetadata(task_id=456, run_id=1, output_data_type="DST")
+        metadata = LHCbReconstructionMetadata(
+            task_id=456, run_id=1, output_data_type="DST"
+        )
 
         result = metadata.get_output_query("output_files")
         expected = Path("filecatalog/lhcb/456/1/dst")
@@ -218,7 +234,9 @@ class TestLHCbReconstructionMetadata:
 
     def test_pre_process(self):
         """Test reconstruction pre_process method."""
-        metadata = LHCbReconstructionMetadata(task_id=456, run_id=1, reconstruction_version="v50r1")
+        metadata = LHCbReconstructionMetadata(
+            task_id=456, run_id=1, reconstruction_version="v50r1"
+        )
 
         command = ["lhcb-reconstruction", "--input", "sim.dst"]
         result = metadata.pre_process(Path("/tmp/job"), command)
@@ -237,7 +255,9 @@ class TestLHCbAnalysisMetadata:
 
     def test_creation(self):
         """Test LHCbAnalysisMetadata creation."""
-        metadata = LHCbAnalysisMetadata(task_id=789, run_id=1, analysis_name="TestAnalysis", user_name="testuser")
+        metadata = LHCbAnalysisMetadata(
+            task_id=789, run_id=1, analysis_name="TestAnalysis", user_name="testuser"
+        )
         assert metadata.get_metadata_class() == "LHCbAnalysis"
         assert "LHCb analysis" in metadata.description
 
@@ -256,7 +276,9 @@ class TestLHCbAnalysisMetadata:
 
     def test_user_path_generation(self):
         """Test user-specific path generation."""
-        metadata = LHCbAnalysisMetadata(task_id=789, run_id=1, user_name="alice", analysis_name="B2KstarMuMu")
+        metadata = LHCbAnalysisMetadata(
+            task_id=789, run_id=1, user_name="alice", analysis_name="B2KstarMuMu"
+        )
 
         result = metadata.get_input_query("input_data")
         expected = Path("filecatalog/lhcb/analysis/alice/B2KstarMuMu/input")
@@ -264,7 +286,9 @@ class TestLHCbAnalysisMetadata:
 
     def test_get_output_query_with_analysis(self):
         """Test output query with analysis-specific paths."""
-        metadata = LHCbAnalysisMetadata(task_id=789, run_id=1, user_name="alice", analysis_name="B2KstarMuMu")
+        metadata = LHCbAnalysisMetadata(
+            task_id=789, run_id=1, user_name="alice", analysis_name="B2KstarMuMu"
+        )
 
         result = metadata.get_output_query("results")
         expected = Path("filecatalog/lhcb/analysis/alice/B2KstarMuMu/results")
@@ -272,7 +296,9 @@ class TestLHCbAnalysisMetadata:
 
     def test_pre_process(self):
         """Test analysis pre_process method."""
-        metadata = LHCbAnalysisMetadata(task_id=789, run_id=1, analysis_name="B2KstarMuMu", user_name="alice")
+        metadata = LHCbAnalysisMetadata(
+            task_id=789, run_id=1, analysis_name="B2KstarMuMu", user_name="alice"
+        )
 
         command = ["python", "analysis.py"]
         result = metadata.pre_process(Path("/tmp/job"), command)
@@ -285,13 +311,17 @@ class TestLHCbAnalysisMetadata:
 
     def test_post_process_with_user_output(self, mocker):
         """Test analysis post_process with user-specific output handling."""
-        metadata = LHCbAnalysisMetadata(task_id=789, run_id=1, user_name="alice", analysis_name="TestAnalysis")
+        metadata = LHCbAnalysisMetadata(
+            task_id=789, run_id=1, user_name="alice", analysis_name="TestAnalysis"
+        )
 
         job_path = Path("/tmp/job")
 
         # Mock glob to find ROOT files and plot files
         mock_glob = mocker.patch("dirac_cwl_proto.metadata.plugins.lhcb.glob.glob")
-        mock_store = mocker.patch("dirac_cwl_proto.metadata.core.DataCatalogInterface.store_output")
+        mock_store = mocker.patch(
+            "dirac_cwl_proto.metadata.core.DataCatalogInterface.store_output"
+        )
         mock_glob.side_effect = [
             ["/tmp/job/results.root"],  # ROOT files
             [],  # PNG files
@@ -313,7 +343,12 @@ class TestLHCbPluginIntegration:
 
     def test_all_lhcb_plugins_have_vo_namespace(self):
         """Test that all LHCb plugins have the correct VO namespace."""
-        plugins = [LHCbMetadata, LHCbSimulationMetadata, LHCbReconstructionMetadata, LHCbAnalysisMetadata]
+        plugins = [
+            LHCbMetadata,
+            LHCbSimulationMetadata,
+            LHCbReconstructionMetadata,
+            LHCbAnalysisMetadata,
+        ]
 
         for plugin_class in plugins:
             assert hasattr(plugin_class, "vo")
@@ -321,7 +356,11 @@ class TestLHCbPluginIntegration:
 
     def test_lhcb_plugins_inheritance(self):
         """Test that all LHCb plugins inherit from LHCbMetadata."""
-        plugins = [LHCbSimulationMetadata, LHCbReconstructionMetadata, LHCbAnalysisMetadata]
+        plugins = [
+            LHCbSimulationMetadata,
+            LHCbReconstructionMetadata,
+            LHCbAnalysisMetadata,
+        ]
 
         for plugin_class in plugins:
             assert issubclass(plugin_class, LHCbMetadata)
@@ -331,7 +370,12 @@ class TestLHCbPluginIntegration:
         plugins = [
             ("simulation", LHCbSimulationMetadata(task_id=1, run_id=1)),
             ("reconstruction", LHCbReconstructionMetadata(task_id=2, run_id=2)),
-            ("analysis", LHCbAnalysisMetadata(task_id=3, run_id=3, analysis_name="test", user_name="test")),
+            (
+                "analysis",
+                LHCbAnalysisMetadata(
+                    task_id=3, run_id=3, analysis_name="test", user_name="test"
+                ),
+            ),
         ]
 
         for _plugin_type, plugin in plugins:

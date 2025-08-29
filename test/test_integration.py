@@ -71,18 +71,27 @@ class TestSystemIntegration:
         """Test complete CWL integration workflow."""
         # Create an enhanced descriptor directly to test CWL integration
         metadata_descriptor = DataManager(
-            metadata_class="QueryBased", query_params={"campaign": "Run3", "data_type": "AOD", "site": "CERN"}
+            metadata_class="QueryBased",
+            query_params={"campaign": "Run3", "data_type": "AOD", "site": "CERN"},
         )
 
         # Convert to runtime
         runtime_metadata = metadata_descriptor.to_runtime()
-        assert runtime_metadata.get_metadata_class() == "QueryBased"  # Test that CWL parameters are available
+        assert (
+            runtime_metadata.get_metadata_class() == "QueryBased"
+        )  # Test that CWL parameters are available
         # (Note: exact parameter extraction depends on implementation)
 
     def test_legacy_compatibility_integration(self):
         """Test that legacy metadata models integrate correctly."""
         # Test that legacy models are still accessible
-        legacy_plugins = ["PiSimulate", "PiGather", "LHCbSimulation", "MandelBrotGeneration", "GaussianFit"]
+        legacy_plugins = [
+            "PiSimulate",
+            "PiGather",
+            "LHCbSimulation",
+            "MandelBrotGeneration",
+            "GaussianFit",
+        ]
 
         registry = get_registry()
         registered = registry.list_plugins()
@@ -115,7 +124,12 @@ class TestRealWorldScenarios:
         """Test an administrative workflow scenario."""
         # Admin creates a job with enhanced logging
         admin_descriptor = DataManager(
-            metadata_class="Admin", query_params={"admin_level": 8, "log_level": "DEBUG", "enable_monitoring": True}
+            metadata_class="Admin",
+            query_params={
+                "admin_level": 8,
+                "log_level": "DEBUG",
+                "enable_monitoring": True,
+            },
         )
         admin_runtime = admin_descriptor.to_runtime()
 
@@ -125,7 +139,9 @@ class TestRealWorldScenarios:
 
         # Pre-process should add logging
         processed_command = admin_runtime.pre_process(job_path, command)
-        assert len(processed_command) >= len(command)  # Should be at least the same length
+        assert len(processed_command) >= len(
+            command
+        )  # Should be at least the same length
         assert "--log-level" in processed_command
         assert "DEBUG" in processed_command
 
@@ -134,7 +150,12 @@ class TestRealWorldScenarios:
         # Analyst creates a job with query-based data discovery
         analysis_descriptor = DataManager(
             metadata_class="QueryBased",
-            query_params={"query_root": "/grid/data", "campaign": "Run3_2024", "data_type": "AOD", "site": "CERN"},
+            query_params={
+                "query_root": "/grid/data",
+                "campaign": "Run3_2024",
+                "data_type": "AOD",
+                "site": "CERN",
+            },
         )
         analysis_runtime = analysis_descriptor.to_runtime()
 
@@ -176,7 +197,10 @@ class TestRealWorldScenarios:
     def test_transformation_workflow_scenario(self):
         """Test a transformation (batch processing) workflow scenario."""
         # Create multiple task descriptions for a transformation
-        task_configs = [{"platform": "DIRAC", "priority": 5, "sites": [f"site_{i}"]} for i in range(5)]
+        task_configs = [
+            {"platform": "DIRAC", "priority": 5, "sites": [f"site_{i}"]}
+            for i in range(5)
+        ]
 
         tasks = []
         for config in task_configs:
@@ -192,7 +216,9 @@ class TestRealWorldScenarios:
     def test_parameter_override_scenario(self):
         """Test parameter override scenarios."""
         # Base descriptor with default parameters
-        base_descriptor = DataManager(metadata_class="Admin", query_params={"admin_level": 3, "log_level": "INFO"})
+        base_descriptor = DataManager(
+            metadata_class="Admin", query_params={"admin_level": 3, "log_level": "INFO"}
+        )
 
         # Create variants with different overrides
         variants = [
@@ -202,7 +228,9 @@ class TestRealWorldScenarios:
         ]
 
         for override in variants:
-            variant_descriptor = base_descriptor.model_copy(update={"query_params": override})
+            variant_descriptor = base_descriptor.model_copy(
+                update={"query_params": override}
+            )
             runtime = variant_descriptor.to_runtime()
 
             # Verify parameters are properly merged/overridden
@@ -223,7 +251,9 @@ class TestErrorHandling:
     def test_missing_required_parameters(self):
         """Test handling of missing required parameters."""
         # Some plugins might require specific parameters
-        with pytest.raises(ValueError, match="Failed to instantiate plugin 'LHCbSimulation'"):
+        with pytest.raises(
+            ValueError, match="Failed to instantiate plugin 'LHCbSimulation'"
+        ):
             descriptor = DataManager(metadata_class="LHCbSimulation")
             descriptor.to_runtime()
 
@@ -274,7 +304,7 @@ class TestPerformance:
 
         for _ in range(100):
             descriptor = DataManager(metadata_class="User")
-            runtime = descriptor.to_runtime()
+            descriptor.to_runtime()
 
         end_time = time.time()
 
@@ -290,8 +320,8 @@ class TestPerformance:
         start_time = time.time()
 
         for _ in range(1000):
-            plugins = registry.list_plugins()
-            plugin_class = registry.get_plugin("User")
+            registry.list_plugins()
+            registry.get_plugin("User")
 
         end_time = time.time()
 

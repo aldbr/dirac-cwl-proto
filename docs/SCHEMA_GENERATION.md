@@ -36,7 +36,7 @@ make schemas
 # Generate only JSON schemas
 make schemas-json
 
-# Generate only YAML schemas  
+# Generate only YAML schemas
 make schemas-yaml
 
 # Check if schemas are up to date
@@ -148,7 +148,7 @@ class MyMetadata(BaseMetadataModel):
     metadata_type: ClassVar[str] = "MyModel"
     description: ClassVar[str] = "Description of my metadata model"
     experiment: ClassVar[str] = "my_experiment"  # Optional
-    
+
     # Your fields here
     parameter1: str
     parameter2: int = 42
@@ -171,7 +171,7 @@ make test-schemas
 ### Plugin Discovery
 
 The schema generation automatically discovers plugins by:
-1. Scanning `dirac_cwl_proto.metadata.plugins.*` 
+1. Scanning `dirac_cwl_proto.metadata.plugins.*`
 2. Looking for classes that inherit from `BaseMetadataModel`
 3. Including experiment-specific namespaces
 4. Supporting user-provided plugin packages
@@ -255,7 +255,7 @@ The old hardcoded schemas in `src/dirac_cwl_proto/schemas/` have been removed. T
 $namespaces:
   dirac: "package://dirac_cwl_proto/schemas/dirac-metadata.yaml#"
 
-# New  
+# New
 $namespaces:
   dirac: "./schemas/dirac-metadata.json#"
 ```
