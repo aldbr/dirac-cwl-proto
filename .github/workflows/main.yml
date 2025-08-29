@@ -2,47 +2,48 @@ name: Basic Tests
 
 on:
   push:
-    branches:
-      - main
+    branches: ["main"]
   pull_request:
-    branches:
-      - main
-
-
-defaults:
-  run:
-    shell: bash -el {0}
+    branches: ["main"]
 
 jobs:
-  pytest:
-    name: Unit test
+  ci:
+    name: Lint & Tests
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - uses: mamba-org/setup-micromamba@v1
+
+      - name: Install Pixi
+        uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          environment-name: test-env
-          create-args: >-
-            python=3.12
-            mypy
-            pip
-          init-shell: bash
-          post-cleanup: 'all'
-      - name: Set up environment
+          cache: true
+
+      - name: Show Pixi environment
         run: |
-          pip install .
-          pip install types-jsonschema types-PyYAML  # Install type stubs
-      - name: Generate and validate schemas
+          pixi info
+          pixi list --locked
+        shell: bash
+
+      - name: Run pre-commit
         run: |
-          echo "Generating schemas to ensure they're up to date..."
-          python scripts/generate_schemas.py --output-dir generated_schemas --format json --unified
-          echo "Schema generation completed successfully"
-      - name: Run mypy
+          pixi run pre-commit-install
+          pixi run pre-commit-run
+        shell: pixi run bash -e {0}
+
+      - name: Generate & validate schemas
         run: |
-          mypy src
-      - name: Run pytest
+          pixi run schemas
+          pixi run validate-schemas
+        shell: pixi run bash -e {0}
+
+      - name: Lint (mypy)
         run: |
-          pip install .[testing]
-          pytest
+          pixi run lint
+        shell: pixi run bash -e {0}
+
+      - name: Run tests
+        run: |
+          pixi run test
+        shell: pixi run bash -e {0}
