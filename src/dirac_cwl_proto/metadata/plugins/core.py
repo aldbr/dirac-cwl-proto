@@ -73,7 +73,9 @@ class QueryBasedMetadata(BaseMetadataModel):
     campaign: Optional[str] = None
     data_type: Optional[str] = None
 
-    def get_input_query(self, input_name: str, **kwargs: Any) -> Union[Path, List[Path], None]:
+    def get_input_query(
+        self, input_name: str, **kwargs: Any
+    ) -> Union[Path, List[Path], None]:
         """Generate input query based on metadata parameters.
 
         Parameters
@@ -126,9 +128,13 @@ class TaskWithMetadataQueryPlugin(BaseMetadataModel):
     data discovery in the DIRAC metadata system.
     """
 
-    description: ClassVar[str] = "Example metadata plugin with query-based input resolution"
+    description: ClassVar[
+        str
+    ] = "Example metadata plugin with query-based input resolution"
 
-    def get_input_query(self, input_name: str, **kwargs: Any) -> Union[Path, List[Path], None]:
+    def get_input_query(
+        self, input_name: str, **kwargs: Any
+    ) -> Union[Path, List[Path], None]:
         """
         Generates a query to retrieve input paths based on provided metadata.
 

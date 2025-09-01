@@ -179,7 +179,9 @@ class ProductionSubmissionModel(BaseModel):
             # Check if all metadata keys exist in the task's workflow steps
             missing_steps = metadata_keys - task_steps
             if missing_steps:
-                raise ValueError(f"The following steps are missing from the task workflow: {missing_steps}")
+                raise ValueError(
+                    f"The following steps are missing from the task workflow: {missing_steps}"
+                )
 
         return values
 

@@ -4,7 +4,12 @@ This module ensures that core plugins are automatically registered
 when the metadata system is imported.
 """
 
-from .core import AdminMetadata, QueryBasedMetadata, TaskWithMetadataQueryPlugin, UserMetadata
+from .core import (
+    AdminMetadata,
+    QueryBasedMetadata,
+    TaskWithMetadataQueryPlugin,
+    UserMetadata,
+)
 from .gaussian import DataGenerationMetadata, GaussianFitMetadata
 from .lhcb import (
     LHCbAnalysisMetadata,

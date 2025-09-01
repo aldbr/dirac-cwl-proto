@@ -141,7 +141,9 @@ class TestMetadataPluginRegistry:
 
         registry.register_plugin(TestVOPlugin)
 
-        descriptor = DataManager(metadata_class="TestVOPlugin", vo="test_exp", exp_param=99)
+        descriptor = DataManager(
+            metadata_class="TestVOPlugin", vo="test_exp", exp_param=99
+        )
         instance = registry.instantiate_plugin(descriptor)
 
         assert isinstance(instance, TestVOPlugin)
@@ -251,7 +253,9 @@ class TestPluginSystem:
 
         # Test with snake_case parameters (should work)
         descriptor = DataManager(
-            metadata_class="ParameterTestPlugin", test_param="value1", another_param="value2"
+            metadata_class="ParameterTestPlugin",
+            test_param="value1",
+            another_param="value2",
         )
         instance = registry.instantiate_plugin(descriptor)
 

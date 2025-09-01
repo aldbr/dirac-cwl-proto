@@ -61,14 +61,16 @@ class TestDataCatalogInterface:
         """Test that concrete implementations work correctly."""
 
         class ConcreteCatalog(DataCatalogInterface):
-            def get_input_query(self, input_name: str, **kwargs: Any) -> Union[Path, List[Path], None]:
+            def get_input_query(
+                self, input_name: str, **kwargs: Any
+            ) -> Union[Path, List[Path], None]:
                 return Path(f"/data/{input_name}")
 
             def get_output_query(self, output_name: str) -> Optional[Path]:
                 return Path(f"/output/{output_name}")
 
-            def store_output(self, output_path: Path, metadata: dict) -> bool:
-                return True
+            def store_output(self, output_name: str, src_path: str) -> None:
+                pass
 
         catalog = ConcreteCatalog()
 
@@ -81,7 +83,7 @@ class TestDataCatalogInterface:
         assert result == Path("/output/test_output")
 
         # Test store_output
-        assert catalog.store_output(Path("/tmp/test"), {}) is True
+        catalog.store_output("test_output", "/tmp/test")  # Should not raise an error
 
 
 class TestBaseMetadataModel:
@@ -169,7 +171,12 @@ class TestDataManager:
 
     def test_creation_with_all_fields(self):
         """Test DataManager creation with all fields."""
-        descriptor = DataManager(metadata_class="LHCbSimulation", vo="lhcb", version="2.0", custom_param="value")
+        descriptor = DataManager(
+            metadata_class="LHCbSimulation",
+            vo="lhcb",
+            version="2.0",
+            custom_param="value",
+        )
         assert descriptor.metadata_class == "LHCbSimulation"
         assert descriptor.vo == "lhcb"
         assert descriptor.version == "2.0"
@@ -180,7 +187,12 @@ class TestDataManager:
         # Mock CWL document
         mock_cwl = mocker.Mock()
         mock_cwl.hints = [
-            {"class": "dirac:data-management", "metadata_class": "QueryBased", "vo": "lhcb", "campaign": "Run3"},
+            {
+                "class": "dirac:data-management",
+                "metadata_class": "QueryBased",
+                "vo": "lhcb",
+                "campaign": "Run3",
+            },
             {"class": "ResourceRequirement", "coresMin": 2},
         ]
 
@@ -215,7 +227,9 @@ class TestDataManager:
         descriptor = DataManager(metadata_class="LHCbSimulation", vo="lhcb")
 
         # Test basic update
-        updated = descriptor.model_copy_with_merge(update={"metadata_class": "NewClass", "new_field": "value"})
+        updated = descriptor.model_copy_with_merge(
+            update={"metadata_class": "NewClass", "new_field": "value"}
+        )
 
         assert updated.metadata_class == "NewClass"
         assert updated.vo == "lhcb"
@@ -242,7 +256,9 @@ class TestJobExecutor:
 
     def test_creation_with_values(self):
         """Test JobExecutor creation with values."""
-        descriptor = JobExecutor(platform="DIRAC", priority=5, sites=["LCG.CERN.ch", "LCG.IN2P3.fr"])
+        descriptor = JobExecutor(
+            platform="DIRAC", priority=5, sites=["LCG.CERN.ch", "LCG.IN2P3.fr"]
+        )
         assert descriptor.platform == "DIRAC"
         assert descriptor.priority == 5
         assert descriptor.sites == ["LCG.CERN.ch", "LCG.IN2P3.fr"]
@@ -251,7 +267,12 @@ class TestJobExecutor:
         """Test extraction from CWL hints."""
         mock_cwl = mocker.Mock()
         mock_cwl.hints = [
-            {"class": "dirac:job-execution", "platform": "DIRAC-v8", "priority": 8, "sites": ["LCG.CERN.ch"]}
+            {
+                "class": "dirac:job-execution",
+                "platform": "DIRAC-v8",
+                "priority": 8,
+                "sites": ["LCG.CERN.ch"],
+            }
         ]
 
         descriptor = JobExecutor.from_cwl_hints(mock_cwl)
@@ -262,7 +283,9 @@ class TestJobExecutor:
 
     def test_serialization(self):
         """Test JobExecutor serialization."""
-        descriptor = JobExecutor(platform="DIRAC", priority=7, sites=["LCG.CERN.ch", "LCG.IN2P3.fr"])
+        descriptor = JobExecutor(
+            platform="DIRAC", priority=7, sites=["LCG.CERN.ch", "LCG.IN2P3.fr"]
+        )
 
         # Test model serialization
         data = descriptor.model_dump()
@@ -277,14 +300,19 @@ class TestTransformationDataManager:
 
     def test_creation(self):
         """Test TransformationDataManager creation."""
-        descriptor = TransformationDataManager(metadata_class="QueryBased", group_size={"input_data": 100})
+        descriptor = TransformationDataManager(
+            metadata_class="QueryBased", group_size={"input_data": 100}
+        )
         assert descriptor.metadata_class == "QueryBased"
         assert descriptor.group_size == {"input_data": 100}
 
     def test_inheritance(self):
         """Test that it inherits from DataManager."""
         descriptor = TransformationDataManager(
-            metadata_class="LHCbSimulation", vo="lhcb", group_size={"sim_data": 50}, n_events=1000
+            metadata_class="LHCbSimulation",
+            vo="lhcb",
+            group_size={"sim_data": 50},
+            n_events=1000,
         )
 
         # Test that it has the fields from both classes
@@ -296,7 +324,9 @@ class TestTransformationDataManager:
     def test_validation(self):
         """Test group_size validation."""
         # Valid group_size
-        descriptor = TransformationDataManager(metadata_class="User", group_size={"files": 10})
+        descriptor = TransformationDataManager(
+            metadata_class="User", group_size={"files": 10}
+        )
         assert descriptor.group_size == {"files": 10}
 
         # Test with no group_size

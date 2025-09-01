@@ -41,7 +41,9 @@ class MandelBrotGenerationMetadata(BaseMetadataModel):
         Name for output files.
     """
 
-    description: ClassVar[str] = "Mandelbrot set generation with configurable parameters"
+    description: ClassVar[
+        str
+    ] = "Mandelbrot set generation with configurable parameters"
 
     precision: float
     max_iterations: int
@@ -56,7 +58,13 @@ class MandelBrotGenerationMetadata(BaseMetadataModel):
     def get_output_query(self, output_name: str) -> Optional[Path]:
         """Get output path for generated Mandelbrot data."""
         if output_name == "data":
-            return Path("filecatalog") / "mandelbrot" / "images" / "raw" / f"{self.width}x{self.height}"
+            return (
+                Path("filecatalog")
+                / "mandelbrot"
+                / "images"
+                / "raw"
+                / f"{self.width}x{self.height}"
+            )
         return None
 
     def post_process(self, job_path: Path) -> bool:
@@ -113,17 +121,31 @@ class MandelBrotMergingMetadata(BaseMetadataModel):
     # Input data
     data: Optional[List] = None
 
-    def get_input_query(self, input_name: str, **kwargs: Any) -> Union[Path, List[Path], None]:
+    def get_input_query(
+        self, input_name: str, **kwargs: Any
+    ) -> Union[Path, List[Path], None]:
         """Get input query for Mandelbrot data to merge."""
         # Reference the output from MandelBrotGeneration
-        return Path("filecatalog") / "mandelbrot" / "images" / "raw" / f"{self.width}x{self.height}"
+        return (
+            Path("filecatalog")
+            / "mandelbrot"
+            / "images"
+            / "raw"
+            / f"{self.width}x{self.height}"
+        )
 
     def get_output_query(self, output_name: str) -> Optional[Path]:
         """Get output path for merged Mandelbrot images."""
         if output_name == "data-merged" and self.data:
             width = len(self.data) * self.width
             height = len(self.data) * self.height
-            return Path("filecatalog") / "mandelbrot" / "images" / "merged" / f"{width}x{height}"
+            return (
+                Path("filecatalog")
+                / "mandelbrot"
+                / "images"
+                / "merged"
+                / f"{width}x{height}"
+            )
         return None
 
     def post_process(self, job_path: Path) -> bool:

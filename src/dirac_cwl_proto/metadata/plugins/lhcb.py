@@ -45,18 +45,26 @@ class LHCbSimulationMetadata(LHCbMetadata):
     including dynamic event number calculation based on available resources.
     """
 
-    description: ClassVar[str] = "LHCb simulation metadata with dynamic resource allocation"
+    description: ClassVar[
+        str
+    ] = "LHCb simulation metadata with dynamic resource allocation"
 
     number_of_events: int = Field(default=0, description="Number of events to simulate")
 
     # LHCb simulation parameters
-    detector_conditions: Optional[str] = Field(default=None, description="Detector conditions tag")
+    detector_conditions: Optional[str] = Field(
+        default=None, description="Detector conditions tag"
+    )
 
     beam_energy: Optional[float] = Field(default=None, description="Beam energy in GeV")
 
-    generator_config: Optional[str] = Field(default=None, description="Generator configuration")
+    generator_config: Optional[str] = Field(
+        default=None, description="Generator configuration"
+    )
 
-    def get_input_query(self, input_name: str, **kwargs: Any) -> Union[Path, List[Path], None]:
+    def get_input_query(
+        self, input_name: str, **kwargs: Any
+    ) -> Union[Path, List[Path], None]:
         """Get input data for LHCb simulation."""
         if input_name == "conditions":
             return self.get_lhcb_base_path() / "conditions"
@@ -99,7 +107,9 @@ class LHCbSimulationMetadata(LHCbMetadata):
                 available_processors = random.randint(1, 8)
 
                 if available_processors < cores_min:
-                    raise RuntimeError(f"Insufficient processors: need {cores_min}, have {available_processors}")
+                    raise RuntimeError(
+                        f"Insufficient processors: need {cores_min}, have {available_processors}"
+                    )
 
                 processors_to_use = min(available_processors, cores_max)
 
@@ -108,7 +118,9 @@ class LHCbSimulationMetadata(LHCbMetadata):
                 base_time_per_event = 10.0  # seconds per event (base)
                 max_job_time = 3600 * 8  # 8 hours max
 
-                events_per_core = int((max_job_time * cpu_power_factor) / base_time_per_event)
+                events_per_core = int(
+                    (max_job_time * cpu_power_factor) / base_time_per_event
+                )
 
                 self.number_of_events = events_per_core * processors_to_use
 
@@ -118,7 +130,9 @@ class LHCbSimulationMetadata(LHCbMetadata):
             except Exception as e:
                 # Fallback to default if processing fails
                 self.number_of_events = 1000
-                print(f"Warning: Failed to calculate optimal events, using default: {e}")
+                print(
+                    f"Warning: Failed to calculate optimal events, using default: {e}"
+                )
 
         return command
 
@@ -191,13 +205,19 @@ class LHCbReconstructionMetadata(LHCbMetadata):
     description: ClassVar[str] = "LHCb reconstruction metadata with file management"
 
     # Reconstruction-specific parameters
-    reconstruction_version: Optional[str] = Field(default=None, description="Reconstruction software version")
+    reconstruction_version: Optional[str] = Field(
+        default=None, description="Reconstruction software version"
+    )
 
-    input_data_type: str = Field(default="RAW", description="Type of input data (RAW, DST, etc.)")
+    input_data_type: str = Field(
+        default="RAW", description="Type of input data (RAW, DST, etc.)"
+    )
 
     output_data_type: str = Field(default="DST", description="Type of output data")
 
-    def get_input_query(self, input_name: str, **kwargs: Any) -> Union[Path, List[Path], None]:
+    def get_input_query(
+        self, input_name: str, **kwargs: Any
+    ) -> Union[Path, List[Path], None]:
         """Get input data for LHCb reconstruction."""
         base = self.get_lhcb_base_path()
 
@@ -279,16 +299,30 @@ class LHCbAnalysisMetadata(LHCbMetadata):
 
     # Analysis-specific parameters
     analysis_name: str = Field(description="Name of the analysis")
-    analysis_version: Optional[str] = Field(default=None, description="Analysis version")
+    analysis_version: Optional[str] = Field(
+        default=None, description="Analysis version"
+    )
     user_name: str = Field(description="Analysis owner")
 
-    input_datasets: Optional[List[str]] = Field(default=None, description="List of input dataset identifiers")
+    input_datasets: Optional[List[str]] = Field(
+        default=None, description="List of input dataset identifiers"
+    )
 
-    selection_criteria: Optional[str] = Field(default=None, description="Event selection criteria")
+    selection_criteria: Optional[str] = Field(
+        default=None, description="Event selection criteria"
+    )
 
-    def get_input_query(self, input_name: str, **kwargs: Any) -> Union[Path, List[Path], None]:
+    def get_input_query(
+        self, input_name: str, **kwargs: Any
+    ) -> Union[Path, List[Path], None]:
         """Get input data for LHCb analysis."""
-        base = Path("filecatalog") / "lhcb" / "analysis" / self.user_name / self.analysis_name
+        base = (
+            Path("filecatalog")
+            / "lhcb"
+            / "analysis"
+            / self.user_name
+            / self.analysis_name
+        )
 
         if self.input_datasets:
             # Return paths for all specified datasets
@@ -301,7 +335,13 @@ class LHCbAnalysisMetadata(LHCbMetadata):
 
     def get_output_query(self, output_name: str) -> Optional[Path]:
         """Get output path for LHCb analysis."""
-        base = Path("filecatalog") / "lhcb" / "analysis" / self.user_name / self.analysis_name
+        base = (
+            Path("filecatalog")
+            / "lhcb"
+            / "analysis"
+            / self.user_name
+            / self.analysis_name
+        )
 
         if self.analysis_version:
             base = base / self.analysis_version
