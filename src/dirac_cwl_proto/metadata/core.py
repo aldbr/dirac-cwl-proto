@@ -16,7 +16,7 @@ from pydantic import BaseModel, ConfigDict, Field
 logger = logging.getLogger(__name__)
 
 # TypeVar for generic class methods
-T = TypeVar("T", bound="JobExecutor")
+T = TypeVar("T", bound="SchedulingHint")
 
 
 class ExecutionHooks(ABC):
@@ -191,6 +191,37 @@ class Hint(ABC):
         pass
 
 
+class SchedulingHint(BaseModel, Hint):
+    """Descriptor for job execution configuration."""
+
+    model_config = ConfigDict(extra="forbid", validate_assignment=True)
+
+    platform: Optional[str] = Field(
+        default=None, description="Target platform (e.g., 'DIRAC', 'DIRACX')"
+    )
+
+    priority: int = Field(
+        default=10, description="Job priority (higher values = higher priority)"
+    )
+
+    sites: Optional[List[str]] = Field(
+        default=None, description="Candidate execution sites"
+    )
+
+    @classmethod
+    def from_cwl(cls: type[T], cwl_object: Any) -> T:
+        """Extract task descriptor from CWL hints."""
+        descriptor = cls()
+
+        hints = getattr(cwl_object, "hints", []) or []
+        for hint in hints:
+            if hint.get("class") == "dirac:job-execution":
+                hint_data = {k: v for k, v in hint.items() if k != "class"}
+                descriptor = descriptor.model_copy(update=hint_data)
+
+        return descriptor
+
+
 class DataManager(BaseModel, Hint):
     """Descriptor for data management configuration in CWL hints.
 
@@ -349,34 +380,3 @@ class TransformationDataManager(DataManager):
     group_size: Optional[Dict[str, int]] = Field(
         default=None, description="Input grouping configuration for transformation jobs"
     )
-
-
-class JobExecutor(BaseModel, Hint):
-    """Descriptor for job execution configuration."""
-
-    model_config = ConfigDict(extra="forbid", validate_assignment=True)
-
-    platform: Optional[str] = Field(
-        default=None, description="Target platform (e.g., 'DIRAC', 'DIRACX')"
-    )
-
-    priority: int = Field(
-        default=10, description="Job priority (higher values = higher priority)"
-    )
-
-    sites: Optional[List[str]] = Field(
-        default=None, description="Candidate execution sites"
-    )
-
-    @classmethod
-    def from_cwl(cls: type[T], cwl_object: Any) -> T:
-        """Extract task descriptor from CWL hints."""
-        descriptor = cls()
-
-        hints = getattr(cwl_object, "hints", []) or []
-        for hint in hints:
-            if hint.get("class") == "dirac:job-execution":
-                hint_data = {k: v for k, v in hint.items() if k != "class"}
-                descriptor = descriptor.model_copy(update=hint_data)
-
-        return descriptor

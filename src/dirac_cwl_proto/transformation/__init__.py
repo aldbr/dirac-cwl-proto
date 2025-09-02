@@ -18,10 +18,10 @@ from ruamel.yaml import YAML
 from schema_salad.exceptions import ValidationException
 
 from dirac_cwl_proto.job import submit_job_router
+from dirac_cwl_proto.metadata import SchedulingHint
 from dirac_cwl_proto.submission_models import (
     JobParameterModel,
     JobSubmissionModel,
-    TaskDescriptionModel,
     TransformationMetadataModel,
     TransformationSubmissionModel,
 )
@@ -91,7 +91,7 @@ def submit_transformation_client(
         metadata_model = TransformationMetadataModel()
     console.print("\t[green]:heavy_check_mark:[/green] Metadata")
 
-    transformation_description = TaskDescriptionModel(
+    transformation_scheduling = SchedulingHint(
         platform=platform,
         priority=priority,
         sites=sites,
@@ -101,7 +101,7 @@ def submit_transformation_client(
     transformation = TransformationSubmissionModel(
         task=task,
         metadata=metadata_model,
-        description=transformation_description,
+        scheduling=transformation_scheduling,
     )
     console.print(
         "[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Transformation validated."
@@ -186,7 +186,7 @@ def submit_transformation_router(transformation: TransformationSubmissionModel) 
     jobs = JobSubmissionModel(
         task=transformation.task,
         parameters=job_model_params,
-        description=transformation.description,
+        scheduling=transformation.scheduling,
         metadata=transformation.metadata,
     )
     logger.info("Jobs built!")

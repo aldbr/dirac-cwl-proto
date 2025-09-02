@@ -81,7 +81,7 @@ def submit_job_client(
 
     # Extract and validate dirac hints; unknown hints are logged as warnings.
     try:
-        job_metadata, job_description = extract_dirac_hints(task)
+        job_metadata, job_scheduling = extract_dirac_hints(task)
     except Exception as exc:
         console.print(
             f"[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Invalid DIRAC hints:\n{exc}"
@@ -106,7 +106,7 @@ def submit_job_client(
             if overrides:
                 override_hints = overrides[next(iter(overrides))].get("hints", {})
                 if override_hints:
-                    job_description = job_description.model_copy(
+                    job_scheduling = job_scheduling.model_copy(
                         update=override_hints.pop("dirac:job-execution", {})
                     )
                     job_metadata = job_metadata.model_copy(
@@ -129,7 +129,7 @@ def submit_job_client(
     job = JobSubmissionModel(
         task=task,
         parameters=parameters,
-        description=job_description,
+        scheduling=job_scheduling,
         metadata=job_metadata,
     )
     console.print(
@@ -230,7 +230,7 @@ def submit_job_router(job: JobSubmissionModel) -> bool:
                 JobSubmissionModel(
                     task=job.task,
                     parameters=[parameter],
-                    description=job.description,
+                    scheduling=job.scheduling,
                     metadata=job.metadata,
                 )
             )

@@ -11,7 +11,7 @@ from .core import (
     DataCatalogInterface,
     DataManager,
     ExecutionHooks,
-    JobExecutor,
+    SchedulingHint,
     TaskRuntimeBasePlugin,
     TransformationDataManager,
 )
@@ -37,7 +37,7 @@ __all__ = [
     "DataCatalogInterface",
     "DataManager",
     "ExecutionHooks",
-    "JobExecutor",
+    "SchedulingHint",
     "TransformationDataManager",
     # Registry functions
     "MetadataPluginRegistry",

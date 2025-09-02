@@ -21,10 +21,10 @@ from rich.console import Console
 from ruamel.yaml import YAML
 from schema_salad.exceptions import ValidationException
 
+from dirac_cwl_proto.metadata import SchedulingHint
 from dirac_cwl_proto.submission_models import (
     ProductionStepMetadataModel,
     ProductionSubmissionModel,
-    TaskDescriptionModel,
     TransformationMetadataModel,
     TransformationSubmissionModel,
 )
@@ -87,7 +87,7 @@ def submit_production_client(
     production_step_metadata = {}
     for step_name, step_data in steps_metadata.items():
         production_step_metadata[step_name] = ProductionStepMetadataModel(
-            description=step_data.get("description", {}),
+            scheduling=step_data.get("scheduling", {}),
             metadata=step_data.get("metadata", {}),
         )
     console.print("\t[green]:heavy_check_mark:[/green] Metadata")
@@ -173,7 +173,7 @@ def _get_transformations(
         step_data: ProductionStepMetadataModel = production.steps_metadata.get(
             step_id,
             ProductionStepMetadataModel(
-                description=TaskDescriptionModel(),
+                scheduling=SchedulingHint(),
                 metadata=TransformationMetadataModel(),
             ),
         )
@@ -183,7 +183,7 @@ def _get_transformations(
             TransformationSubmissionModel(
                 task=step_task,
                 metadata=step_data.metadata,
-                description=step_data.description,
+                scheduling=step_data.scheduling,
             )
         )
     return transformations

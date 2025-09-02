@@ -19,67 +19,8 @@ from pydantic import BaseModel, ConfigDict, field_serializer, model_validator
 
 from dirac_cwl_proto.metadata import (
     DataManager,
-    JobExecutor,
+    SchedulingHint,
 )
-
-# Local imports
-
-# -----------------------------------------------------------------------------
-# Task models
-# -----------------------------------------------------------------------------
-
-
-class TaskDescriptionModel(JobExecutor):
-    """
-    Description of a task (job/transformation/production step).
-
-    This class extends the core JobExecutor with additional methods
-    for CWL integration and backward compatibility.
-
-    Parameters
-    ----------
-    platform : str | None
-        Target platform name (for example ``"DIRAC"``). If ``None``, no
-        platform preference is encoded.
-    priority : int, optional
-        Scheduling priority. Higher values indicate higher priority.
-        Defaults to ``10``.
-    sites : list[str] | None
-        Optional list of candidate site names where the task may run.
-
-    Notes
-    -----
-    This is a serialisable Pydantic descriptor intended to carry CWL hints
-    related to runtime placement and scheduling. Prefer using the class
-    factory ``TaskDescriptionModel.from_hints(cwl)`` when extracting hints
-    from parsed CWL objects.
-    """
-
-    @classmethod
-    def from_cwl(cls, cwl: Any) -> "TaskDescriptionModel":
-        """
-        Create a ``TaskDescriptionModel`` from CWL hints using the Hint interface.
-
-        Parameters
-        ----------
-        cwl : Any
-            A parsed CWL ``CommandLineTool`` or ``Workflow`` object (for
-            example from ``cwl-utils``).
-
-        Returns
-        -------
-        TaskDescriptionModel
-            Descriptor populated from CWL hints. Unknown or missing hints
-            are ignored and sensible defaults are used.
-        """
-        descriptor = cls()
-        hints = getattr(cwl, "hints", []) or []
-        for hint in hints:
-            if hint.get("class") == "dirac:job-execution":
-                hint_data = {k: v for k, v in hint.items() if k != "class"}
-                descriptor = descriptor.model_copy(update=hint_data)
-        return descriptor
-
 
 # -----------------------------------------------------------------------------
 # Job models
@@ -108,7 +49,7 @@ class JobSubmissionModel(BaseModel):
 
     task: CommandLineTool | Workflow | ExpressionTool
     parameters: list[JobParameterModel] | None = None
-    description: TaskDescriptionModel
+    scheduling: SchedulingHint
     metadata: DataManager
 
     @field_serializer("task")
@@ -140,7 +81,7 @@ class TransformationSubmissionModel(BaseModel):
 
     task: CommandLineTool | Workflow | ExpressionTool
     metadata: TransformationMetadataModel
-    description: TaskDescriptionModel
+    scheduling: SchedulingHint
 
     @field_serializer("task")
     def serialize_task(self, value):
@@ -158,7 +99,7 @@ class TransformationSubmissionModel(BaseModel):
 class ProductionStepMetadataModel(BaseModel):
     """Step metadata for a transformation."""
 
-    description: TaskDescriptionModel
+    scheduling: SchedulingHint
     metadata: TransformationMetadataModel
 
 
@@ -204,11 +145,11 @@ class ProductionSubmissionModel(BaseModel):
 # -----------------------------------------------------------------------------
 
 
-def extract_dirac_hints(cwl: Any) -> tuple[DataManager, TaskDescriptionModel]:
-    """Thin wrapper that returns (DataManager, TaskDescriptionModel).
+def extract_dirac_hints(cwl: Any) -> tuple[DataManager, SchedulingHint]:
+    """Thin wrapper that returns (DataManager, SchedulingHint).
 
     Prefer the class-factory APIs `DataManager.from_cwl` and
-    `TaskDescriptionModel.from_cwl` for new code. This helper remains for
+    `SchedulingHint.from_cwl` for new code. This helper remains for
     convenience.
     """
-    return DataManager.from_cwl(cwl), TaskDescriptionModel.from_cwl(cwl)
+    return DataManager.from_cwl(cwl), SchedulingHint.from_cwl(cwl)
