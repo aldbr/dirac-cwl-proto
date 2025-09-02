@@ -181,7 +181,17 @@ class TaskRuntimeBasePlugin(BaseModel, DataCatalogInterface, ExecutionHooks):
         }
 
 
-class DataManager(BaseModel):
+class Hint(ABC):
+    """Base class for all DIRAC hints and requirements models."""
+
+    @classmethod
+    @abstractmethod
+    def from_cwl(cls, cwl_object: Any) -> "Hint":
+        """Extract hint information from a CWL object."""
+        pass
+
+
+class DataManager(BaseModel, Hint):
     """Descriptor for data management configuration in CWL hints.
 
     This class represents the serializable data management configuration that
@@ -322,47 +332,15 @@ class DataManager(BaseModel):
         return get_registry().instantiate_plugin(descriptor)
 
     @classmethod
-    def from_cwl_hints(cls, cwl_object: Any) -> "DataManager":
-        """Extract metadata descriptor from CWL hints.
-
-        Parameters
-        ----------
-        cwl_object : Any
-            A parsed CWL object (CommandLineTool, Workflow, etc.)
-
-        Returns
-        -------
-        DataManager
-            Extracted data manager with defaults for missing fields.
-        """
+    def from_cwl(cls, cwl_object: Any) -> "DataManager":
+        """Extract metadata descriptor from CWL object using Hint interface."""
         descriptor = cls()
-
         hints = getattr(cwl_object, "hints", []) or []
         for hint in hints:
             if hint.get("class") == "dirac:data-management":
                 hint_data = {k: v for k, v in hint.items() if k != "class"}
                 descriptor = descriptor.model_copy_with_merge(update=hint_data)
-
         return descriptor
-
-    @classmethod
-    def from_hints(cls, cwl_object: Any) -> "DataManager":
-        """
-        Create a DataManager from CWL hints.
-
-        Alias for from_cwl_hints for backward compatibility.
-
-        Parameters
-        ----------
-        cwl_object : Any
-            A parsed CWL ``CommandLineTool`` or ``Workflow`` object.
-
-        Returns
-        -------
-        DataManager
-            Descriptor populated from CWL hints; unknown hints are ignored.
-        """
-        return cls.from_cwl_hints(cwl_object)
 
 
 class TransformationDataManager(DataManager):
@@ -373,7 +351,7 @@ class TransformationDataManager(DataManager):
     )
 
 
-class JobExecutor(BaseModel):
+class JobExecutor(BaseModel, Hint):
     """Descriptor for job execution configuration."""
 
     model_config = ConfigDict(extra="forbid", validate_assignment=True)
@@ -391,7 +369,7 @@ class JobExecutor(BaseModel):
     )
 
     @classmethod
-    def from_cwl_hints(cls: type[T], cwl_object: Any) -> T:
+    def from_cwl(cls: type[T], cwl_object: Any) -> T:
         """Extract task descriptor from CWL hints."""
         descriptor = cls()
 

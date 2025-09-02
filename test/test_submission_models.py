@@ -129,21 +129,19 @@ class TestDataManager:
         assert hasattr(runtime, "query_root") or runtime.query_root == "/data"
         assert hasattr(runtime, "data_type") or runtime.data_type == "AOD"
 
-    def test_from_hints(self, mocker):
-        """Test from_hints class method."""
+    def test_from_cwl(self, mocker):
+        """Test from_cwl class method."""
         mock_cwl = mocker.Mock()
         mock_descriptor = DataManager(metadata_class="QueryBased")
-        mock_from_cwl_hints = mocker.patch(
-            "dirac_cwl_proto.submission_models.DataManager.from_cwl_hints"
+        mock_from_cwl = mocker.patch(
+            "dirac_cwl_proto.submission_models.DataManager.from_cwl"
         )
-        mock_from_cwl_hints.return_value = mock_descriptor
+        mock_from_cwl.return_value = mock_descriptor
 
-        # Actually call the method - it returns base DataManager, not Enhanced
-        result = DataManager.from_hints(mock_cwl)
+        result = DataManager.from_cwl(mock_cwl)
 
-        # The result should be a DataManager instance
         assert isinstance(result, DataManager)
-        mock_from_cwl_hints.assert_called_once_with(mock_cwl)
+        mock_from_cwl.assert_called_once_with(mock_cwl)
 
     def test_serialization_compatibility(self):
         """Test that serialization works correctly."""

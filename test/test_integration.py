@@ -278,17 +278,17 @@ class TestErrorHandling:
         mock_cwl = mocker.Mock()
         mock_cwl.hints = None
 
-        descriptor = DataManager.from_hints(mock_cwl)
+        descriptor = DataManager.from_cwl(mock_cwl)
         assert descriptor.metadata_class == "User"  # Should use default
 
         # Test with empty hints
         mock_cwl.hints = []
-        descriptor = DataManager.from_hints(mock_cwl)
+        descriptor = DataManager.from_cwl(mock_cwl)
         assert descriptor.metadata_class == "User"  # Should use default
 
         # Test with malformed hints
         mock_cwl.hints = [{"invalid": "hint"}]
-        descriptor = DataManager.from_hints(mock_cwl)
+        descriptor = DataManager.from_cwl(mock_cwl)
         assert descriptor.metadata_class == "User"  # Should ignore and use default
 
 

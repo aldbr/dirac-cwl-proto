@@ -56,9 +56,9 @@ class TaskDescriptionModel(JobExecutor):
     """
 
     @classmethod
-    def from_hints(cls, cwl: Any) -> "TaskDescriptionModel":
+    def from_cwl(cls, cwl: Any) -> "TaskDescriptionModel":
         """
-        Create a ``TaskDescriptionModel`` from CWL hints.
+        Create a ``TaskDescriptionModel`` from CWL hints using the Hint interface.
 
         Parameters
         ----------
@@ -72,7 +72,13 @@ class TaskDescriptionModel(JobExecutor):
             Descriptor populated from CWL hints. Unknown or missing hints
             are ignored and sensible defaults are used.
         """
-        return cls.from_cwl_hints(cwl)
+        descriptor = cls()
+        hints = getattr(cwl, "hints", []) or []
+        for hint in hints:
+            if hint.get("class") == "dirac:job-execution":
+                hint_data = {k: v for k, v in hint.items() if k != "class"}
+                descriptor = descriptor.model_copy(update=hint_data)
+        return descriptor
 
 
 # -----------------------------------------------------------------------------
@@ -201,8 +207,8 @@ class ProductionSubmissionModel(BaseModel):
 def extract_dirac_hints(cwl: Any) -> tuple[DataManager, TaskDescriptionModel]:
     """Thin wrapper that returns (DataManager, TaskDescriptionModel).
 
-    Prefer the class-factory APIs `DataManager.from_hints` and
-    `TaskDescriptionModel.from_hints` for new code. This helper remains for
+    Prefer the class-factory APIs `DataManager.from_cwl` and
+    `TaskDescriptionModel.from_cwl` for new code. This helper remains for
     convenience.
     """
-    return DataManager.from_hints(cwl), TaskDescriptionModel.from_hints(cwl)
+    return DataManager.from_cwl(cwl), TaskDescriptionModel.from_cwl(cwl)
