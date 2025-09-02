@@ -10,14 +10,14 @@ from typing import Any, ClassVar, Optional
 
 import pytest
 
-from dirac_cwl_proto.metadata.core import BaseMetadataModel, DataManager
+from dirac_cwl_proto.metadata.core import DataManager, TaskRuntimeBasePlugin
 from dirac_cwl_proto.metadata.registry import (
     MetadataPluginRegistry,
     get_registry,
 )
 
 
-class TestPluginMetadata(BaseMetadataModel):
+class TestPluginMetadata(TaskRuntimeBasePlugin):
     """Test plugin for registry testing."""
 
     description: ClassVar[str] = "Test plugin for unit tests"
@@ -25,7 +25,7 @@ class TestPluginMetadata(BaseMetadataModel):
     test_param: str = "default"
 
 
-class TestVOPlugin(BaseMetadataModel):
+class TestVOPlugin(TaskRuntimeBasePlugin):
     """Test vo-specific plugin."""
 
     description: ClassVar[str] = "Test VO plugin"
@@ -34,7 +34,7 @@ class TestVOPlugin(BaseMetadataModel):
     exp_param: int = 42
 
 
-class TestSecondVOPlugin(BaseMetadataModel):
+class TestSecondVOPlugin(TaskRuntimeBasePlugin):
     """Test plugin for second vo."""
 
     description: ClassVar[str] = "Test plugin for second VO"
@@ -220,9 +220,9 @@ class TestPluginSystem:
 
     def test_direct_plugin_usage(self):
         """Test using plugins directly without legacy wrapper."""
-        from dirac_cwl_proto.metadata.core import BaseMetadataModel
+        from dirac_cwl_proto.metadata.core import TaskRuntimeBasePlugin
 
-        class DirectPlugin(BaseMetadataModel):
+        class DirectPlugin(TaskRuntimeBasePlugin):
             test_param: str = "default"
 
             def get_input_query(self, input_name: str, **kwargs: Any) -> Optional[Path]:
@@ -242,9 +242,9 @@ class TestPluginSystem:
 
     def test_plugin_parameter_handling(self):
         """Test that parameters are passed correctly to plugins."""
-        from dirac_cwl_proto.metadata.core import BaseMetadataModel
+        from dirac_cwl_proto.metadata.core import TaskRuntimeBasePlugin
 
-        class ParameterTestPlugin(BaseMetadataModel):
+        class ParameterTestPlugin(TaskRuntimeBasePlugin):
             test_param: str = "default"
             another_param: str = "default"
 

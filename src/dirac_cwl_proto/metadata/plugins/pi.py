@@ -10,10 +10,10 @@ import glob
 from pathlib import Path
 from typing import Any, ClassVar, List, Optional, Union
 
-from ..core import BaseMetadataModel
+from ..core import TaskRuntimeBasePlugin
 
 
-class PiSimulateMetadata(BaseMetadataModel):
+class PiSimulateMetadata(TaskRuntimeBasePlugin):
     """PI simulation metadata model.
 
     This model handles PI simulation jobs that generate simulation data
@@ -46,7 +46,7 @@ class PiSimulateMetadata(BaseMetadataModel):
         return False
 
 
-class PiSimulateV2Metadata(BaseMetadataModel):
+class PiSimulateV2Metadata(TaskRuntimeBasePlugin):
     """PI simulation metadata model version 2.
 
     Enhanced version with configurable output path.
@@ -81,7 +81,7 @@ class PiSimulateV2Metadata(BaseMetadataModel):
         return False
 
 
-class PiGatherMetadata(BaseMetadataModel):
+class PiGatherMetadata(TaskRuntimeBasePlugin):
     """PI gathering metadata model.
 
     This model handles gathering and aggregation of PI simulation results

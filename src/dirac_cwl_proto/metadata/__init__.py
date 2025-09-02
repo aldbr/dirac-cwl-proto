@@ -8,11 +8,11 @@ providing enhanced functionality through the new plugin system.
 """
 
 from .core import (
-    BaseMetadataModel,
     DataCatalogInterface,
     DataManager,
     ExecutionHooks,
     JobExecutor,
+    TaskRuntimeBasePlugin,
     TransformationDataManager,
 )
 from .registry import (
@@ -33,7 +33,7 @@ except Exception:
 
 __all__ = [
     # Core classes
-    "BaseMetadataModel",
+    "TaskRuntimeBasePlugin",
     "DataCatalogInterface",
     "DataManager",
     "ExecutionHooks",

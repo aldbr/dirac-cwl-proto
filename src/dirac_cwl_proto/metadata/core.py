@@ -120,11 +120,11 @@ class DataCatalogInterface(ABC):
         logger.info(f"Output {output_name} stored in {dest}")
 
 
-class BaseMetadataModel(BaseModel, DataCatalogInterface, ExecutionHooks):
-    """Base class for all metadata models.
+class TaskRuntimeBasePlugin(BaseModel, DataCatalogInterface, ExecutionHooks):
+    """Base class for all runtime plugin models.
 
-    This class combines Pydantic validation with the metadata processing
-    interfaces to provide a complete foundation for metadata implementations.
+    This class combines Pydantic validation with the execution hooks
+    and data catalog interfaces to provide a complete foundation for runtime plugin implementations.
     """
 
     model_config = ConfigDict(
@@ -262,32 +262,32 @@ class DataManager(BaseModel):
 
         return super().model_copy(update=update, deep=deep)
 
-    def to_runtime(self, submitted: Optional[Any] = None) -> "BaseMetadataModel":
+    def to_runtime(self, submitted: Optional[Any] = None) -> "TaskRuntimeBasePlugin":
         """
-        Build and instantiate the runtime metadata implementation.
+            Build and instantiate the runtime metadata implementation.
 
-        The returned object is an instance of :class:`BaseMetadataModel` created
+        The returned object is an instance of :class:`TaskRuntimeBasePlugin` created
         by the metadata registry. The instantiation parameters are constructed
-        by merging, in order:
+            by merging, in order:
 
-        1. Input defaults declared on the CWL task (if ``submitted`` is provided).
-        2. The first set of CWL parameter overrides (``submitted.parameters``),
-           if present.
-        3. The descriptor's ``query_params``.
+            1. Input defaults declared on the CWL task (if ``submitted`` is provided).
+            2. The first set of CWL parameter overrides (``submitted.parameters``),
+               if present.
+            3. The descriptor's ``query_params``.
 
-        During merging, keys are normalised from dash-case to snake_case to
-        align with typical Python argument names used by runtime implementations.
+            During merging, keys are normalised from dash-case to snake_case to
+            align with typical Python argument names used by runtime implementations.
 
-        Parameters
-        ----------
-        submitted : JobSubmissionModel | None
-            Optional submission context used to resolve CWL input defaults
-            and parameter overrides.
+            Parameters
+            ----------
+            submitted : JobSubmissionModel | None
+                Optional submission context used to resolve CWL input defaults
+                and parameter overrides.
 
-        Returns
-        -------
-        BaseMetadataModel
-            Runtime metadata implementation instantiated from the registry.
+            Returns
+            -------
+            TaskRuntimeBasePlugin
+                Runtime plugin implementation instantiated from the registry.
         """
         # Import here to avoid circular imports
         from .registry import get_registry

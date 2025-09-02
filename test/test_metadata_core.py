@@ -2,7 +2,7 @@
 Tests for the core metadata plugin system.
 
 This module tests the foundational classes and interfaces of the metadata
-plugin system, including BaseMetadataModel, DataManager, and core
+plugin system, including TaskRuntimeBasePlugin, DataManager, and core
 abstract interfaces.
 """
 
@@ -12,11 +12,11 @@ from typing import Any, List, Optional, Union
 import pytest
 
 from dirac_cwl_proto.metadata.core import (
-    BaseMetadataModel,
     DataCatalogInterface,
     DataManager,
     ExecutionHooks,
     JobExecutor,
+    TaskRuntimeBasePlugin,
     TransformationDataManager,
 )
 
@@ -86,13 +86,13 @@ class TestDataCatalogInterface:
         catalog.store_output("test_output", "/tmp/test")  # Should not raise an error
 
 
-class TestBaseMetadataModel:
-    """Test the BaseMetadataModel foundation class."""
+class TestTaskRuntimeBasePlugin:
+    """Test the TaskRuntimeBasePlugin foundation class."""
 
     def test_creation(self):
-        """Test BaseMetadataModel can be instantiated."""
+        """Test TaskRuntimeBasePlugin can be instantiated."""
 
-        class TestModel(BaseMetadataModel):
+        class TestModel(TaskRuntimeBasePlugin):
             test_field: str = "default"
 
         model = TestModel()
@@ -104,7 +104,7 @@ class TestBaseMetadataModel:
     def test_pydantic_validation(self):
         """Test that Pydantic validation works correctly."""
 
-        class TestModel(BaseMetadataModel):
+        class TestModel(TaskRuntimeBasePlugin):
             required_field: str
             optional_field: Optional[int] = None
 
@@ -120,7 +120,7 @@ class TestBaseMetadataModel:
     def test_default_interface_methods(self):
         """Test that default interface methods are implemented."""
 
-        class TestModel(BaseMetadataModel):
+        class TestModel(TaskRuntimeBasePlugin):
             pass
 
         model = TestModel()
@@ -142,7 +142,7 @@ class TestBaseMetadataModel:
     def test_model_serialization(self):
         """Test that model serialization works correctly."""
 
-        class TestModel(BaseMetadataModel):
+        class TestModel(TaskRuntimeBasePlugin):
             name: str
             value: int = 42
 

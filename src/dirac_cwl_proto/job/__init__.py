@@ -27,7 +27,7 @@ from rich.text import Text
 from ruamel.yaml import YAML
 from schema_salad.exceptions import ValidationException
 
-from dirac_cwl_proto.metadata.core import BaseMetadataModel
+from dirac_cwl_proto.metadata.core import TaskRuntimeBasePlugin
 from dirac_cwl_proto.submission_models import (
     JobParameterModel,
     JobSubmissionModel,
@@ -256,7 +256,7 @@ def submit_job_router(job: JobSubmissionModel) -> bool:
 def _pre_process(
     executable: CommandLineTool | Workflow | ExpressionTool,
     arguments: JobParameterModel | None,
-    runtime_metadata: BaseMetadataModel | None,
+    runtime_metadata: TaskRuntimeBasePlugin | None,
     job_path: Path,
 ) -> list[str]:
     """
@@ -334,7 +334,7 @@ def _post_process(
     stdout: str,
     stderr: str,
     job_path: Path,
-    runtime_metadata: BaseMetadataModel | None,
+    runtime_metadata: TaskRuntimeBasePlugin | None,
 ):
     """
     Post-process the job after execution.

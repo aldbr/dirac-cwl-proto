@@ -17,10 +17,10 @@ from cwl_utils.parser.cwl_v1_2_utils import load_inputfile
 from pydantic import Field
 from ruamel.yaml import YAML
 
-from ..core import BaseMetadataModel
+from ..core import TaskRuntimeBasePlugin
 
 
-class LHCbMetadata(BaseMetadataModel):
+class LHCbMetadata(TaskRuntimeBasePlugin):
     """Base metadata model for LHCb experiment.
 
     This class provides common functionality for all LHCb metadata models,

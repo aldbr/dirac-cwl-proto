@@ -10,10 +10,10 @@ import glob
 from pathlib import Path
 from typing import Any, ClassVar, List, Optional, Union
 
-from ..core import BaseMetadataModel
+from ..core import TaskRuntimeBasePlugin
 
 
-class MandelBrotGenerationMetadata(BaseMetadataModel):
+class MandelBrotGenerationMetadata(TaskRuntimeBasePlugin):
     """Mandelbrot set generation metadata model.
 
     This model handles the generation of Mandelbrot set data with specified
@@ -76,7 +76,7 @@ class MandelBrotGenerationMetadata(BaseMetadataModel):
         return False
 
 
-class MandelBrotMergingMetadata(BaseMetadataModel):
+class MandelBrotMergingMetadata(TaskRuntimeBasePlugin):
     """Mandelbrot set merging metadata model.
 
     This model handles merging of multiple Mandelbrot data files into

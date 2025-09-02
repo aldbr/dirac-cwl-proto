@@ -9,10 +9,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, ClassVar, List, Optional, Union
 
-from ..core import BaseMetadataModel
+from ..core import TaskRuntimeBasePlugin
 
 
-class UserMetadata(BaseMetadataModel):
+class UserMetadata(TaskRuntimeBasePlugin):
     """Default user metadata model with no special processing.
 
     This is the simplest metadata model that performs no special input/output
@@ -22,7 +22,7 @@ class UserMetadata(BaseMetadataModel):
     description: ClassVar[str] = "Basic user metadata with no special processing"
 
 
-class AdminMetadata(BaseMetadataModel):
+class AdminMetadata(TaskRuntimeBasePlugin):
     """Administrative metadata model with enhanced logging.
 
     This metadata model provides additional logging and monitoring
@@ -58,7 +58,7 @@ class AdminMetadata(BaseMetadataModel):
         return True
 
 
-class QueryBasedMetadata(BaseMetadataModel):
+class QueryBasedMetadata(TaskRuntimeBasePlugin):
     """Metadata model that supports query-based input resolution.
 
     This model demonstrates how to implement query-based data discovery
@@ -118,7 +118,7 @@ class QueryBasedMetadata(BaseMetadataModel):
         return base_path / "default"
 
 
-class TaskWithMetadataQueryPlugin(BaseMetadataModel):
+class TaskWithMetadataQueryPlugin(TaskRuntimeBasePlugin):
     """Metadata plugin that demonstrates query-based input resolution.
 
     This class provides methods to query metadata and generate input paths

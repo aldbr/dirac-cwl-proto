@@ -10,10 +10,10 @@ import glob
 from pathlib import Path
 from typing import Any, ClassVar, List, Optional, Union
 
-from ..core import BaseMetadataModel
+from ..core import TaskRuntimeBasePlugin
 
 
-class DataGenerationMetadata(BaseMetadataModel):
+class DataGenerationMetadata(TaskRuntimeBasePlugin):
     """Data generation metadata model for Gaussian fitting.
 
     This model handles generation of test data for Gaussian fitting algorithms.
@@ -71,7 +71,7 @@ class DataGenerationMetadata(BaseMetadataModel):
         return success
 
 
-class GaussianFitMetadata(BaseMetadataModel):
+class GaussianFitMetadata(TaskRuntimeBasePlugin):
     """Gaussian fitting metadata model.
 
     This model handles Gaussian fitting analysis on generated data sets.

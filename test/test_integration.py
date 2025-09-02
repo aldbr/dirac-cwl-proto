@@ -13,7 +13,7 @@ import pytest
 from dirac_cwl_proto.metadata import (
     get_registry,
 )
-from dirac_cwl_proto.metadata.core import BaseMetadataModel, DataManager
+from dirac_cwl_proto.metadata.core import DataManager, TaskRuntimeBasePlugin
 from dirac_cwl_proto.submission_models import (
     TaskDescriptionModel,
 )
@@ -261,7 +261,7 @@ class TestErrorHandling:
         """Test handling of plugin registration conflicts."""
 
         # Create a test plugin
-        class ConflictTestPlugin(BaseMetadataModel):
+        class ConflictTestPlugin(TaskRuntimeBasePlugin):
             description = "Test plugin for conflict testing"
 
         # Register it
