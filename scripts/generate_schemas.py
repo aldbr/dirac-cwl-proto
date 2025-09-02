@@ -39,7 +39,7 @@ def collect_pydantic_models() -> Dict[str, Any]:
     try:
         from dirac_cwl_proto.metadata.core import (
             DataManager,
-            JobExecutor,
+            SchedulingHint,
             TaskRuntimeBasePlugin,
             TransformationDataManager,
         )
@@ -48,7 +48,7 @@ def collect_pydantic_models() -> Dict[str, Any]:
             {
                 "TaskRuntimeBasePlugin": TaskRuntimeBasePlugin,
                 "DataManager": DataManager,
-                "JobExecutor": JobExecutor,
+                "SchedulingHint": SchedulingHint,
                 "TransformationDataManager": TransformationDataManager,
             }
         )
@@ -63,13 +63,11 @@ def collect_pydantic_models() -> Dict[str, Any]:
             JobSubmissionModel,
             ProductionStepMetadataModel,
             ProductionSubmissionModel,
-            TaskDescriptionModel,
             TransformationSubmissionModel,
         )
 
         models.update(
             {
-                "TaskDescriptionModel": TaskDescriptionModel,
                 "JobParameterModel": JobParameterModel,
                 "JobSubmissionModel": JobSubmissionModel,
                 "TransformationSubmissionModel": TransformationSubmissionModel,
@@ -103,9 +101,6 @@ def collect_pydantic_models() -> Dict[str, Any]:
 
         excluded_prefixes = (
             "BaseMetadata",
-            "MetadataDescriptor",
-            "TaskDescriptor",
-            "TaskDescription",
             "Job",
             "Transformation",
             "Production",
