@@ -36,7 +36,7 @@ class TestDataManager:
         """Test that DataManager has the expected functionality."""
         descriptor = DataManager()
         assert hasattr(descriptor, "to_runtime")
-        assert hasattr(descriptor, "from_hints")
+        assert hasattr(descriptor, "from_cwl")
         assert hasattr(descriptor, "model_copy")
 
     def test_type_validation(self):

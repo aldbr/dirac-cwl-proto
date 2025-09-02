@@ -182,7 +182,7 @@ class TestDataManager:
         assert descriptor.version == "2.0"
         assert descriptor.custom_param == "value"
 
-    def test_from_cwl_hints(self, mocker):
+    def test_from_cwl(self, mocker):
         """Test extraction from CWL hints."""
         # Mock CWL document
         mock_cwl = mocker.Mock()
@@ -196,28 +196,28 @@ class TestDataManager:
             {"class": "ResourceRequirement", "coresMin": 2},
         ]
 
-        descriptor = DataManager.from_cwl_hints(mock_cwl)
+        descriptor = DataManager.from_cwl(mock_cwl)
 
         assert descriptor.metadata_class == "QueryBased"
         assert descriptor.vo == "lhcb"
         assert descriptor.campaign == "Run3"
 
-    def test_from_cwl_hints_no_hints(self, mocker):
+    def test_from_cwl_no_hints(self, mocker):
         """Test extraction when no hints are present."""
         mock_cwl = mocker.Mock()
         mock_cwl.hints = None
 
-        descriptor = DataManager.from_cwl_hints(mock_cwl)
+        descriptor = DataManager.from_cwl(mock_cwl)
 
         # Should create default descriptor
         assert descriptor.metadata_class == "User"
 
-    def test_from_cwl_hints_no_dirac_hints(self, mocker):
+    def test_from_cwl_no_dirac_hints(self, mocker):
         """Test extraction when no DIRAC hints are present."""
         mock_cwl = mocker.Mock()
         mock_cwl.hints = [{"class": "ResourceRequirement", "coresMin": 2}]
 
-        descriptor = DataManager.from_cwl_hints(mock_cwl)
+        descriptor = DataManager.from_cwl(mock_cwl)
 
         # Should create default descriptor
         assert descriptor.metadata_class == "User"
@@ -263,7 +263,7 @@ class TestJobExecutor:
         assert descriptor.priority == 5
         assert descriptor.sites == ["LCG.CERN.ch", "LCG.IN2P3.fr"]
 
-    def test_from_cwl_hints(self, mocker):
+    def test_from_cwl(self, mocker):
         """Test extraction from CWL hints."""
         mock_cwl = mocker.Mock()
         mock_cwl.hints = [
@@ -275,7 +275,7 @@ class TestJobExecutor:
             }
         ]
 
-        descriptor = JobExecutor.from_cwl_hints(mock_cwl)
+        descriptor = JobExecutor.from_cwl(mock_cwl)
 
         assert descriptor.platform == "DIRAC-v8"
         assert descriptor.priority == 8
