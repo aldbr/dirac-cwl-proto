@@ -11,8 +11,8 @@ from .core import (
     BaseMetadataModel,
     DataCatalogInterface,
     DataManager,
+    ExecutionHooks,
     JobExecutor,
-    MetadataProcessor,
     TransformationDataManager,
 )
 from .registry import (
@@ -36,7 +36,7 @@ __all__ = [
     "BaseMetadataModel",
     "DataCatalogInterface",
     "DataManager",
-    "MetadataProcessor",
+    "ExecutionHooks",
     "JobExecutor",
     "TransformationDataManager",
     # Registry functions

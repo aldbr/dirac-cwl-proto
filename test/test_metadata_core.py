@@ -15,31 +15,31 @@ from dirac_cwl_proto.metadata.core import (
     BaseMetadataModel,
     DataCatalogInterface,
     DataManager,
+    ExecutionHooks,
     JobExecutor,
-    MetadataProcessor,
     TransformationDataManager,
 )
 
 
-class TestMetadataProcessor:
-    """Test the MetadataProcessor abstract base class."""
+class TestExecutionHooks:
+    """Test the ExecutionHooks abstract base class."""
 
     def test_abstract_methods(self):
-        """Test that MetadataProcessor cannot be instantiated directly."""
+        """Test that ExecutionHooks cannot be instantiated directly."""
         with pytest.raises(TypeError):
-            MetadataProcessor()
+            ExecutionHooks()
 
     def test_concrete_implementation(self):
         """Test that concrete implementations work correctly."""
 
-        class ConcreteProcessor(MetadataProcessor):
+        class ConcreteHook(ExecutionHooks):
             def pre_process(self, job_path: Path, command: List[str]) -> List[str]:
                 return command + ["--processed"]
 
             def post_process(self, job_path: Path) -> bool:
                 return True
 
-        processor = ConcreteProcessor()
+        processor = ConcreteHook()
 
         # Test pre_process
         result = processor.pre_process(Path("/tmp"), ["echo", "hello"])
@@ -61,9 +61,7 @@ class TestDataCatalogInterface:
         """Test that concrete implementations work correctly."""
 
         class ConcreteCatalog(DataCatalogInterface):
-            def get_input_query(
-                self, input_name: str, **kwargs: Any
-            ) -> Union[Path, List[Path], None]:
+            def get_input_query(self, input_name: str, **kwargs: Any) -> Union[Path, List[Path], None]:
                 return Path(f"/data/{input_name}")
 
             def get_output_query(self, output_name: str) -> Optional[Path]:
@@ -125,7 +123,7 @@ class TestBaseMetadataModel:
 
         model = TestModel()
 
-        # Test MetadataProcessor methods
+        # Test ExecutionHooks methods
         result = model.pre_process(Path("/tmp"), ["echo"])
         assert result == ["echo"]
 
@@ -227,9 +225,7 @@ class TestDataManager:
         descriptor = DataManager(metadata_class="LHCbSimulation", vo="lhcb")
 
         # Test basic update
-        updated = descriptor.model_copy_with_merge(
-            update={"metadata_class": "NewClass", "new_field": "value"}
-        )
+        updated = descriptor.model_copy_with_merge(update={"metadata_class": "NewClass", "new_field": "value"})
 
         assert updated.metadata_class == "NewClass"
         assert updated.vo == "lhcb"
@@ -256,9 +252,7 @@ class TestJobExecutor:
 
     def test_creation_with_values(self):
         """Test JobExecutor creation with values."""
-        descriptor = JobExecutor(
-            platform="DIRAC", priority=5, sites=["LCG.CERN.ch", "LCG.IN2P3.fr"]
-        )
+        descriptor = JobExecutor(platform="DIRAC", priority=5, sites=["LCG.CERN.ch", "LCG.IN2P3.fr"])
         assert descriptor.platform == "DIRAC"
         assert descriptor.priority == 5
         assert descriptor.sites == ["LCG.CERN.ch", "LCG.IN2P3.fr"]
@@ -283,9 +277,7 @@ class TestJobExecutor:
 
     def test_serialization(self):
         """Test JobExecutor serialization."""
-        descriptor = JobExecutor(
-            platform="DIRAC", priority=7, sites=["LCG.CERN.ch", "LCG.IN2P3.fr"]
-        )
+        descriptor = JobExecutor(platform="DIRAC", priority=7, sites=["LCG.CERN.ch", "LCG.IN2P3.fr"])
 
         # Test model serialization
         data = descriptor.model_dump()
@@ -300,9 +292,7 @@ class TestTransformationDataManager:
 
     def test_creation(self):
         """Test TransformationDataManager creation."""
-        descriptor = TransformationDataManager(
-            metadata_class="QueryBased", group_size={"input_data": 100}
-        )
+        descriptor = TransformationDataManager(metadata_class="QueryBased", group_size={"input_data": 100})
         assert descriptor.metadata_class == "QueryBased"
         assert descriptor.group_size == {"input_data": 100}
 
@@ -324,9 +314,7 @@ class TestTransformationDataManager:
     def test_validation(self):
         """Test group_size validation."""
         # Valid group_size
-        descriptor = TransformationDataManager(
-            metadata_class="User", group_size={"files": 10}
-        )
+        descriptor = TransformationDataManager(metadata_class="User", group_size={"files": 10})
         assert descriptor.group_size == {"files": 10}
 
         # Test with no group_size

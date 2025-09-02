@@ -19,8 +19,8 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T", bound="JobExecutor")
 
 
-class MetadataProcessor(ABC):
-    """Abstract base class for metadata processing hooks.
+class ExecutionHooks(ABC):
+    """Abstract base class for execution hooks.
 
     This class defines the interface for pre/post processing operations
     that can be performed during job execution.
@@ -65,9 +65,7 @@ class DataCatalogInterface(ABC):
     """Abstract interface for data catalog operations."""
 
     @abstractmethod
-    def get_input_query(
-        self, input_name: str, **kwargs: Any
-    ) -> Union[Path, List[Path], None]:
+    def get_input_query(self, input_name: str, **kwargs: Any) -> Union[Path, List[Path], None]:
         """Generate input data query.
 
         Parameters
@@ -120,7 +118,7 @@ class DataCatalogInterface(ABC):
         logger.info(f"Output {output_name} stored in {dest}")
 
 
-class BaseMetadataModel(BaseModel, DataCatalogInterface, MetadataProcessor):
+class BaseMetadataModel(BaseModel, DataCatalogInterface, ExecutionHooks):
     """Base class for all metadata models.
 
     This class combines Pydantic validation with the metadata processing
@@ -159,9 +157,7 @@ class BaseMetadataModel(BaseModel, DataCatalogInterface, MetadataProcessor):
         """Default post-processing: always succeed."""
         return True
 
-    def get_input_query(
-        self, input_name: str, **kwargs: Any
-    ) -> Union[Path, List[Path], None]:
+    def get_input_query(self, input_name: str, **kwargs: Any) -> Union[Path, List[Path], None]:
         """Default input query: return None."""
         return None
 
@@ -200,9 +196,7 @@ class DataManager(BaseModel):
         },
     )
 
-    metadata_class: str = Field(
-        default="User", description="Registry key for the metadata implementation class"
-    )
+    metadata_class: str = Field(default="User", description="Registry key for the metadata implementation class")
 
     vo: Optional[str] = Field(
         default=None,
@@ -212,9 +206,7 @@ class DataManager(BaseModel):
     version: Optional[str] = Field(default=None, description="Metadata model version")
 
     # Enhanced fields for submission functionality
-    query_params: Dict[str, Any] = Field(
-        default_factory=dict, description="Additional parameters for metadata plugins"
-    )
+    query_params: Dict[str, Any] = Field(default_factory=dict, description="Additional parameters for metadata plugins")
 
     def model_copy_with_merge(
         self,
@@ -229,11 +221,7 @@ class DataManager(BaseModel):
         # Handle nested dictionary merging for vo-specific fields
         merged_update = {}
         for key, value in update.items():
-            if (
-                hasattr(self, key)
-                and isinstance(getattr(self, key), dict)
-                and isinstance(value, dict)
-            ):
+            if hasattr(self, key) and isinstance(getattr(self, key), dict) and isinstance(value, dict):
                 existing_value = getattr(self, key).copy()
                 existing_value.update(value)
                 merged_update[key] = existing_value
@@ -297,9 +285,7 @@ class DataManager(BaseModel):
             return s.replace("-", "_")
 
         if submitted is None:
-            descriptor = DataManager(
-                metadata_class=self.metadata_class, **self.query_params
-            )
+            descriptor = DataManager(metadata_class=self.metadata_class, **self.query_params)
             return get_registry().instantiate_plugin(descriptor)
 
         # Build inputs from task defaults and parameter overrides
@@ -378,17 +364,11 @@ class JobExecutor(BaseModel):
 
     model_config = ConfigDict(extra="forbid", validate_assignment=True)
 
-    platform: Optional[str] = Field(
-        default=None, description="Target platform (e.g., 'DIRAC', 'DIRACX')"
-    )
+    platform: Optional[str] = Field(default=None, description="Target platform (e.g., 'DIRAC', 'DIRACX')")
 
-    priority: int = Field(
-        default=10, description="Job priority (higher values = higher priority)"
-    )
+    priority: int = Field(default=10, description="Job priority (higher values = higher priority)")
 
-    sites: Optional[List[str]] = Field(
-        default=None, description="Candidate execution sites"
-    )
+    sites: Optional[List[str]] = Field(default=None, description="Candidate execution sites")
 
     @classmethod
     def from_cwl_hints(cls: type[T], cwl_object: Any) -> T:
