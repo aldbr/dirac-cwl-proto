@@ -222,12 +222,11 @@ class TestDataManager:
         # Should create default descriptor
         assert descriptor.metadata_class == "User"
 
-    def test_model_copy_with_merge(self):
-        """Test model_copy_with_merge functionality."""
+    def test_model_copy_merges_dict_fields(self):
+        """Test model_copy merges dict fields and updates values."""
         descriptor = DataManager(metadata_class="LHCbSimulation", vo="lhcb")
 
-        # Test basic update
-        updated = descriptor.model_copy_with_merge(
+        updated = descriptor.model_copy(
             update={"metadata_class": "NewClass", "new_field": "value"}
         )
 

@@ -257,17 +257,18 @@ class DataManager(BaseModel, Hint):
         default_factory=dict, description="Additional parameters for metadata plugins"
     )
 
-    def model_copy_with_merge(
+    def model_copy(
         self,
+        update: Optional[Mapping[str, Any]] = None,
         *,
-        update: Optional[Dict[str, Any]] = None,
         deep: bool = False,
     ) -> "DataManager":
-        """Create a copy with intelligent merging of nested dictionaries."""
+        """Enhanced model copy with intelligent merging of dict fields (including query_params)."""
         if update is None:
-            return self.model_copy(deep=deep)
+            update = {}
+        else:
+            update = dict(update)
 
-        # Handle nested dictionary merging for vo-specific fields
         merged_update = {}
         for key, value in update.items():
             if (
@@ -281,27 +282,7 @@ class DataManager(BaseModel, Hint):
             else:
                 merged_update[key] = value
 
-        return self.model_copy(update=merged_update, deep=deep)
-
-    def model_copy(
-        self,
-        update: Optional[Mapping[str, Any]] = None,
-        *,
-        deep: bool = False,
-    ) -> "DataManager":
-        """Enhanced model copy with intelligent merging of query_params."""
-        if update is None:
-            update = {}
-        else:
-            update = dict(update)
-
-        # Handle merging of query_params
-        if "query_params" in update:
-            new_query_params = self.query_params.copy()
-            new_query_params.update(update.pop("query_params"))
-            update["query_params"] = new_query_params
-
-        return super().model_copy(update=update, deep=deep)
+        return super().model_copy(update=merged_update, deep=deep)
 
     def to_runtime(self, submitted: Optional[Any] = None) -> "TaskRuntimeBasePlugin":
         """
@@ -370,7 +351,7 @@ class DataManager(BaseModel, Hint):
         for hint in hints:
             if hint.get("class") == "dirac:data-management":
                 hint_data = {k: v for k, v in hint.items() if k != "class"}
-                descriptor = descriptor.model_copy_with_merge(update=hint_data)
+                descriptor = descriptor.model_copy(update=hint_data)
         return descriptor
 
 
