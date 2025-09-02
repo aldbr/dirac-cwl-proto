@@ -7,10 +7,7 @@ metadata system with additional functionality for CWL integration.
 
 import pytest
 
-from dirac_cwl_proto.metadata.core import DataManager, JobExecutor
-from dirac_cwl_proto.submission_models import (
-    TaskDescriptionModel,
-)
+from dirac_cwl_proto.metadata.core import DataManager, SchedulingHint
 
 
 class TestDataManager:
@@ -159,33 +156,6 @@ class TestDataManager:
         assert "properties" in schema
 
 
-class TestTaskDescriptionModel:
-    """Test the TaskDescriptionModel class."""
-
-    def test_creation(self):
-        """Test TaskDescriptionModel creation."""
-        model = TaskDescriptionModel()
-        # TaskDescriptionModel extends JobExecutor which has platform, priority, sites
-        assert model.priority == 10
-        assert model.platform is None
-        assert model.sites is None
-
-    def test_inheritance(self):
-        """Test that TaskDescriptionModel inherits from JobExecutor."""
-        model = TaskDescriptionModel()
-        assert isinstance(model, JobExecutor)
-
-    def test_creation_with_metadata(self):
-        """Test creation with custom task configuration."""
-        model = TaskDescriptionModel(
-            platform="DIRAC", priority=8, sites=["CERN", "GRIDKA"]
-        )
-
-        assert model.platform == "DIRAC"
-        assert model.priority == 8
-        assert model.sites == ["CERN", "GRIDKA"]
-
-
 class TestSubmissionModelsIntegration:
     """Test integration between submission models and metadata system."""
 
@@ -203,7 +173,7 @@ class TestSubmissionModelsIntegration:
             assert runtime.get_metadata_class() == descriptor.metadata_class
 
     def test_task_description_with_different_metadata_types(self):
-        """Test TaskDescriptionModel with different configurations."""
+        """Test SchedulingHint with different configurations."""
         task_configs = [
             {"platform": "DIRAC", "priority": 5},
             {"platform": "DIRACX", "priority": 8, "sites": ["CERN"]},
@@ -211,7 +181,7 @@ class TestSubmissionModelsIntegration:
         ]
 
         for config in task_configs:
-            model = TaskDescriptionModel(**config)
+            model = SchedulingHint(**config)
 
             # Should have correct configuration
             assert model.priority == config["priority"]
@@ -237,7 +207,7 @@ class TestSubmissionModelsIntegration:
 
     def test_model_serialization_round_trip(self):
         """Test that models can be serialized and deserialized."""
-        original = TaskDescriptionModel(
+        original = SchedulingHint(
             platform="DIRAC", priority=7, sites=["CERN", "GRIDKA"]
         )
 
@@ -245,7 +215,7 @@ class TestSubmissionModelsIntegration:
         data = original.model_dump()
 
         # Should be able to recreate from dict
-        recreated = TaskDescriptionModel(**data)
+        recreated = SchedulingHint(**data)
 
         assert recreated.platform == original.platform
         assert recreated.priority == original.priority

@@ -13,9 +13,10 @@ import pytest
 from dirac_cwl_proto.metadata import (
     get_registry,
 )
-from dirac_cwl_proto.metadata.core import DataManager, TaskRuntimeBasePlugin
-from dirac_cwl_proto.submission_models import (
-    TaskDescriptionModel,
+from dirac_cwl_proto.metadata.core import (
+    DataManager,
+    SchedulingHint,
+    TaskRuntimeBasePlugin,
 )
 
 
@@ -204,7 +205,7 @@ class TestRealWorldScenarios:
 
         tasks = []
         for config in task_configs:
-            task = TaskDescriptionModel(**config)
+            task = SchedulingHint(**config)
             tasks.append(task)
 
         # Verify all tasks have correct configuration

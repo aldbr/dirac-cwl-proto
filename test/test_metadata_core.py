@@ -15,7 +15,7 @@ from dirac_cwl_proto.metadata.core import (
     DataCatalogInterface,
     DataManager,
     ExecutionHooks,
-    JobExecutor,
+    SchedulingHint,
     TaskRuntimeBasePlugin,
     TransformationDataManager,
 )
@@ -244,19 +244,19 @@ class TestDataManager:
         assert getattr(descriptor, "user_id", None) == "test123"
 
 
-class TestJobExecutor:
-    """Test the JobExecutor class."""
+class TestSchedulingHint:
+    """Test the SchedulingHint class."""
 
     def test_creation(self):
-        """Test JobExecutor creation."""
-        descriptor = JobExecutor()
+        """Test SchedulingHint creation."""
+        descriptor = SchedulingHint()
         assert descriptor.platform is None
         assert descriptor.priority == 10
         assert descriptor.sites is None
 
     def test_creation_with_values(self):
-        """Test JobExecutor creation with values."""
-        descriptor = JobExecutor(
+        """Test SchedulingHint creation with values."""
+        descriptor = SchedulingHint(
             platform="DIRAC", priority=5, sites=["LCG.CERN.ch", "LCG.IN2P3.fr"]
         )
         assert descriptor.platform == "DIRAC"
@@ -275,15 +275,15 @@ class TestJobExecutor:
             }
         ]
 
-        descriptor = JobExecutor.from_cwl(mock_cwl)
+        descriptor = SchedulingHint.from_cwl(mock_cwl)
 
         assert descriptor.platform == "DIRAC-v8"
         assert descriptor.priority == 8
         assert descriptor.sites == ["LCG.CERN.ch"]
 
     def test_serialization(self):
-        """Test JobExecutor serialization."""
-        descriptor = JobExecutor(
+        """Test SchedulingHint serialization."""
+        descriptor = SchedulingHint(
             platform="DIRAC", priority=7, sites=["LCG.CERN.ch", "LCG.IN2P3.fr"]
         )
 
