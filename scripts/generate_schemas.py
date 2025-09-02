@@ -4,7 +4,7 @@
 This script automatically generates JSON schemas for all registered metadata
 plugins in the DIRAC CWL prototype system. It includes schemas for:
 
-1. Core metadata models (BaseMetadataModel, MetadataDescriptor, TaskDescriptor)
+1. Core metadata models (TaskRuntimeBasePlugin, MetadataDescriptor, TaskDescriptor)
 2. Submission models (JobSubmissionModel, etc.)
 3. All registered metadata plugins (user plugins included)
 
@@ -38,15 +38,15 @@ def collect_pydantic_models() -> Dict[str, Any]:
     # Import core models
     try:
         from dirac_cwl_proto.metadata.core import (
-            BaseMetadataModel,
             DataManager,
             JobExecutor,
+            TaskRuntimeBasePlugin,
             TransformationDataManager,
         )
 
         models.update(
             {
-                "BaseMetadataModel": BaseMetadataModel,
+                "TaskRuntimeBasePlugin": TaskRuntimeBasePlugin,
                 "DataManager": DataManager,
                 "JobExecutor": JobExecutor,
                 "TransformationDataManager": TransformationDataManager,
