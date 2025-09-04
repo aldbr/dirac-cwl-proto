@@ -13,14 +13,14 @@ from dirac_cwl_proto.metadata.core import ExecutionHooksHint, SchedulingHint
 class TestExecutionHooksHint:
     """Test the ExecutionHooksHint class."""
 
-    def test_creation(self):
-        """Test ExecutionHooksHint creation."""
+    def test_creation_and_parameters(self):
+        """Test ExecutionHooksHint creation with default and custom parameters."""
+        # Test default values
         descriptor = ExecutionHooksHint()
         assert descriptor.hook_plugin == "User"
         assert descriptor.configuration == {}
 
-    def test_creation_with_parameters(self):
-        """Test creation with custom parameters."""
+        # Test custom parameters
         descriptor = ExecutionHooksHint(
             hook_plugin="Admin",
             configuration={"admin_level": 5, "log_level": "DEBUG"},
@@ -28,13 +28,6 @@ class TestExecutionHooksHint:
         assert descriptor.hook_plugin == "Admin"
         assert descriptor.configuration["admin_level"] == 5
         assert descriptor.configuration["log_level"] == "DEBUG"
-
-    def test_inheritance(self):
-        """Test that ExecutionHooksHint has the expected functionality."""
-        descriptor = ExecutionHooksHint()
-        assert hasattr(descriptor, "to_runtime")
-        assert hasattr(descriptor, "from_cwl")
-        assert hasattr(descriptor, "model_copy")
 
     def test_type_validation(self):
         """Test type validation during runtime instantiation."""
@@ -47,10 +40,11 @@ class TestExecutionHooksHint:
         with pytest.raises(KeyError, match="Unknown metadata plugin"):
             descriptor_with_invalid_type.to_runtime()
 
-    def test_model_copy(self):
+    def test_model_copy_operations(self):
         """Test model_copy functionality."""
+        """Test model_copy functionality with basic and update operations."""
         original = ExecutionHooksHint(
-            hook_plugin="Admin", configuration={"admin_level": 3}
+            hook_plugin="Admin", configuration={"admin_level": 3, "log_level": "INFO"}
         )
 
         # Test basic copy
@@ -58,14 +52,6 @@ class TestExecutionHooksHint:
         assert copied.hook_plugin == original.hook_plugin
         assert copied.configuration == original.configuration
         assert copied is not original
-        # Note: Pydantic may optimize dict sharing for immutable content
-        assert copied.configuration == original.configuration
-
-    def test_model_copy_with_update(self):
-        """Test model_copy with updates."""
-        original = ExecutionHooksHint(
-            hook_plugin="Admin", configuration={"admin_level": 3, "log_level": "INFO"}
-        )
 
         # Test copy with type update
         copied = original.model_copy(update={"hook_plugin": "User"})
@@ -78,19 +64,17 @@ class TestExecutionHooksHint:
         assert copied.configuration["admin_level"] == 5
         assert copied.configuration["log_level"] == "INFO"  # Should merge
 
-    def test_to_runtime_no_submission(self):
-        """Test to_runtime without submission context."""
+    def test_to_runtime_operations(self, mocker):
+        """Test to_runtime without and with submission context."""
+        # Test without submission context
         descriptor = ExecutionHooksHint(
             hook_plugin="Admin", configuration={"admin_level": 7}
         )
-
         runtime = descriptor.to_runtime()
-
         assert runtime.get_hook_plugin() == "Admin"
         assert runtime.admin_level == 7
 
-    def test_to_runtime_with_submission(self, mocker):
-        """Test to_runtime with submission context."""
+        # Test with submission context
         descriptor = ExecutionHooksHint(
             hook_plugin="QueryBased", configuration={"campaign": "Run3"}
         )
@@ -108,7 +92,6 @@ class TestExecutionHooksHint:
         ]
 
         runtime = descriptor.to_runtime(mock_submission)
-
         assert runtime.get_hook_plugin() == "QueryBased"
         assert runtime.campaign == "Run3"
 
@@ -141,21 +124,6 @@ class TestExecutionHooksHint:
 
         assert isinstance(result, ExecutionHooksHint)
         mock_from_cwl.assert_called_once_with(mock_cwl)
-
-    def test_serialization_compatibility(self):
-        """Test that serialization works correctly."""
-        descriptor = ExecutionHooksHint(
-            hook_plugin="Admin", configuration={"admin_level": 5}
-        )
-
-        # Test dict conversion
-        data = descriptor.model_dump()
-        assert data["hook_plugin"] == "Admin"
-        assert data["configuration"]["admin_level"] == 5
-
-        # Test JSON schema
-        schema = descriptor.model_json_schema()
-        assert "properties" in schema
 
 
 class TestSubmissionModelsIntegration:

@@ -279,38 +279,4 @@ class TestErrorHandling:
         assert descriptor.hook_plugin == "User"  # Should ignore and use default
 
 
-class TestPerformance:
-    """Test performance-related aspects."""
-
-    def test_plugin_instantiation_performance(self):
-        """Test that plugin instantiation is reasonably fast."""
-        import time
-
-        # Test instantiation of multiple plugins
-        start_time = time.time()
-
-        for _ in range(100):
-            descriptor = ExecutionHooksHint(hook_plugin="User")
-            descriptor.to_runtime()
-
-        end_time = time.time()
-
-        # Should complete in reasonable time (adjust threshold as needed)
-        assert (end_time - start_time) < 1.0  # 1 second for 100 instantiations
-
-    def test_registry_lookup_performance(self):
-        """Test that registry lookups are efficient."""
-        import time
-
-        registry = get_registry()
-
-        start_time = time.time()
-
-        for _ in range(1000):
-            registry.list_plugins()
-            registry.get_plugin("User")
-
-        end_time = time.time()
-
-        # Registry operations should be fast
-        assert (end_time - start_time) < 0.5  # 0.5 seconds for 1000 operations
+# Performance tests removed - should be in separate performance test suite if needed

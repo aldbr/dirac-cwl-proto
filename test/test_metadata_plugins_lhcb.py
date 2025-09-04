@@ -18,21 +18,14 @@ from dirac_cwl_proto.metadata.plugins.lhcb import (
 class TestLHCbMetadata:
     """Test the base LHCbMetadata class."""
 
-    def test_creation(self):
-        """Test LHCbMetadata creation."""
+    def test_creation_and_path_generation(self):
+        """Test LHCbMetadata creation and path generation."""
         metadata = LHCbMetadata(task_id=123, run_id=456)
         assert metadata.task_id == 123
         assert metadata.run_id == 456
         assert metadata.vo == "lhcb"
 
-    def test_creation_with_parameters(self):
-        """Test LHCbMetadata creation with custom parameters."""
-        metadata = LHCbMetadata(task_id=123, run_id=456)
-        assert metadata.task_id == 123
-        assert metadata.run_id == 456
-
-    def test_lhcb_path_generation(self):
-        """Test LHCb-specific path generation."""
+        # Test LHCb-specific path generation
         metadata = LHCbMetadata(task_id=12345, run_id=1)
 
         # Test get_lhcb_base_path method
@@ -60,14 +53,14 @@ class TestLHCbMetadata:
 class TestLHCbSimulationMetadata:
     """Test the LHCbSimulationMetadata class."""
 
-    def test_creation(self):
-        """Test LHCbSimulationMetadata creation."""
+    def test_creation_and_simulation_parameters(self):
+        """Test LHCbSimulationMetadata creation with simulation-specific parameters."""
+        # Test basic creation
         metadata = LHCbSimulationMetadata(task_id=123, run_id=1)
         assert metadata.get_hook_plugin() == "LHCbSimulation"
         assert "LHCb simulation" in metadata.description
 
-    def test_creation_with_simulation_parameters(self):
-        """Test creation with simulation-specific parameters."""
+        # Test creation with simulation-specific parameters
         metadata = LHCbSimulationMetadata(
             task_id=123,
             run_id=1,

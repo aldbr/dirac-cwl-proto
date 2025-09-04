@@ -19,15 +19,11 @@ from dirac_cwl_proto.metadata.plugins.core import (
 class TestUserMetadata:
     """Test the UserMetadata plugin."""
 
-    def test_creation(self):
-        """Test UserMetadata creation."""
-        metadata = UserMetadata()
-        assert metadata.get_hook_plugin() == "User"
-        assert "basic user metadata" in metadata.description.lower()
-
     def test_default_behavior(self):
         """Test default behavior of UserMetadata."""
         metadata = UserMetadata()
+        assert metadata.get_hook_plugin() == "User"
+        assert "basic user metadata" in metadata.description.lower()
 
         # Test pre_process (should return command unchanged)
         command = ["python", "script.py"]
@@ -63,16 +59,16 @@ class TestUserMetadata:
 class TestAdminMetadata:
     """Test the AdminMetadata plugin."""
 
-    def test_creation(self):
-        """Test AdminMetadata creation."""
+    def test_creation_and_parameters(self):
+        """Test AdminMetadata creation with default and custom parameters."""
+        # Test default values
         metadata = AdminMetadata()
         assert metadata.get_hook_plugin() == "Admin"
         assert metadata.log_level == "INFO"
         assert metadata.enable_monitoring is True
         assert metadata.admin_level == 1
 
-    def test_creation_with_parameters(self):
-        """Test AdminMetadata creation with custom parameters."""
+        # Test custom parameters
         metadata = AdminMetadata(
             log_level="DEBUG", enable_monitoring=False, admin_level=5
         )
@@ -128,8 +124,9 @@ class TestAdminMetadata:
 class TestQueryBasedMetadata:
     """Test the QueryBasedMetadata plugin."""
 
-    def test_creation(self):
-        """Test QueryBasedMetadata creation."""
+    def test_creation_and_parameters(self):
+        """Test QueryBasedMetadata creation with default and custom parameters."""
+        # Test default values
         metadata = QueryBasedMetadata()
         assert metadata.get_hook_plugin() == "QueryBased"
         assert metadata.query_root == "/"  # Default value
@@ -137,8 +134,7 @@ class TestQueryBasedMetadata:
         assert metadata.campaign is None
         assert metadata.data_type is None
 
-    def test_creation_with_parameters(self):
-        """Test QueryBasedMetadata creation with parameters."""
+        # Test custom parameters
         metadata = QueryBasedMetadata(
             query_root="/data", site="CERN", campaign="Run3", data_type="AOD"
         )
