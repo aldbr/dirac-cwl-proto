@@ -10,7 +10,86 @@ import glob
 from pathlib import Path
 from typing import Any, ClassVar, List, Optional, Union
 
-from ..core import ExecutionHooksBasePlugin
+from ..core import DataCatalogInterface, ExecutionHooksBasePlugin
+
+
+class MandelbrotDataCatalogInterface(DataCatalogInterface):
+    """Unified data catalog interface for Mandelbrot workflows.
+
+    Handles both generation and merging workflows for Mandelbrot set calculations.
+    """
+
+    def __init__(
+        self,
+        width: int,
+        height: int,
+        # Merging parameters
+        data: Optional[List] = None,
+    ):
+        """Initialize with Mandelbrot workflow-specific parameters.
+
+        Parameters
+        ----------
+        width : int
+            Image width in pixels
+        height : int
+            Image height in pixels
+        data : List, optional
+            List of input data files for merging workflow
+        """
+        self.width = width
+        self.height = height
+        self.data = data
+
+    def _is_merging_workflow(self) -> bool:
+        """Check if this is a merging workflow."""
+        return self.data is not None
+
+    def get_input_query(
+        self, input_name: str, **kwargs: Any
+    ) -> Union[Path, List[Path], None]:
+        """Get input query for Mandelbrot workflows."""
+        # Merging workflow - references generation outputs
+        if self._is_merging_workflow():
+            # Reference the output from MandelBrotGeneration
+            return (
+                Path("filecatalog")
+                / "mandelbrot"
+                / "images"
+                / "raw"
+                / f"{self.width}x{self.height}"
+            )
+
+        # Generation workflow - no input queries
+        return None
+
+    def get_output_query(self, output_name: str) -> Optional[Path]:
+        """Get output path for Mandelbrot workflows."""
+        # Merging workflow
+        if self._is_merging_workflow():
+            if output_name == "data-merged" and self.data:
+                width = len(self.data) * self.width
+                height = len(self.data) * self.height
+                return (
+                    Path("filecatalog")
+                    / "mandelbrot"
+                    / "images"
+                    / "merged"
+                    / f"{width}x{height}"
+                )
+            return None
+
+        # Generation workflow
+        else:
+            if output_name == "data":
+                return (
+                    Path("filecatalog")
+                    / "mandelbrot"
+                    / "images"
+                    / "raw"
+                    / f"{self.width}x{self.height}"
+                )
+            return None
 
 
 class MandelBrotGenerationMetadata(ExecutionHooksBasePlugin):
@@ -55,17 +134,14 @@ class MandelBrotGenerationMetadata(ExecutionHooksBasePlugin):
     height: int
     output_name: str
 
-    def get_output_query(self, output_name: str) -> Optional[Path]:
-        """Get output path for generated Mandelbrot data."""
-        if output_name == "data":
-            return (
-                Path("filecatalog")
-                / "mandelbrot"
-                / "images"
-                / "raw"
-                / f"{self.width}x{self.height}"
-            )
-        return None
+    def __init__(self, **kwargs: Any):
+        """Initialize with unified Mandelbrot data catalog interface."""
+        super().__init__(**kwargs)
+        object.__setattr__(
+            self,
+            "data_catalog",
+            MandelbrotDataCatalogInterface(self.width, self.height),
+        )
 
     def post_process(self, job_path: Path, **kwargs: Any) -> bool:
         """Post process the generated data files."""
@@ -121,32 +197,14 @@ class MandelBrotMergingMetadata(ExecutionHooksBasePlugin):
     # Input data
     data: Optional[List] = None
 
-    def get_input_query(
-        self, input_name: str, **kwargs: Any
-    ) -> Union[Path, List[Path], None]:
-        """Get input query for Mandelbrot data to merge."""
-        # Reference the output from MandelBrotGeneration
-        return (
-            Path("filecatalog")
-            / "mandelbrot"
-            / "images"
-            / "raw"
-            / f"{self.width}x{self.height}"
+    def __init__(self, **kwargs: Any):
+        """Initialize with unified Mandelbrot data catalog interface."""
+        super().__init__(**kwargs)
+        object.__setattr__(
+            self,
+            "data_catalog",
+            MandelbrotDataCatalogInterface(self.width, self.height, data=self.data),
         )
-
-    def get_output_query(self, output_name: str) -> Optional[Path]:
-        """Get output path for merged Mandelbrot images."""
-        if output_name == "data-merged" and self.data:
-            width = len(self.data) * self.width
-            height = len(self.data) * self.height
-            return (
-                Path("filecatalog")
-                / "mandelbrot"
-                / "images"
-                / "merged"
-                / f"{width}x{height}"
-            )
-        return None
 
     def post_process(self, job_path: Path, **kwargs: Any) -> bool:
         """Post process the merged image files."""

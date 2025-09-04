@@ -56,7 +56,7 @@ class DataCatalogInterface(ABC):
         Optional[Path]
             Path where output should be stored or None.
         """
-        pass
+        ...
 
     def store_output(self, output_name: str, src_path: str) -> None:
         """Store output in the data catalog.
@@ -65,7 +65,7 @@ class DataCatalogInterface(ABC):
         ----------
         output_name : str
             Name of the output parameter.
-        src_path : str
+        src_path : str | Path
             Source path of the output file.
         """
         output_path = self.get_output_query(output_name)
@@ -78,11 +78,29 @@ class DataCatalogInterface(ABC):
         logger.info(f"Output {output_name} stored in {dest}")
 
 
-class ExecutionHooksBasePlugin(BaseModel, DataCatalogInterface):
+class DummyDataCatalogInterface(DataCatalogInterface):
+    """Default implementation that returns None for all queries.
+
+    This is used as the default data catalog when no specific implementation
+    is provided by a plugin.
+    """
+
+    def get_input_query(
+        self, input_name: str, **kwargs: Any
+    ) -> Union[Path, List[Path], None]:
+        """Return None - no input data available."""
+        return None
+
+    def get_output_query(self, output_name: str) -> Optional[Path]:
+        """Return None - no output path available."""
+        return None
+
+
+class ExecutionHooksBasePlugin(BaseModel):
     """Base class for all runtime plugin models with execution hooks.
 
-    This class combines Pydantic validation with the execution hooks
-    and data catalog interfaces to provide a complete foundation for runtime plugin implementations.
+    This class uses composition instead of inheritance for data catalog operations,
+    providing better separation of concerns and flexibility.
     """
 
     model_config = ConfigDict(
@@ -99,6 +117,19 @@ class ExecutionHooksBasePlugin(BaseModel, DataCatalogInterface):
     vo: ClassVar[Optional[str]] = None
     version: ClassVar[str] = "1.0.0"
     description: ClassVar[str] = "Base metadata model"
+
+    # Data catalog interface - set dynamically in __init__
+    data_catalog: DataCatalogInterface
+
+    # Private attributes - not part of Pydantic model
+    model_config = {"arbitrary_types_allowed": True}
+
+    def __init__(self, **data):
+        """Initialize with data catalog interface."""
+        super().__init__(**data)
+        # Set up data catalog interface after Pydantic initialization
+        # Use object.__setattr__ to bypass Pydantic validation
+        object.__setattr__(self, "data_catalog", DummyDataCatalogInterface())
 
     @classmethod
     def get_hook_plugin(cls) -> str:
@@ -141,12 +172,16 @@ class ExecutionHooksBasePlugin(BaseModel, DataCatalogInterface):
     def get_input_query(
         self, input_name: str, **kwargs: Any
     ) -> Union[Path, List[Path], None]:
-        """Default input query: return None."""
-        return None
+        """Delegate to data catalog interface."""
+        return self.data_catalog.get_input_query(input_name, **kwargs)
 
     def get_output_query(self, output_name: str) -> Optional[Path]:
-        """Default output query: return None."""
-        return None
+        """Delegate to data catalog interface."""
+        return self.data_catalog.get_output_query(output_name)
+
+    def store_output(self, output_name: str, src_path: str) -> None:
+        """Delegate to data catalog interface."""
+        self.data_catalog.store_output(output_name, src_path)
 
     @classmethod
     def get_schema_info(cls) -> Dict[str, Any]:

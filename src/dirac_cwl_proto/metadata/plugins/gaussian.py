@@ -10,7 +10,80 @@ import glob
 from pathlib import Path
 from typing import Any, ClassVar, List, Optional, Union
 
-from ..core import ExecutionHooksBasePlugin
+from ..core import DataCatalogInterface, ExecutionHooksBasePlugin
+
+
+class GaussianDataCatalogInterface(DataCatalogInterface):
+    """Unified data catalog interface for Gaussian workflows.
+
+    Handles both data generation and fitting scenarios for Gaussian workflows.
+    """
+
+    def __init__(
+        self,
+        output_file_name_1: Optional[str] = None,
+        output_file_name_2: Optional[str] = None,
+        data1: Optional[List] = None,
+        data2: Optional[List] = None,
+    ):
+        """Initialize with data generation and fitting parameters.
+
+        Parameters
+        ----------
+        output_file_name_1 : str, optional
+            Name of the first output file for data generation.
+        output_file_name_2 : str, optional
+            Name of the second output file for data generation.
+        data1 : List, optional
+            First set of input data files for fitting.
+        data2 : List, optional
+            Second set of input data files for fitting.
+        """
+        self.output_file_name_1 = output_file_name_1
+        self.output_file_name_2 = output_file_name_2
+        self.data1 = data1
+        self.data2 = data2
+
+    def get_input_query(
+        self, input_name: str, **kwargs: Any
+    ) -> Union[Path, List[Path], None]:
+        """Get input query for data files.
+
+        Returns None for data generation, specific paths for fitting.
+        """
+        # For data generation workflows, no input queries
+        if not self.data1 and not self.data2:
+            return None
+
+        # For fitting workflows, provide input data paths
+        base_path = Path("filecatalog") / "gaussian_fit"
+
+        if input_name == "data1":
+            return base_path / "data-generation-1"
+        if input_name == "data2":
+            return base_path / "data-generation-2"
+
+        return None
+
+    def get_output_query(self, output_name: str) -> Optional[Path]:
+        """Get output path for both generation and fitting."""
+        base_path = Path("filecatalog") / "gaussian_fit"
+
+        # Data generation outputs
+        if self.output_file_name_1 and output_name == "data1":
+            return base_path / "data-generation-1"
+        if self.output_file_name_2 and output_name == "data2":
+            return base_path / "data-generation-2"
+
+        # Default data generation output
+        if output_name in ("data1", "data2") and not (self.data1 or self.data2):
+            return base_path / "data-generation"
+
+        # Fitting output
+        if output_name == "fit-data" and (self.data1 or self.data2):
+            return base_path / "fit"
+
+        return None
 
 
 class DataGenerationMetadata(ExecutionHooksBasePlugin):
@@ -33,16 +106,17 @@ class DataGenerationMetadata(ExecutionHooksBasePlugin):
     output_file_name_1: Optional[str] = None
     output_file_name_2: Optional[str] = None
 
-    def get_output_query(self, output_name: str) -> Optional[Path]:
-        """Get output path for generated data files."""
-        base_path = Path("filecatalog") / "gaussian_fit"
-
-        if self.output_file_name_1 and output_name == "data1":
-            return base_path / "data-generation-1"
-        if self.output_file_name_2 and output_name == "data2":
-            return base_path / "data-generation-2"
-
-        return base_path / "data-generation"
+    def __init__(self, **kwargs: Any):
+        """Initialize with unified Gaussian data catalog interface."""
+        super().__init__(**kwargs)
+        object.__setattr__(
+            self,
+            "data_catalog",
+            GaussianDataCatalogInterface(
+                output_file_name_1=self.output_file_name_1,
+                output_file_name_2=self.output_file_name_2,
+            ),
+        )
 
     def post_process(self, job_path: Path, **kwargs: Any) -> bool:
         """Post process the generated data files."""
@@ -92,24 +166,14 @@ class GaussianFitMetadata(ExecutionHooksBasePlugin):
     data1: Optional[List] = None
     data2: Optional[List] = None
 
-    def get_input_query(
-        self, input_name: str, **kwargs: Any
-    ) -> Union[Path, List[Path], None]:
-        """Get input query for data files to fit."""
-        base_path = Path("filecatalog") / "gaussian_fit"
-
-        if input_name == "data1":
-            return base_path / "data-generation-1"
-        if input_name == "data2":
-            return base_path / "data-generation-2"
-
-        return None
-
-    def get_output_query(self, output_name: str) -> Optional[Path]:
-        """Get output path for fitting results."""
-        if output_name == "fit-data" and (self.data1 or self.data2):
-            return Path("filecatalog") / "gaussian_fit" / "fit"
-        return None
+    def __init__(self, **kwargs: Any):
+        """Initialize with unified Gaussian data catalog interface."""
+        super().__init__(**kwargs)
+        object.__setattr__(
+            self,
+            "data_catalog",
+            GaussianDataCatalogInterface(data1=self.data1, data2=self.data2),
+        )
 
     def post_process(self, job_path: Path, **kwargs: Any) -> bool:
         """Post process the fitting results."""

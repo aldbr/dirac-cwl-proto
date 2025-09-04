@@ -11,7 +11,62 @@ from typing import Any, ClassVar, List, Optional, Union
 
 from pydantic import Field
 
-from ..core import ExecutionHooksBasePlugin
+from ..core import (
+    DataCatalogInterface,
+    DummyDataCatalogInterface,
+    ExecutionHooksBasePlugin,
+)
+
+
+class QueryBasedDataCatalogInterface(DataCatalogInterface):
+    """Data catalog interface for query-based data discovery.
+
+    This interface builds paths based on query parameters like campaign,
+    site, and data type for structured data organization.
+    """
+
+    def __init__(
+        self,
+        query_root: str = "/",
+        site: Optional[str] = None,
+        campaign: Optional[str] = None,
+        data_type: Optional[str] = None,
+    ):
+        self.query_root = query_root
+        self.site = site
+        self.campaign = campaign
+        self.data_type = data_type
+
+    def get_input_query(
+        self, input_name: str, **kwargs: Any
+    ) -> Union[Path, List[Path], None]:
+        """Generate input query based on metadata parameters."""
+        base_path = Path(self.query_root) if self.query_root else Path("filecatalog")
+
+        # Build query path from metadata
+        query_parts = []
+        if self.campaign:
+            query_parts.append(self.campaign)
+        if self.site:
+            query_parts.append(self.site)
+        if self.data_type:
+            query_parts.append(self.data_type)
+
+        if query_parts:
+            return base_path / Path(*query_parts)
+
+        return None
+
+    def get_output_query(self, output_name: str) -> Optional[Path]:
+        """Generate output path based on metadata parameters."""
+        base_path = Path("filecatalog") / "outputs"
+
+        if self.campaign and self.site:
+            return base_path / self.campaign / self.site
+        elif self.campaign:
+            return base_path / self.campaign
+        else:
+            return base_path
 
 
 class UserMetadata(ExecutionHooksBasePlugin):
@@ -22,6 +77,10 @@ class UserMetadata(ExecutionHooksBasePlugin):
     """
 
     description: ClassVar[str] = "Basic user metadata with no special processing"
+
+    def __init__(self, **data):
+        super().__init__(**data)
+        object.__setattr__(self, "data_catalog", DummyDataCatalogInterface())
 
 
 class AdminMetadata(ExecutionHooksBasePlugin):
@@ -45,6 +104,10 @@ class AdminMetadata(ExecutionHooksBasePlugin):
     log_level: str = "INFO"
     enable_monitoring: bool = True
     admin_level: int = 1
+
+    def __init__(self, **data):
+        super().__init__(**data)
+        object.__setattr__(self, "data_catalog", DummyDataCatalogInterface())
 
     def pre_process(
         self, job_path: Path, command: List[str], **kwargs: Any
@@ -76,6 +139,20 @@ class QueryBasedMetadata(ExecutionHooksBasePlugin):
     site: Optional[str] = Field(default=None, description="Site to query")
     campaign: Optional[str] = Field(default=None, description="Campaign name")
     data_type: Optional[str] = Field(default=None, description="Data type")
+
+    def __init__(self, **data):
+        super().__init__(**data)
+        # Create data catalog with current parameters
+        object.__setattr__(
+            self,
+            "data_catalog",
+            QueryBasedDataCatalogInterface(
+                query_root=self.query_root,
+                site=self.site,
+                campaign=self.campaign,
+                data_type=self.data_type,
+            ),
+        )
 
     def get_input_query(
         self, input_name: str, **kwargs: Any
@@ -122,6 +199,29 @@ class QueryBasedMetadata(ExecutionHooksBasePlugin):
         return base_path / "default"
 
 
+class TaskQueryDataCatalogInterface(DataCatalogInterface):
+    """Simple data catalog interface for task query example."""
+
+    def get_input_query(
+        self, input_name: str, **kwargs: Any
+    ) -> Union[Path, List[Path], None]:
+        """Generate query paths based on site and campaign metadata."""
+        site = kwargs.get("site", "")
+        campaign = kwargs.get("campaign", "")
+
+        # Example implementation
+        if site and campaign:
+            return [Path("filecatalog") / campaign / site]
+        elif site:
+            return Path("filecatalog") / site
+        else:
+            return None
+
+    def get_output_query(self, output_name: str) -> Optional[Path]:
+        """Simple output path generation."""
+        return Path("filecatalog") / "outputs"
+
+
 class TaskWithMetadataQueryPlugin(ExecutionHooksBasePlugin):
     """Metadata plugin that demonstrates query-based input resolution.
 
@@ -136,40 +236,7 @@ class TaskWithMetadataQueryPlugin(ExecutionHooksBasePlugin):
         str
     ] = "Example metadata plugin with query-based input resolution"
 
-    def get_input_query(
-        self, input_name: str, **kwargs: Any
-    ) -> Union[Path, List[Path], None]:
-        """
-        Generates a query to retrieve input paths based on provided metadata.
-
-        Parameters
-        ----------
-        input_name : str
-            Name of the input parameter.
-        **kwargs : dict
-            Keyword arguments representing metadata attributes. Expected keys are:
-            - site (str): The site name.
-            - campaign (str): The campaign name.
-
-        Returns
-        -------
-        Union[Path, List[Path], None]
-            A Path or list of Paths representing the input query based on the provided metadata.
-            Returns None if neither site nor campaign is provided.
-
-        Notes
-        -----
-        This is an example implementation. In a real implementation,
-        an actual query should be made to the metadata service,
-        resulting in an array of Logical File Names (LFNs) being returned.
-        """
-        site = kwargs.get("site", "")
-        campaign = kwargs.get("campaign", "")
-
-        # Example implementation
-        if site and campaign:
-            return [Path("filecatalog") / campaign / site]
-        elif site:
-            return Path("filecatalog") / site
-        else:
-            return None
+    def __init__(self, **kwargs: Any):
+        """Initialize with task query data catalog interface."""
+        super().__init__(**kwargs)
+        object.__setattr__(self, "data_catalog", TaskQueryDataCatalogInterface())

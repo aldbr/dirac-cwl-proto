@@ -159,9 +159,8 @@ class TestLHCbSimulationMetadata:
 
         # Mock glob to find simulation files
         mock_glob = mocker.patch("dirac_cwl_proto.metadata.plugins.lhcb.glob.glob")
-        mock_store = mocker.patch(
-            "dirac_cwl_proto.metadata.core.DataCatalogInterface.store_output"
-        )
+        # Mock the store_output method on the data_catalog instance
+        mock_store = mocker.patch.object(metadata.data_catalog, "store_output")
         mock_glob.side_effect = [
             ["/tmp/job/output.sim"],  # sim files
             ["/tmp/job/pool_xml_catalog.xml"],  # catalog files
@@ -312,9 +311,8 @@ class TestLHCbAnalysisMetadata:
 
         # Mock glob to find ROOT files and plot files
         mock_glob = mocker.patch("dirac_cwl_proto.metadata.plugins.lhcb.glob.glob")
-        mock_store = mocker.patch(
-            "dirac_cwl_proto.metadata.core.DataCatalogInterface.store_output"
-        )
+        # Mock the store_output method on the data_catalog instance
+        mock_store = mocker.patch.object(metadata.data_catalog, "store_output")
         mock_glob.side_effect = [
             ["/tmp/job/results.root"],  # ROOT files
             [],  # PNG files
