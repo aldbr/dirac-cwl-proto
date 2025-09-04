@@ -22,7 +22,7 @@ class TestUserMetadata:
     def test_creation(self):
         """Test UserMetadata creation."""
         metadata = UserMetadata()
-        assert metadata.get_metadata_class() == "User"
+        assert metadata.get_hook_plugin() == "User"
         assert "basic user metadata" in metadata.description.lower()
 
     def test_default_behavior(self):
@@ -66,7 +66,7 @@ class TestAdminMetadata:
     def test_creation(self):
         """Test AdminMetadata creation."""
         metadata = AdminMetadata()
-        assert metadata.get_metadata_class() == "Admin"
+        assert metadata.get_hook_plugin() == "Admin"
         assert metadata.log_level == "INFO"
         assert metadata.enable_monitoring is True
         assert metadata.admin_level == 1
@@ -131,7 +131,7 @@ class TestQueryBasedMetadata:
     def test_creation(self):
         """Test QueryBasedMetadata creation."""
         metadata = QueryBasedMetadata()
-        assert metadata.get_metadata_class() == "QueryBased"
+        assert metadata.get_hook_plugin() == "QueryBased"
         assert metadata.query_root == "/"  # Default value
         assert metadata.site is None
         assert metadata.campaign is None

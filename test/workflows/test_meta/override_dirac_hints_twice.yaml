@@ -4,8 +4,8 @@ cwltool:overrides:
   test_meta.cwl#:
     hints:
       dirac:execution-hooks:
-        metadata_class: 'TaskWithMetadataQueryPlugin'
-        query_params:
+        hook_plugin: 'TaskWithMetadataQueryPlugin'
+        configuration:
           site: 'Paranal'
 
       dirac:scheduling:
@@ -17,8 +17,8 @@ cwltool:overrides:
   test_meta.cwl#:
     hints:
       dirac:execution-hooks:
-        metadata_class: 'TaskWithMetadataQueryPlugin'
-        query_params:
+        hook_plugin: 'TaskWithMetadataQueryPlugin'
+        configuration:
           site: 'LaPalma'
 
       dirac:scheduling:

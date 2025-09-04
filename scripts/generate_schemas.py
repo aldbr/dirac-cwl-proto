@@ -203,8 +203,8 @@ def generate_schema(model_class: Any, model_name: str) -> Dict[str, Any]:
             schema["dirac_description"] = model_class.description
         if hasattr(model_class, "vo"):
             schema["dirac_vo"] = model_class.vo
-        if hasattr(model_class, "get_metadata_class"):
-            schema["dirac_metadata_class"] = model_class.get_metadata_class()
+        if hasattr(model_class, "get_hook_plugin"):
+            schema["dirac_hook_plugin"] = model_class.get_hook_plugin()
 
         # Set title if not present
         if "title" not in schema:
@@ -340,17 +340,15 @@ def main():
         save_schema(unified_schema, unified_file, args.format)
 
     # Generate plugin summary
-    plugin_models = {
-        k: v for k, v in models.items() if hasattr(v, "get_metadata_class")
-    }
+    plugin_models = {k: v for k, v in models.items() if hasattr(v, "get_hook_plugin")}
     if plugin_models:
         summary = {
             "plugins": {
                 name: {
                     "class": model_class.__name__,
-                    "metadata_class": (
-                        model_class.get_metadata_class()
-                        if hasattr(model_class, "get_metadata_class")
+                    "hook_plugin": (
+                        model_class.get_hook_plugin()
+                        if hasattr(model_class, "get_hook_plugin")
                         else None
                     ),
                     "description": getattr(model_class, "description", None),

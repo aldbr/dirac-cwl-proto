@@ -1,7 +1,7 @@
-metadata_class: GaussianFit
+hook_plugin: GaussianFit
 group_size:
   data1: 1
   data2: 1
-query_params:
+configuration:
   data1: ["data-gen1.txt"]
   data2: ["data-gen2.txt"]

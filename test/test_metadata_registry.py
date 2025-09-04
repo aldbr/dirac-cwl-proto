@@ -129,9 +129,7 @@ class TestMetadataPluginRegistry:
 
         registry.register_plugin(TestPluginMetadata)
 
-        descriptor = ExecutionHooksHint(
-            metadata_class="TestPlugin", test_param="custom"
-        )
+        descriptor = ExecutionHooksHint(hook_plugin="TestPlugin", test_param="custom")
         instance = registry.instantiate_plugin(descriptor)
 
         assert isinstance(instance, TestPluginMetadata)
@@ -144,7 +142,7 @@ class TestMetadataPluginRegistry:
         registry.register_plugin(TestVOPlugin)
 
         descriptor = ExecutionHooksHint(
-            metadata_class="TestVOPlugin", vo="test_exp", exp_param=99
+            hook_plugin="TestVOPlugin", vo="test_exp", exp_param=99
         )
         instance = registry.instantiate_plugin(descriptor)
 
@@ -155,7 +153,7 @@ class TestMetadataPluginRegistry:
         """Test instantiation of non-existent plugin."""
         registry = MetadataPluginRegistry()
 
-        descriptor = ExecutionHooksHint(metadata_class="NonExistent")
+        descriptor = ExecutionHooksHint(hook_plugin="NonExistent")
 
         with pytest.raises(KeyError, match="Unknown metadata plugin"):
             registry.instantiate_plugin(descriptor)
@@ -235,9 +233,7 @@ class TestPluginSystem:
         registry.register_plugin(DirectPlugin)
 
         # Should be able to instantiate
-        descriptor = ExecutionHooksHint(
-            metadata_class="DirectPlugin", test_param="custom"
-        )
+        descriptor = ExecutionHooksHint(hook_plugin="DirectPlugin", test_param="custom")
         instance = registry.instantiate_plugin(descriptor)
 
         # Should work with new interface
@@ -257,7 +253,7 @@ class TestPluginSystem:
 
         # Test with snake_case parameters (should work)
         descriptor = ExecutionHooksHint(
-            metadata_class="ParameterTestPlugin",
+            hook_plugin="ParameterTestPlugin",
             test_param="value1",
             another_param="value2",
         )

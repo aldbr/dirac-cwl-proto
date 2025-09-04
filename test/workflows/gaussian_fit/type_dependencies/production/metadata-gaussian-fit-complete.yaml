@@ -1,9 +1,9 @@
 data-generation:
   metadata:
-    metadata_class: DataGeneration
+    hook_plugin: DataGeneration
 fit:
   metadata:
-    metadata_class: GaussianFit
+    hook_plugin: GaussianFit
     group_size:
       data1: 1
       data2: 1

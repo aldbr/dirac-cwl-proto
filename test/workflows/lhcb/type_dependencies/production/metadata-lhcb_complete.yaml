@@ -1,8 +1,8 @@
 simulation:
   metadata:
-    metadata_class: LHCbSimulation
+    hook_plugin: LHCbSimulation
 reconstruction:
   metadata:
-    metadata_class: LHCbReconstruction
+    hook_plugin: LHCbReconstruction
     group_size:
       files: 1

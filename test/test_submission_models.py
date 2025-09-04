@@ -16,18 +16,18 @@ class TestExecutionHooksHint:
     def test_creation(self):
         """Test ExecutionHooksHint creation."""
         descriptor = ExecutionHooksHint()
-        assert descriptor.metadata_class == "User"
-        assert descriptor.query_params == {}
+        assert descriptor.hook_plugin == "User"
+        assert descriptor.configuration == {}
 
     def test_creation_with_parameters(self):
         """Test creation with custom parameters."""
         descriptor = ExecutionHooksHint(
-            metadata_class="Admin",
-            query_params={"admin_level": 5, "log_level": "DEBUG"},
+            hook_plugin="Admin",
+            configuration={"admin_level": 5, "log_level": "DEBUG"},
         )
-        assert descriptor.metadata_class == "Admin"
-        assert descriptor.query_params["admin_level"] == 5
-        assert descriptor.query_params["log_level"] == "DEBUG"
+        assert descriptor.hook_plugin == "Admin"
+        assert descriptor.configuration["admin_level"] == 5
+        assert descriptor.configuration["log_level"] == "DEBUG"
 
     def test_inheritance(self):
         """Test that ExecutionHooksHint has the expected functionality."""
@@ -39,62 +39,60 @@ class TestExecutionHooksHint:
     def test_type_validation(self):
         """Test type validation during runtime instantiation."""
         # Valid type (should be registered by default)
-        descriptor = ExecutionHooksHint(metadata_class="User")
-        assert descriptor.metadata_class == "User"
+        descriptor = ExecutionHooksHint(hook_plugin="User")
+        assert descriptor.hook_plugin == "User"
 
         # Invalid type should raise error during runtime instantiation
-        descriptor_with_invalid_type = ExecutionHooksHint(
-            metadata_class="NonExistentType"
-        )
+        descriptor_with_invalid_type = ExecutionHooksHint(hook_plugin="NonExistentType")
         with pytest.raises(KeyError, match="Unknown metadata plugin"):
             descriptor_with_invalid_type.to_runtime()
 
     def test_model_copy(self):
         """Test model_copy functionality."""
         original = ExecutionHooksHint(
-            metadata_class="Admin", query_params={"admin_level": 3}
+            hook_plugin="Admin", configuration={"admin_level": 3}
         )
 
         # Test basic copy
         copied = original.model_copy()
-        assert copied.metadata_class == original.metadata_class
-        assert copied.query_params == original.query_params
+        assert copied.hook_plugin == original.hook_plugin
+        assert copied.configuration == original.configuration
         assert copied is not original
         # Note: Pydantic may optimize dict sharing for immutable content
-        assert copied.query_params == original.query_params
+        assert copied.configuration == original.configuration
 
     def test_model_copy_with_update(self):
         """Test model_copy with updates."""
         original = ExecutionHooksHint(
-            metadata_class="Admin", query_params={"admin_level": 3, "log_level": "INFO"}
+            hook_plugin="Admin", configuration={"admin_level": 3, "log_level": "INFO"}
         )
 
         # Test copy with type update
-        copied = original.model_copy(update={"metadata_class": "User"})
-        assert copied.metadata_class == "User"
-        assert copied.query_params == original.query_params
+        copied = original.model_copy(update={"hook_plugin": "User"})
+        assert copied.hook_plugin == "User"
+        assert copied.configuration == original.configuration
 
-        # Test copy with query_params update
-        copied = original.model_copy(update={"query_params": {"admin_level": 5}})
-        assert copied.metadata_class == original.metadata_class
-        assert copied.query_params["admin_level"] == 5
-        assert copied.query_params["log_level"] == "INFO"  # Should merge
+        # Test copy with configuration update
+        copied = original.model_copy(update={"configuration": {"admin_level": 5}})
+        assert copied.hook_plugin == original.hook_plugin
+        assert copied.configuration["admin_level"] == 5
+        assert copied.configuration["log_level"] == "INFO"  # Should merge
 
     def test_to_runtime_no_submission(self):
         """Test to_runtime without submission context."""
         descriptor = ExecutionHooksHint(
-            metadata_class="Admin", query_params={"admin_level": 7}
+            hook_plugin="Admin", configuration={"admin_level": 7}
         )
 
         runtime = descriptor.to_runtime()
 
-        assert runtime.get_metadata_class() == "Admin"
+        assert runtime.get_hook_plugin() == "Admin"
         assert runtime.admin_level == 7
 
     def test_to_runtime_with_submission(self, mocker):
         """Test to_runtime with submission context."""
         descriptor = ExecutionHooksHint(
-            metadata_class="QueryBased", query_params={"campaign": "Run3"}
+            hook_plugin="QueryBased", configuration={"campaign": "Run3"}
         )
 
         # Mock submission model
@@ -111,14 +109,14 @@ class TestExecutionHooksHint:
 
         runtime = descriptor.to_runtime(mock_submission)
 
-        assert runtime.get_metadata_class() == "QueryBased"
+        assert runtime.get_hook_plugin() == "QueryBased"
         assert runtime.campaign == "Run3"
 
     def test_dash_to_snake_case_conversion(self):
         """Test dash-case to snake_case parameter conversion."""
         descriptor = ExecutionHooksHint(
-            metadata_class="QueryBased",
-            query_params={
+            hook_plugin="QueryBased",
+            configuration={
                 "query_root": "/data",
                 "data_type": "AOD",
             },  # Already in snake_case
@@ -133,7 +131,7 @@ class TestExecutionHooksHint:
     def test_from_cwl(self, mocker):
         """Test from_cwl class method."""
         mock_cwl = mocker.Mock()
-        mock_descriptor = ExecutionHooksHint(metadata_class="QueryBased")
+        mock_descriptor = ExecutionHooksHint(hook_plugin="QueryBased")
         mock_from_cwl = mocker.patch(
             "dirac_cwl_proto.submission_models.ExecutionHooksHint.from_cwl"
         )
@@ -147,13 +145,13 @@ class TestExecutionHooksHint:
     def test_serialization_compatibility(self):
         """Test that serialization works correctly."""
         descriptor = ExecutionHooksHint(
-            metadata_class="Admin", query_params={"admin_level": 5}
+            hook_plugin="Admin", configuration={"admin_level": 5}
         )
 
         # Test dict conversion
         data = descriptor.model_dump()
-        assert data["metadata_class"] == "Admin"
-        assert data["query_params"]["admin_level"] == 5
+        assert data["hook_plugin"] == "Admin"
+        assert data["configuration"]["admin_level"] == 5
 
         # Test JSON schema
         schema = descriptor.model_json_schema()
@@ -167,16 +165,16 @@ class TestSubmissionModelsIntegration:
         """Test that ExecutionHooksHint integrates with the registry."""
         # Create descriptor for each core plugin type
         descriptors = [
-            ExecutionHooksHint(metadata_class="User"),
-            ExecutionHooksHint(metadata_class="Admin", query_params={"admin_level": 3}),
+            ExecutionHooksHint(hook_plugin="User"),
+            ExecutionHooksHint(hook_plugin="Admin", configuration={"admin_level": 3}),
             ExecutionHooksHint(
-                metadata_class="QueryBased", query_params={"campaign": "Test"}
+                hook_plugin="QueryBased", configuration={"campaign": "Test"}
             ),
         ]
 
         for descriptor in descriptors:
             runtime = descriptor.to_runtime()
-            assert runtime.get_metadata_class() == descriptor.metadata_class
+            assert runtime.get_hook_plugin() == descriptor.hook_plugin
 
     def test_task_description_with_different_metadata_types(self):
         """Test SchedulingHint with different configurations."""
@@ -203,7 +201,7 @@ class TestSubmissionModelsIntegration:
 
         for legacy_type in legacy_types:
             try:
-                descriptor = ExecutionHooksHint(metadata_class=legacy_type)
+                descriptor = ExecutionHooksHint(hook_plugin=legacy_type)
                 # If creation succeeds, test runtime conversion
                 # (may fail due to missing parameters, which is expected)
                 descriptor.to_runtime()
@@ -231,10 +229,10 @@ class TestSubmissionModelsIntegration:
         """Test integration with CWL hints extraction."""
         # Create an enhanced descriptor directly
         descriptor = ExecutionHooksHint(
-            metadata_class="QueryBased",
-            query_params={"campaign": "Run3", "data_type": "AOD"},
+            hook_plugin="QueryBased",
+            configuration={"campaign": "Run3", "data_type": "AOD"},
         )
         runtime = descriptor.to_runtime()
 
         # Should use the QueryBased type
-        assert runtime.get_metadata_class() == "QueryBased"
+        assert runtime.get_hook_plugin() == "QueryBased"

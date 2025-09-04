@@ -72,13 +72,13 @@
       "additionalProperties": true,
       "description": "Data management configuration for DIRAC jobs",
       "properties": {
-        "metadata_class": {
+        "hook_plugin": {
           "default": "User",
           "description": "Registry key for the metadata implementation class",
           "title": "Metadata Class",
           "type": "string"
         },
-        "query_params": {
+        "configuration": {
           "description": "Additional parameters for metadata plugins",
           "title": "Query Params",
           "type": "object"
@@ -227,13 +227,13 @@
           "additionalProperties": true,
           "description": "Data management configuration for DIRAC jobs",
           "properties": {
-            "metadata_class": {
+            "hook_plugin": {
               "default": "User",
               "description": "Registry key for the metadata implementation class",
               "title": "Metadata Class",
               "type": "string"
             },
-            "query_params": {
+            "configuration": {
               "description": "Additional parameters for metadata plugins",
               "title": "Query Params",
               "type": "object"
@@ -857,13 +857,13 @@
               "default": null,
               "title": "Group Size"
             },
-            "metadata_class": {
+            "hook_plugin": {
               "default": "User",
               "description": "Registry key for the metadata implementation class",
               "title": "Metadata Class",
               "type": "string"
             },
-            "query_params": {
+            "configuration": {
               "description": "Additional parameters for metadata plugins",
               "title": "Query Params",
               "type": "object"
@@ -1068,13 +1068,13 @@
           "description": "Input grouping configuration for transformation jobs",
           "title": "Group Size"
         },
-        "metadata_class": {
+        "hook_plugin": {
           "default": "User",
           "description": "Registry key for the metadata implementation class",
           "title": "Metadata Class",
           "type": "string"
         },
-        "query_params": {
+        "configuration": {
           "description": "Additional parameters for metadata plugins",
           "title": "Query Params",
           "type": "object"
@@ -1173,13 +1173,13 @@
               "default": null,
               "title": "Group Size"
             },
-            "metadata_class": {
+            "hook_plugin": {
               "default": "User",
               "description": "Registry key for the metadata implementation class",
               "title": "Metadata Class",
               "type": "string"
             },
-            "query_params": {
+            "configuration": {
               "description": "Additional parameters for metadata plugins",
               "title": "Query Params",
               "type": "object"

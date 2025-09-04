@@ -63,7 +63,7 @@ class TestLHCbSimulationMetadata:
     def test_creation(self):
         """Test LHCbSimulationMetadata creation."""
         metadata = LHCbSimulationMetadata(task_id=123, run_id=1)
-        assert metadata.get_metadata_class() == "LHCbSimulation"
+        assert metadata.get_hook_plugin() == "LHCbSimulation"
         assert "LHCb simulation" in metadata.description
 
     def test_creation_with_simulation_parameters(self):
@@ -187,7 +187,7 @@ class TestLHCbReconstructionMetadata:
     def test_creation(self):
         """Test LHCbReconstructionMetadata creation."""
         metadata = LHCbReconstructionMetadata(task_id=456, run_id=1)
-        assert metadata.get_metadata_class() == "LHCbReconstruction"
+        assert metadata.get_hook_plugin() == "LHCbReconstruction"
         assert "LHCb reconstruction" in metadata.description
 
     def test_creation_with_reconstruction_parameters(self):
@@ -258,7 +258,7 @@ class TestLHCbAnalysisMetadata:
         metadata = LHCbAnalysisMetadata(
             task_id=789, run_id=1, analysis_name="TestAnalysis", user_name="testuser"
         )
-        assert metadata.get_metadata_class() == "LHCbAnalysis"
+        assert metadata.get_hook_plugin() == "LHCbAnalysis"
         assert "LHCb analysis" in metadata.description
 
     def test_creation_with_analysis_parameters(self):

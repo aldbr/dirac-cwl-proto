@@ -13,8 +13,8 @@ $namespaces:
   dirac: "./schemas/dirac-metadata.json#" # Generated schema from Pydantic models
 hints:
   dirac:execution-hooks:
-    metadata_class: "User"
-    query_params:
+    hook_plugin: "User"
+    configuration:
       campaign: PROD5
       site: LaPalma
   dirac:scheduling:

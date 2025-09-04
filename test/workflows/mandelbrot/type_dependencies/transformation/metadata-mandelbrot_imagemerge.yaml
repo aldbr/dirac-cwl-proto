@@ -1,7 +1,7 @@
-metadata_class: MandelBrotMerging
+hook_plugin: MandelBrotMerging
 group_size:
   data: 3
-query_params:
+configuration:
   precision: 0.0005
   max_iterations: 1000
   start_x: -0.5

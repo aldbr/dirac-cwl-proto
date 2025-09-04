@@ -166,7 +166,7 @@ def _get_transformations(
         step_task = _create_subworkflow(
             step, str(production.task.cwlVersion), production.task.inputs
         )
-        query_params = _get_query_params(production.task)
+        configuration = _get_configuration(production.task)
 
         # Get the metadata & description for the step
         step_id = step.id.split("#")[-1]
@@ -177,7 +177,7 @@ def _get_transformations(
                 metadata=TransformationMetadataModel(),
             ),
         )
-        step_data.metadata.query_params = query_params
+        step_data.metadata.configuration = configuration
 
         transformations.append(
             TransformationSubmissionModel(
@@ -254,14 +254,14 @@ def _create_subworkflow(
     return new_workflow
 
 
-def _get_query_params(task: Workflow) -> dict[str, Any]:
+def _get_configuration(task: Workflow) -> dict[str, Any]:
     """Get the external inputs of a step.
 
     :param task: The task to get the query params for
 
     :return: A dictionary of query params
     """
-    query_params = {}
+    configuration = {}
     for input in task.inputs:
-        query_params[input.id.split("#")[-1]] = input.default
-    return query_params
+        configuration[input.id.split("#")[-1]] = input.default
+    return configuration

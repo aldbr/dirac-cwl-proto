@@ -101,8 +101,8 @@ class ExecutionHooksBasePlugin(BaseModel, DataCatalogInterface):
     description: ClassVar[str] = "Base metadata model"
 
     @classmethod
-    def get_metadata_class(cls) -> str:
-        """Auto-derive metadata class identifier from class name."""
+    def get_hook_plugin(cls) -> str:
+        """Auto-derive hook plugin identifier from class name."""
         name = cls.__name__
         # LHCbSimulationMetadata → LHCbSimulation
         if name.endswith("Metadata"):
@@ -152,7 +152,7 @@ class ExecutionHooksBasePlugin(BaseModel, DataCatalogInterface):
     def get_schema_info(cls) -> Dict[str, Any]:
         """Get schema information for this metadata model."""
         return {
-            "metadata_class": cls.get_metadata_class(),
+            "hook_plugin": cls.get_hook_plugin(),
             "vo": cls.vo,
             "version": cls.version,
             "description": cls.description,
@@ -220,19 +220,12 @@ class ExecutionHooksHint(BaseModel, Hint):
         },
     )
 
-    metadata_class: str = Field(
+    hook_plugin: str = Field(
         default="User", description="Registry key for the metadata implementation class"
     )
 
-    vo: Optional[str] = Field(
-        default=None,
-        description="Virtual Organization namespace (e.g., 'lhcb', 'ctao')",
-    )
-
-    version: Optional[str] = Field(default=None, description="Metadata model version")
-
     # Enhanced fields for submission functionality
-    query_params: Dict[str, Any] = Field(
+    configuration: Dict[str, Any] = Field(
         default_factory=dict, description="Additional parameters for metadata plugins"
     )
 
@@ -242,7 +235,7 @@ class ExecutionHooksHint(BaseModel, Hint):
         *,
         deep: bool = False,
     ) -> "ExecutionHooksHint":
-        """Enhanced model copy with intelligent merging of dict fields (including query_params)."""
+        """Enhanced model copy with intelligent merging of dict fields (including configuration)."""
         if update is None:
             update = {}
         else:
@@ -274,7 +267,7 @@ class ExecutionHooksHint(BaseModel, Hint):
             1. Input defaults declared on the CWL task (if ``submitted`` is provided).
             2. The first set of CWL parameter overrides (``submitted.parameters``),
                if present.
-            3. The descriptor's ``query_params``.
+            3. The descriptor's ``configuration``.
 
             During merging, keys are normalised from dash-case to snake_case to
             align with typical Python argument names used by runtime implementations.
@@ -299,7 +292,7 @@ class ExecutionHooksHint(BaseModel, Hint):
 
         if submitted is None:
             descriptor = ExecutionHooksHint(
-                metadata_class=self.metadata_class, **self.query_params
+                hook_plugin=self.hook_plugin, **self.configuration
             )
             return get_registry().instantiate_plugin(descriptor)
 
@@ -313,13 +306,13 @@ class ExecutionHooksHint(BaseModel, Hint):
                 input_value = params_list[0].cwl.get(input_name, input_value)
             inputs[input_name] = input_value
 
-        # Merge with explicit query params
-        if self.query_params:
-            inputs.update(self.query_params)
+        # Merge with explicit configuration
+        if self.configuration:
+            inputs.update(self.configuration)
 
         params = {_dash_to_snake(key): value for key, value in inputs.items()}
 
-        descriptor = ExecutionHooksHint(metadata_class=self.metadata_class, **params)
+        descriptor = ExecutionHooksHint(hook_plugin=self.hook_plugin, **params)
         return get_registry().instantiate_plugin(descriptor)
 
     @classmethod

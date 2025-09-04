@@ -1,8 +1,8 @@
 simulate:
   metadata:
-    metadata_class: PiSimulate
+    hook_plugin: PiSimulate
 gathering:
   metadata:
-    metadata_class: PiGather
+    hook_plugin: PiGather
     group_size:
       input-data: 1

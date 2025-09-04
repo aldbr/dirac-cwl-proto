@@ -1,6 +1,6 @@
-metadata_class: LHCbReconstruction
+hook_plugin: LHCbReconstruction
 group_size:
   files: 3
-query_params:
+configuration:
   run-id: 123
   task-id: 456

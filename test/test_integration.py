@@ -47,16 +47,16 @@ class TestSystemIntegration:
         for plugin_type, params in test_cases:
             # Test direct instantiation
             registry = get_registry()
-            descriptor = ExecutionHooksHint(metadata_class=plugin_type, **params)
+            descriptor = ExecutionHooksHint(hook_plugin=plugin_type, **params)
             instance = registry.instantiate_plugin(descriptor)
-            assert instance.get_metadata_class() == plugin_type
+            assert instance.get_hook_plugin() == plugin_type
 
             # Test via descriptor
             descriptor = ExecutionHooksHint(
-                metadata_class=plugin_type, query_params=params
+                hook_plugin=plugin_type, configuration=params
             )
             runtime = descriptor.to_runtime()
-            assert runtime.get_metadata_class() == plugin_type
+            assert runtime.get_hook_plugin() == plugin_type
 
     def test_vo_plugin_support(self):
         """Test VO-specific plugin functionality."""
@@ -74,14 +74,14 @@ class TestSystemIntegration:
         """Test complete CWL integration workflow."""
         # Create an enhanced descriptor directly to test CWL integration
         metadata_descriptor = ExecutionHooksHint(
-            metadata_class="QueryBased",
-            query_params={"campaign": "Run3", "data_type": "AOD", "site": "CERN"},
+            hook_plugin="QueryBased",
+            configuration={"campaign": "Run3", "data_type": "AOD", "site": "CERN"},
         )
 
         # Convert to runtime
         runtime_metadata = metadata_descriptor.to_runtime()
         assert (
-            runtime_metadata.get_metadata_class() == "QueryBased"
+            runtime_metadata.get_hook_plugin() == "QueryBased"
         )  # Test that CWL parameters are available
         # (Note: exact parameter extraction depends on implementation)
 
@@ -92,7 +92,7 @@ class TestRealWorldScenarios:
     def test_user_workflow_scenario(self):
         """Test a typical user workflow scenario."""
         # User creates a basic job with user metadata
-        user_descriptor = ExecutionHooksHint(metadata_class="User")
+        user_descriptor = ExecutionHooksHint(hook_plugin="User")
         user_runtime = user_descriptor.to_runtime()
 
         # Simulate job execution
@@ -111,8 +111,8 @@ class TestRealWorldScenarios:
         """Test an administrative workflow scenario."""
         # Admin creates a job with enhanced logging
         admin_descriptor = ExecutionHooksHint(
-            metadata_class="Admin",
-            query_params={
+            hook_plugin="Admin",
+            configuration={
                 "admin_level": 8,
                 "log_level": "DEBUG",
                 "enable_monitoring": True,
@@ -136,8 +136,8 @@ class TestRealWorldScenarios:
         """Test a data analysis workflow scenario."""
         # Analyst creates a job with query-based data discovery
         analysis_descriptor = ExecutionHooksHint(
-            metadata_class="QueryBased",
-            query_params={
+            hook_plugin="QueryBased",
+            configuration={
                 "query_root": "/grid/data",
                 "campaign": "Run3_2024",
                 "data_type": "AOD",
@@ -161,8 +161,8 @@ class TestRealWorldScenarios:
         """Test an LHCb simulation workflow scenario."""
         # Test if LHCb simulation plugin is available
         lhcb_descriptor = ExecutionHooksHint(
-            metadata_class="LHCbSimulation",
-            query_params={
+            hook_plugin="LHCbSimulation",
+            configuration={
                 "task_id": 123,
                 "run_id": 2,
                 "generator": "Pythia8",
@@ -172,7 +172,7 @@ class TestRealWorldScenarios:
         lhcb_runtime = lhcb_descriptor.to_runtime()
 
         # Test LHCb-specific functionality
-        assert lhcb_runtime.get_metadata_class() == "LHCbSimulation"
+        assert lhcb_runtime.get_hook_plugin() == "LHCbSimulation"
 
         # Test path generation
         input_path = lhcb_runtime.get_input_query("gen_file")
@@ -204,7 +204,7 @@ class TestRealWorldScenarios:
         """Test parameter override scenarios."""
         # Base descriptor with default parameters
         base_descriptor = ExecutionHooksHint(
-            metadata_class="Admin", query_params={"admin_level": 3, "log_level": "INFO"}
+            hook_plugin="Admin", configuration={"admin_level": 3, "log_level": "INFO"}
         )
 
         # Create variants with different overrides
@@ -216,7 +216,7 @@ class TestRealWorldScenarios:
 
         for override in variants:
             variant_descriptor = base_descriptor.model_copy(
-                update={"query_params": override}
+                update={"configuration": override}
             )
             runtime = variant_descriptor.to_runtime()
 
@@ -231,7 +231,7 @@ class TestErrorHandling:
     def test_invalid_plugin_type(self):
         """Test handling of invalid plugin types."""
         # Invalid types should raise error during runtime instantiation
-        descriptor = ExecutionHooksHint(metadata_class="NonExistentPlugin")
+        descriptor = ExecutionHooksHint(hook_plugin="NonExistentPlugin")
         with pytest.raises(KeyError, match="Unknown metadata plugin"):
             descriptor.to_runtime()
 
@@ -241,7 +241,7 @@ class TestErrorHandling:
         with pytest.raises(
             ValueError, match="Failed to instantiate plugin 'LHCbSimulation'"
         ):
-            descriptor = ExecutionHooksHint(metadata_class="LHCbSimulation")
+            descriptor = ExecutionHooksHint(hook_plugin="LHCbSimulation")
             descriptor.to_runtime()
 
     def test_plugin_registration_conflicts(self):
@@ -266,17 +266,17 @@ class TestErrorHandling:
         mock_cwl.hints = None
 
         descriptor = ExecutionHooksHint.from_cwl(mock_cwl)
-        assert descriptor.metadata_class == "User"  # Should use default
+        assert descriptor.hook_plugin == "User"  # Should use default
 
         # Test with empty hints
         mock_cwl.hints = []
         descriptor = ExecutionHooksHint.from_cwl(mock_cwl)
-        assert descriptor.metadata_class == "User"  # Should use default
+        assert descriptor.hook_plugin == "User"  # Should use default
 
         # Test with malformed hints
         mock_cwl.hints = [{"invalid": "hint"}]
         descriptor = ExecutionHooksHint.from_cwl(mock_cwl)
-        assert descriptor.metadata_class == "User"  # Should ignore and use default
+        assert descriptor.hook_plugin == "User"  # Should ignore and use default
 
 
 class TestPerformance:
@@ -290,7 +290,7 @@ class TestPerformance:
         start_time = time.time()
 
         for _ in range(100):
-            descriptor = ExecutionHooksHint(metadata_class="User")
+            descriptor = ExecutionHooksHint(hook_plugin="User")
             descriptor.to_runtime()
 
         end_time = time.time()

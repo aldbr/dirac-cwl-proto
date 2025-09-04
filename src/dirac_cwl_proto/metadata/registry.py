@@ -47,7 +47,7 @@ class MetadataPluginRegistry:
                 f"Plugin {plugin_class} must inherit from ExecutionHooksBasePlugin"
             )
 
-        plugin_key = plugin_class.get_metadata_class()
+        plugin_key = plugin_class.get_hook_plugin()
         vo = plugin_class.vo
 
         # Check for conflicts
@@ -123,19 +123,20 @@ class MetadataPluginRegistry:
         ValueError
             If plugin instantiation fails.
         """
-        plugin_class = self.get_plugin(descriptor.metadata_class, descriptor.vo)
+        plugin_class = self.get_plugin(descriptor.hook_plugin)
 
         if plugin_class is None:
-            available = self.list_plugins(descriptor.vo)
+            available = self.list_plugins()
             raise KeyError(
-                f"Unknown metadata plugin: '{descriptor.metadata_class}'"
-                f"{f' for VO {descriptor.vo}' if descriptor.vo else ''}. "
+                f"Unknown metadata plugin: '{descriptor.hook_plugin}'"
                 f"Available: {available}"
             )
 
         # Extract plugin parameters from descriptor
         plugin_params = descriptor.model_dump(
-            exclude={"metadata_class", "vo", "version"}
+            exclude={
+                "hook_plugin",
+            }
         )
         plugin_params.update(kwargs)
 
@@ -143,7 +144,7 @@ class MetadataPluginRegistry:
             return plugin_class(**plugin_params)
         except Exception as e:
             raise ValueError(
-                f"Failed to instantiate plugin '{descriptor.metadata_class}': {e}"
+                f"Failed to instantiate plugin '{descriptor.hook_plugin}': {e}"
             ) from e
 
     def list_plugins(self, vo: Optional[str] = None) -> List[str]:
@@ -248,21 +249,19 @@ class MetadataPluginRegistry:
         """
         errors = []
 
-        plugin_class = self.get_plugin(descriptor.metadata_class, descriptor.vo)
+        plugin_class = self.get_plugin(descriptor.hook_plugin)
 
         if plugin_class is None:
-            available = self.list_plugins(descriptor.vo)
+            available = self.list_plugins()
             errors.append(
-                f"Unknown metadata plugin: '{descriptor.metadata_class}'. "
+                f"Unknown metadata plugin: '{descriptor.hook_plugin}'. "
                 f"Available: {available}"
             )
             return errors
 
         # Validate descriptor against plugin schema
         try:
-            plugin_params = descriptor.model_dump(
-                exclude={"metadata_class", "vo", "version"}
-            )
+            plugin_params = descriptor.model_dump(exclude={"hook_plugin"})
             plugin_class.model_validate(plugin_params)
         except Exception as e:
             errors.append(f"Plugin validation failed: {e}")

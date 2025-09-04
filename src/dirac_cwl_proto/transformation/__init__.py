@@ -148,7 +148,7 @@ def submit_transformation_router(transformation: TransformationSubmissionModel) 
     # - if there is no metadata, the transformation is not waiting for an input and can go on
     # - if there is metadata, the transformation is waiting for an input
     job_model_params = []
-    if transformation.metadata.query_params and transformation.metadata.group_size:
+    if transformation.metadata.configuration and transformation.metadata.group_size:
         # Get the metadata class
         transformation_metadata = transformation.metadata.to_runtime(transformation)
 
