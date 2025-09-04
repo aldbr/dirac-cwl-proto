@@ -3,12 +3,12 @@ $namespaces:
 cwltool:overrides:
   test_meta.cwl#:
     hints:
-      dirac:data-management:
+      dirac:execution-hooks:
         metadata_class: 'TaskWithMetadataQueryPlugin'
         query_params:
           site: 'Paranal'
 
-      dirac:job-execution:
+      dirac:scheduling:
         platform: x86_64
         priority: 5
         sites: ['CSCS', 'PIC']
@@ -16,12 +16,12 @@ cwltool:overrides:
 cwltool:overrides:
   test_meta.cwl#:
     hints:
-      dirac:data-management:
+      dirac:execution-hooks:
         metadata_class: 'TaskWithMetadataQueryPlugin'
         query_params:
           site: 'LaPalma'
 
-      dirac:job-execution:
+      dirac:scheduling:
         platform: arm64
         priority: 3
         sites: ['CSCS', 'PIC']

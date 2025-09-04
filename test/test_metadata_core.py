@@ -187,7 +187,7 @@ class TestExecutionHooksHint:
         mock_cwl = mocker.Mock()
         mock_cwl.hints = [
             {
-                "class": "dirac:data-management",
+                "class": "dirac:execution-hooks",
                 "metadata_class": "QueryBased",
                 "vo": "lhcb",
                 "campaign": "Run3",
@@ -266,7 +266,7 @@ class TestSchedulingHint:
         mock_cwl = mocker.Mock()
         mock_cwl.hints = [
             {
-                "class": "dirac:job-execution",
+                "class": "dirac:scheduling",
                 "platform": "DIRAC-v8",
                 "priority": 8,
                 "sites": ["LCG.CERN.ch"],

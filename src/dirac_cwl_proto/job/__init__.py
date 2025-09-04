@@ -107,10 +107,10 @@ def submit_job_client(
                 override_hints = overrides[next(iter(overrides))].get("hints", {})
                 if override_hints:
                     job_scheduling = job_scheduling.model_copy(
-                        update=override_hints.pop("dirac:job-execution", {})
+                        update=override_hints.pop("dirac:scheduling", {})
                     )
                     job_metadata = job_metadata.model_copy(
-                        update=override_hints.pop("dirac:data-management", {})
+                        update=override_hints.pop("dirac:execution-hooks", {})
                     )
 
             # Upload the local files to the sandbox store
