@@ -29,7 +29,7 @@ from schema_salad.exceptions import ValidationException
 
 from dirac_cwl_proto.metadata.core import ExecutionHooksBasePlugin
 from dirac_cwl_proto.submission_models import (
-    JobParameterModel,
+    JobInputModel,
     JobSubmissionModel,
     extract_dirac_hints,
 )
@@ -117,7 +117,7 @@ def submit_job_client(
             sandbox_id = upload_local_input_files(parameter)
 
             parameters.append(
-                JobParameterModel(
+                JobInputModel(
                     sandbox=[sandbox_id] if sandbox_id else None,
                     cwl=parameter,
                 )
@@ -255,7 +255,7 @@ def submit_job_router(job: JobSubmissionModel) -> bool:
 
 def _pre_process(
     executable: CommandLineTool | Workflow | ExpressionTool,
-    arguments: JobParameterModel | None,
+    arguments: JobInputModel | None,
     runtime_metadata: ExecutionHooksBasePlugin | None,
     job_path: Path,
 ) -> list[str]:

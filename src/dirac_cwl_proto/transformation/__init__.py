@@ -20,7 +20,7 @@ from schema_salad.exceptions import ValidationException
 from dirac_cwl_proto.job import submit_job_router
 from dirac_cwl_proto.metadata import SchedulingHint, TransformationExecutionHooksHint
 from dirac_cwl_proto.submission_models import (
-    JobParameterModel,
+    JobInputModel,
     JobSubmissionModel,
     TransformationSubmissionModel,
 )
@@ -240,7 +240,7 @@ def _get_inputs(input_query: Path | list[Path], group_size: int) -> List[List[st
 
 def _generate_job_model_parameter(
     input_data_dict: Dict[str, List[List[str]]]
-) -> List[JobParameterModel]:
+) -> List[JobInputModel]:
     """Generate job model parameters from input data provided."""
     job_model_params = []
 
@@ -256,6 +256,6 @@ def _generate_job_model_parameter(
                 File(path=str(Path(path).resolve())) for path in input_data
             ]
 
-        job_model_params.append(JobParameterModel(sandbox=None, cwl=cwl_inputs))
+        job_model_params.append(JobInputModel(sandbox=None, cwl=cwl_inputs))
 
     return job_model_params

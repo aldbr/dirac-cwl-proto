@@ -59,7 +59,7 @@ def collect_pydantic_models() -> Dict[str, Any]:
     # Import submission models
     try:
         from dirac_cwl_proto.submission_models import (
-            JobParameterModel,
+            JobInputModel,
             JobSubmissionModel,
             ProductionSubmissionModel,
             TransformationSubmissionModel,
@@ -67,7 +67,7 @@ def collect_pydantic_models() -> Dict[str, Any]:
 
         models.update(
             {
-                "JobParameterModel": JobParameterModel,
+                "JobInputModel": JobInputModel,
                 "JobSubmissionModel": JobSubmissionModel,
                 "TransformationSubmissionModel": TransformationSubmissionModel,
                 "ProductionSubmissionModel": ProductionSubmissionModel,

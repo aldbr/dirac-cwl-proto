@@ -28,8 +28,8 @@ from dirac_cwl_proto.metadata import (
 # -----------------------------------------------------------------------------
 
 
-class JobParameterModel(BaseModel):
-    """Parameter of a job."""
+class JobInputModel(BaseModel):
+    """Input data and sandbox files for a job execution."""
 
     # Allow arbitrary types to be passed to the model
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -49,7 +49,7 @@ class JobSubmissionModel(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     task: CommandLineTool | Workflow | ExpressionTool
-    parameters: list[JobParameterModel] | None = None
+    parameters: list[JobInputModel] | None = None
     scheduling: SchedulingHint
     execution_hooks: ExecutionHooksHint
 
