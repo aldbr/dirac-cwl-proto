@@ -38,18 +38,18 @@ def collect_pydantic_models() -> Dict[str, Any]:
     # Import core models
     try:
         from dirac_cwl_proto.metadata.core import (
-            DataManager,
             ExecutionHooksBasePlugin,
+            ExecutionHooksHint,
             SchedulingHint,
-            TransformationDataManager,
+            TransformationExecutionHooksHint,
         )
 
         models.update(
             {
                 "ExecutionHooksBasePlugin": ExecutionHooksBasePlugin,
-                "DataManager": DataManager,
+                "ExecutionHooksHint": ExecutionHooksHint,
                 "SchedulingHint": SchedulingHint,
-                "TransformationDataManager": TransformationDataManager,
+                "TransformationExecutionHooksHint": TransformationExecutionHooksHint,
             }
         )
         logger.info("Collected core metadata models")

@@ -7,21 +7,21 @@ metadata system with additional functionality for CWL integration.
 
 import pytest
 
-from dirac_cwl_proto.metadata.core import DataManager, SchedulingHint
+from dirac_cwl_proto.metadata.core import ExecutionHooksHint, SchedulingHint
 
 
-class TestDataManager:
-    """Test the DataManager class."""
+class TestExecutionHooksHint:
+    """Test the ExecutionHooksHint class."""
 
     def test_creation(self):
-        """Test DataManager creation."""
-        descriptor = DataManager()
+        """Test ExecutionHooksHint creation."""
+        descriptor = ExecutionHooksHint()
         assert descriptor.metadata_class == "User"
         assert descriptor.query_params == {}
 
     def test_creation_with_parameters(self):
         """Test creation with custom parameters."""
-        descriptor = DataManager(
+        descriptor = ExecutionHooksHint(
             metadata_class="Admin",
             query_params={"admin_level": 5, "log_level": "DEBUG"},
         )
@@ -30,8 +30,8 @@ class TestDataManager:
         assert descriptor.query_params["log_level"] == "DEBUG"
 
     def test_inheritance(self):
-        """Test that DataManager has the expected functionality."""
-        descriptor = DataManager()
+        """Test that ExecutionHooksHint has the expected functionality."""
+        descriptor = ExecutionHooksHint()
         assert hasattr(descriptor, "to_runtime")
         assert hasattr(descriptor, "from_cwl")
         assert hasattr(descriptor, "model_copy")
@@ -39,17 +39,21 @@ class TestDataManager:
     def test_type_validation(self):
         """Test type validation during runtime instantiation."""
         # Valid type (should be registered by default)
-        descriptor = DataManager(metadata_class="User")
+        descriptor = ExecutionHooksHint(metadata_class="User")
         assert descriptor.metadata_class == "User"
 
         # Invalid type should raise error during runtime instantiation
-        descriptor_with_invalid_type = DataManager(metadata_class="NonExistentType")
+        descriptor_with_invalid_type = ExecutionHooksHint(
+            metadata_class="NonExistentType"
+        )
         with pytest.raises(KeyError, match="Unknown metadata plugin"):
             descriptor_with_invalid_type.to_runtime()
 
     def test_model_copy(self):
         """Test model_copy functionality."""
-        original = DataManager(metadata_class="Admin", query_params={"admin_level": 3})
+        original = ExecutionHooksHint(
+            metadata_class="Admin", query_params={"admin_level": 3}
+        )
 
         # Test basic copy
         copied = original.model_copy()
@@ -61,7 +65,7 @@ class TestDataManager:
 
     def test_model_copy_with_update(self):
         """Test model_copy with updates."""
-        original = DataManager(
+        original = ExecutionHooksHint(
             metadata_class="Admin", query_params={"admin_level": 3, "log_level": "INFO"}
         )
 
@@ -78,7 +82,7 @@ class TestDataManager:
 
     def test_to_runtime_no_submission(self):
         """Test to_runtime without submission context."""
-        descriptor = DataManager(
+        descriptor = ExecutionHooksHint(
             metadata_class="Admin", query_params={"admin_level": 7}
         )
 
@@ -89,7 +93,7 @@ class TestDataManager:
 
     def test_to_runtime_with_submission(self, mocker):
         """Test to_runtime with submission context."""
-        descriptor = DataManager(
+        descriptor = ExecutionHooksHint(
             metadata_class="QueryBased", query_params={"campaign": "Run3"}
         )
 
@@ -112,7 +116,7 @@ class TestDataManager:
 
     def test_dash_to_snake_case_conversion(self):
         """Test dash-case to snake_case parameter conversion."""
-        descriptor = DataManager(
+        descriptor = ExecutionHooksHint(
             metadata_class="QueryBased",
             query_params={
                 "query_root": "/data",
@@ -129,20 +133,20 @@ class TestDataManager:
     def test_from_cwl(self, mocker):
         """Test from_cwl class method."""
         mock_cwl = mocker.Mock()
-        mock_descriptor = DataManager(metadata_class="QueryBased")
+        mock_descriptor = ExecutionHooksHint(metadata_class="QueryBased")
         mock_from_cwl = mocker.patch(
-            "dirac_cwl_proto.submission_models.DataManager.from_cwl"
+            "dirac_cwl_proto.submission_models.ExecutionHooksHint.from_cwl"
         )
         mock_from_cwl.return_value = mock_descriptor
 
-        result = DataManager.from_cwl(mock_cwl)
+        result = ExecutionHooksHint.from_cwl(mock_cwl)
 
-        assert isinstance(result, DataManager)
+        assert isinstance(result, ExecutionHooksHint)
         mock_from_cwl.assert_called_once_with(mock_cwl)
 
     def test_serialization_compatibility(self):
         """Test that serialization works correctly."""
-        descriptor = DataManager(
+        descriptor = ExecutionHooksHint(
             metadata_class="Admin", query_params={"admin_level": 5}
         )
 
@@ -160,12 +164,14 @@ class TestSubmissionModelsIntegration:
     """Test integration between submission models and metadata system."""
 
     def test_enhanced_descriptor_registry_integration(self):
-        """Test that DataManager integrates with the registry."""
+        """Test that ExecutionHooksHint integrates with the registry."""
         # Create descriptor for each core plugin type
         descriptors = [
-            DataManager(metadata_class="User"),
-            DataManager(metadata_class="Admin", query_params={"admin_level": 3}),
-            DataManager(metadata_class="QueryBased", query_params={"campaign": "Test"}),
+            ExecutionHooksHint(metadata_class="User"),
+            ExecutionHooksHint(metadata_class="Admin", query_params={"admin_level": 3}),
+            ExecutionHooksHint(
+                metadata_class="QueryBased", query_params={"campaign": "Test"}
+            ),
         ]
 
         for descriptor in descriptors:
@@ -197,7 +203,7 @@ class TestSubmissionModelsIntegration:
 
         for legacy_type in legacy_types:
             try:
-                descriptor = DataManager(metadata_class=legacy_type)
+                descriptor = ExecutionHooksHint(metadata_class=legacy_type)
                 # If creation succeeds, test runtime conversion
                 # (may fail due to missing parameters, which is expected)
                 descriptor.to_runtime()
@@ -224,7 +230,7 @@ class TestSubmissionModelsIntegration:
     def test_cwl_hints_integration(self):
         """Test integration with CWL hints extraction."""
         # Create an enhanced descriptor directly
-        descriptor = DataManager(
+        descriptor = ExecutionHooksHint(
             metadata_class="QueryBased",
             query_params={"campaign": "Run3", "data_type": "AOD"},
         )

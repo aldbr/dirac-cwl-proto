@@ -9,10 +9,10 @@ providing enhanced functionality through the new plugin system.
 
 from .core import (
     DataCatalogInterface,
-    DataManager,
     ExecutionHooksBasePlugin,
+    ExecutionHooksHint,
     SchedulingHint,
-    TransformationDataManager,
+    TransformationExecutionHooksHint,
 )
 from .registry import (
     discover_plugins,
@@ -31,8 +31,8 @@ except Exception:
 
 __all__ = [
     # Core metadata and plugins
-    "DataManager",
-    "TransformationDataManager",
+    "ExecutionHooksHint",
+    "TransformationExecutionHooksHint",
     "ExecutionHooksBasePlugin",
     "SchedulingHint",
     "DataCatalogInterface",

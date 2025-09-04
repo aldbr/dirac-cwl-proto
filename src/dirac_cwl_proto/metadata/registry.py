@@ -12,7 +12,7 @@ import logging
 import pkgutil
 from typing import Any, Dict, List, Optional, Type
 
-from .core import DataManager, ExecutionHooksBasePlugin
+from .core import ExecutionHooksBasePlugin, ExecutionHooksHint
 
 logger = logging.getLogger(__name__)
 
@@ -100,13 +100,13 @@ class MetadataPluginRegistry:
         return self._plugins.get(plugin_key)
 
     def instantiate_plugin(
-        self, descriptor: DataManager, **kwargs: Any
+        self, descriptor: ExecutionHooksHint, **kwargs: Any
     ) -> ExecutionHooksBasePlugin:
         """Instantiate a metadata plugin from a descriptor.
 
         Parameters
         ----------
-        descriptor : DataManager
+        descriptor : ExecutionHooksHint
             The data manager containing configuration.
         **kwargs : Any
             Additional parameters to pass to the plugin constructor.
@@ -233,12 +233,12 @@ class MetadataPluginRegistry:
 
         return discovered
 
-    def validate_descriptor(self, descriptor: DataManager) -> List[str]:
+    def validate_descriptor(self, descriptor: ExecutionHooksHint) -> List[str]:
         """Validate a data manager against registered plugins.
 
         Parameters
         ----------
-        descriptor : DataManager
+        descriptor : ExecutionHooksHint
             The data manager to validate.
 
         Returns

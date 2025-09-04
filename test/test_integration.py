@@ -14,8 +14,8 @@ from dirac_cwl_proto.metadata import (
     get_registry,
 )
 from dirac_cwl_proto.metadata.core import (
-    DataManager,
     ExecutionHooksBasePlugin,
+    ExecutionHooksHint,
     SchedulingHint,
 )
 
@@ -47,12 +47,14 @@ class TestSystemIntegration:
         for plugin_type, params in test_cases:
             # Test direct instantiation
             registry = get_registry()
-            descriptor = DataManager(metadata_class=plugin_type, **params)
+            descriptor = ExecutionHooksHint(metadata_class=plugin_type, **params)
             instance = registry.instantiate_plugin(descriptor)
             assert instance.get_metadata_class() == plugin_type
 
             # Test via descriptor
-            descriptor = DataManager(metadata_class=plugin_type, query_params=params)
+            descriptor = ExecutionHooksHint(
+                metadata_class=plugin_type, query_params=params
+            )
             runtime = descriptor.to_runtime()
             assert runtime.get_metadata_class() == plugin_type
 
@@ -71,7 +73,7 @@ class TestSystemIntegration:
     def test_cwl_integration_workflow(self):
         """Test complete CWL integration workflow."""
         # Create an enhanced descriptor directly to test CWL integration
-        metadata_descriptor = DataManager(
+        metadata_descriptor = ExecutionHooksHint(
             metadata_class="QueryBased",
             query_params={"campaign": "Run3", "data_type": "AOD", "site": "CERN"},
         )
@@ -90,7 +92,7 @@ class TestRealWorldScenarios:
     def test_user_workflow_scenario(self):
         """Test a typical user workflow scenario."""
         # User creates a basic job with user metadata
-        user_descriptor = DataManager(metadata_class="User")
+        user_descriptor = ExecutionHooksHint(metadata_class="User")
         user_runtime = user_descriptor.to_runtime()
 
         # Simulate job execution
@@ -108,7 +110,7 @@ class TestRealWorldScenarios:
     def test_admin_workflow_scenario(self):
         """Test an administrative workflow scenario."""
         # Admin creates a job with enhanced logging
-        admin_descriptor = DataManager(
+        admin_descriptor = ExecutionHooksHint(
             metadata_class="Admin",
             query_params={
                 "admin_level": 8,
@@ -133,7 +135,7 @@ class TestRealWorldScenarios:
     def test_data_analysis_workflow_scenario(self):
         """Test a data analysis workflow scenario."""
         # Analyst creates a job with query-based data discovery
-        analysis_descriptor = DataManager(
+        analysis_descriptor = ExecutionHooksHint(
             metadata_class="QueryBased",
             query_params={
                 "query_root": "/grid/data",
@@ -158,7 +160,7 @@ class TestRealWorldScenarios:
     def test_lhcb_simulation_workflow_scenario(self):
         """Test an LHCb simulation workflow scenario."""
         # Test if LHCb simulation plugin is available
-        lhcb_descriptor = DataManager(
+        lhcb_descriptor = ExecutionHooksHint(
             metadata_class="LHCbSimulation",
             query_params={
                 "task_id": 123,
@@ -201,7 +203,7 @@ class TestRealWorldScenarios:
     def test_parameter_override_scenario(self):
         """Test parameter override scenarios."""
         # Base descriptor with default parameters
-        base_descriptor = DataManager(
+        base_descriptor = ExecutionHooksHint(
             metadata_class="Admin", query_params={"admin_level": 3, "log_level": "INFO"}
         )
 
@@ -229,7 +231,7 @@ class TestErrorHandling:
     def test_invalid_plugin_type(self):
         """Test handling of invalid plugin types."""
         # Invalid types should raise error during runtime instantiation
-        descriptor = DataManager(metadata_class="NonExistentPlugin")
+        descriptor = ExecutionHooksHint(metadata_class="NonExistentPlugin")
         with pytest.raises(KeyError, match="Unknown metadata plugin"):
             descriptor.to_runtime()
 
@@ -239,7 +241,7 @@ class TestErrorHandling:
         with pytest.raises(
             ValueError, match="Failed to instantiate plugin 'LHCbSimulation'"
         ):
-            descriptor = DataManager(metadata_class="LHCbSimulation")
+            descriptor = ExecutionHooksHint(metadata_class="LHCbSimulation")
             descriptor.to_runtime()
 
     def test_plugin_registration_conflicts(self):
@@ -263,17 +265,17 @@ class TestErrorHandling:
         mock_cwl = mocker.Mock()
         mock_cwl.hints = None
 
-        descriptor = DataManager.from_cwl(mock_cwl)
+        descriptor = ExecutionHooksHint.from_cwl(mock_cwl)
         assert descriptor.metadata_class == "User"  # Should use default
 
         # Test with empty hints
         mock_cwl.hints = []
-        descriptor = DataManager.from_cwl(mock_cwl)
+        descriptor = ExecutionHooksHint.from_cwl(mock_cwl)
         assert descriptor.metadata_class == "User"  # Should use default
 
         # Test with malformed hints
         mock_cwl.hints = [{"invalid": "hint"}]
-        descriptor = DataManager.from_cwl(mock_cwl)
+        descriptor = ExecutionHooksHint.from_cwl(mock_cwl)
         assert descriptor.metadata_class == "User"  # Should ignore and use default
 
 
@@ -288,7 +290,7 @@ class TestPerformance:
         start_time = time.time()
 
         for _ in range(100):
-            descriptor = DataManager(metadata_class="User")
+            descriptor = ExecutionHooksHint(metadata_class="User")
             descriptor.to_runtime()
 
         end_time = time.time()

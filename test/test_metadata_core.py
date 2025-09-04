@@ -2,7 +2,7 @@
 Tests for the core metadata plugin system.
 
 This module tests the foundational classes and interfaces of the metadata
-plugin system, including ExecutionHooksBasePlugin, DataManager, and core
+plugin system, including ExecutionHooksBasePlugin, ExecutionHooksHint, and core
 abstract interfaces.
 """
 
@@ -13,10 +13,10 @@ import pytest
 
 from dirac_cwl_proto.metadata.core import (
     DataCatalogInterface,
-    DataManager,
     ExecutionHooksBasePlugin,
+    ExecutionHooksHint,
     SchedulingHint,
-    TransformationDataManager,
+    TransformationExecutionHooksHint,
 )
 
 
@@ -158,19 +158,19 @@ class TestExecutionHookExtended:
         assert "value" in schema["properties"]
 
 
-class TestDataManager:
-    """Test the DataManager class."""
+class TestExecutionHooksHint:
+    """Test the ExecutionHooksHint class."""
 
     def test_creation(self):
-        """Test DataManager creation."""
-        descriptor = DataManager(metadata_class="User")
+        """Test ExecutionHooksHint creation."""
+        descriptor = ExecutionHooksHint(metadata_class="User")
         assert descriptor.metadata_class == "User"
         assert descriptor.vo is None
         assert descriptor.version is None
 
     def test_creation_with_all_fields(self):
-        """Test DataManager creation with all fields."""
-        descriptor = DataManager(
+        """Test ExecutionHooksHint creation with all fields."""
+        descriptor = ExecutionHooksHint(
             metadata_class="LHCbSimulation",
             vo="lhcb",
             version="2.0",
@@ -195,7 +195,7 @@ class TestDataManager:
             {"class": "ResourceRequirement", "coresMin": 2},
         ]
 
-        descriptor = DataManager.from_cwl(mock_cwl)
+        descriptor = ExecutionHooksHint.from_cwl(mock_cwl)
 
         assert descriptor.metadata_class == "QueryBased"
         assert descriptor.vo == "lhcb"
@@ -206,7 +206,7 @@ class TestDataManager:
         mock_cwl = mocker.Mock()
         mock_cwl.hints = None
 
-        descriptor = DataManager.from_cwl(mock_cwl)
+        descriptor = ExecutionHooksHint.from_cwl(mock_cwl)
 
         # Should create default descriptor
         assert descriptor.metadata_class == "User"
@@ -216,14 +216,14 @@ class TestDataManager:
         mock_cwl = mocker.Mock()
         mock_cwl.hints = [{"class": "ResourceRequirement", "coresMin": 2}]
 
-        descriptor = DataManager.from_cwl(mock_cwl)
+        descriptor = ExecutionHooksHint.from_cwl(mock_cwl)
 
         # Should create default descriptor
         assert descriptor.metadata_class == "User"
 
     def test_model_copy_merges_dict_fields(self):
         """Test model_copy merges dict fields and updates values."""
-        descriptor = DataManager(metadata_class="LHCbSimulation", vo="lhcb")
+        descriptor = ExecutionHooksHint(metadata_class="LHCbSimulation", vo="lhcb")
 
         updated = descriptor.model_copy(
             update={"metadata_class": "NewClass", "new_field": "value"}
@@ -235,7 +235,7 @@ class TestDataManager:
 
     def test_default_values(self):
         """Test default values without VO."""
-        descriptor = DataManager(metadata_class="User", user_id="test123")
+        descriptor = ExecutionHooksHint(metadata_class="User", user_id="test123")
 
         assert descriptor.metadata_class == "User"
         assert descriptor.vo is None
@@ -293,20 +293,20 @@ class TestSchedulingHint:
         assert data["sites"] == ["LCG.CERN.ch", "LCG.IN2P3.fr"]
 
 
-class TestTransformationDataManager:
-    """Test the TransformationDataManager class."""
+class TestTransformationExecutionHooksHint:
+    """Test the TransformationExecutionHooksHint class."""
 
     def test_creation(self):
-        """Test TransformationDataManager creation."""
-        descriptor = TransformationDataManager(
+        """Test TransformationExecutionHooksHint creation."""
+        descriptor = TransformationExecutionHooksHint(
             metadata_class="QueryBased", group_size={"input_data": 100}
         )
         assert descriptor.metadata_class == "QueryBased"
         assert descriptor.group_size == {"input_data": 100}
 
     def test_inheritance(self):
-        """Test that it inherits from DataManager."""
-        descriptor = TransformationDataManager(
+        """Test that it inherits from ExecutionHooksHint."""
+        descriptor = TransformationExecutionHooksHint(
             metadata_class="LHCbSimulation",
             vo="lhcb",
             group_size={"sim_data": 50},
@@ -322,11 +322,11 @@ class TestTransformationDataManager:
     def test_validation(self):
         """Test group_size validation."""
         # Valid group_size
-        descriptor = TransformationDataManager(
+        descriptor = TransformationExecutionHooksHint(
             metadata_class="User", group_size={"files": 10}
         )
         assert descriptor.group_size == {"files": 10}
 
         # Test with no group_size
-        descriptor2 = TransformationDataManager(metadata_class="User")
+        descriptor2 = TransformationExecutionHooksHint(metadata_class="User")
         assert descriptor2.group_size is None

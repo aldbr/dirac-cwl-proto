@@ -68,7 +68,7 @@
       "title": "DIRAC Metadata Model",
       "type": "object"
     },
-    "DataManager": {
+    "ExecutionHooksHint": {
       "additionalProperties": true,
       "description": "Data management configuration for DIRAC jobs",
       "properties": {
@@ -223,7 +223,7 @@
     },
     "JobSubmissionModel": {
       "$defs": {
-        "DataManager": {
+        "ExecutionHooksHint": {
           "additionalProperties": true,
           "description": "Data management configuration for DIRAC jobs",
           "properties": {
@@ -347,7 +347,7 @@
           "$ref": "#/$defs/TaskDescriptionModel"
         },
         "metadata": {
-          "$ref": "#/$defs/DataManager"
+          "$ref": "#/$defs/ExecutionHooksHint"
         },
         "parameters": {
           "anyOf": [
@@ -1048,7 +1048,7 @@
       "title": "DIRAC Metadata Model",
       "type": "object"
     },
-    "TransformationDataManager": {
+    "TransformationExecutionHooksHint": {
       "additionalProperties": true,
       "description": "Data management configuration for DIRAC jobs",
       "properties": {

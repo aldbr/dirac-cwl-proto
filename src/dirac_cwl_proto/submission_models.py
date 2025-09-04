@@ -18,7 +18,7 @@ from cwl_utils.parser.cwl_v1_2 import (
 from pydantic import BaseModel, ConfigDict, field_serializer, model_validator
 
 from dirac_cwl_proto.metadata import (
-    DataManager,
+    ExecutionHooksHint,
     SchedulingHint,
 )
 
@@ -50,7 +50,7 @@ class JobSubmissionModel(BaseModel):
     task: CommandLineTool | Workflow | ExpressionTool
     parameters: list[JobParameterModel] | None = None
     scheduling: SchedulingHint
-    metadata: DataManager
+    metadata: ExecutionHooksHint
 
     @field_serializer("task")
     def serialize_task(self, value):
@@ -65,7 +65,7 @@ class JobSubmissionModel(BaseModel):
 # -----------------------------------------------------------------------------
 
 
-class TransformationMetadataModel(DataManager):
+class TransformationMetadataModel(ExecutionHooksHint):
     """Transformation metadata."""
 
     # Number of data to group together in a transformation
@@ -145,11 +145,11 @@ class ProductionSubmissionModel(BaseModel):
 # -----------------------------------------------------------------------------
 
 
-def extract_dirac_hints(cwl: Any) -> tuple[DataManager, SchedulingHint]:
-    """Thin wrapper that returns (DataManager, SchedulingHint).
+def extract_dirac_hints(cwl: Any) -> tuple[ExecutionHooksHint, SchedulingHint]:
+    """Thin wrapper that returns (ExecutionHooksHint, SchedulingHint).
 
-    Prefer the class-factory APIs `DataManager.from_cwl` and
+    Prefer the class-factory APIs `ExecutionHooksHint.from_cwl` and
     `SchedulingHint.from_cwl` for new code. This helper remains for
     convenience.
     """
-    return DataManager.from_cwl(cwl), SchedulingHint.from_cwl(cwl)
+    return ExecutionHooksHint.from_cwl(cwl), SchedulingHint.from_cwl(cwl)

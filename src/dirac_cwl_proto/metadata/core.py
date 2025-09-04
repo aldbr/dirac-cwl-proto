@@ -201,7 +201,7 @@ class SchedulingHint(BaseModel, Hint):
         return descriptor
 
 
-class DataManager(BaseModel, Hint):
+class ExecutionHooksHint(BaseModel, Hint):
     """Descriptor for data management configuration in CWL hints.
 
     This class represents the serializable data management configuration that
@@ -241,7 +241,7 @@ class DataManager(BaseModel, Hint):
         update: Optional[Mapping[str, Any]] = None,
         *,
         deep: bool = False,
-    ) -> "DataManager":
+    ) -> "ExecutionHooksHint":
         """Enhanced model copy with intelligent merging of dict fields (including query_params)."""
         if update is None:
             update = {}
@@ -298,7 +298,7 @@ class DataManager(BaseModel, Hint):
             return s.replace("-", "_")
 
         if submitted is None:
-            descriptor = DataManager(
+            descriptor = ExecutionHooksHint(
                 metadata_class=self.metadata_class, **self.query_params
             )
             return get_registry().instantiate_plugin(descriptor)
@@ -319,11 +319,11 @@ class DataManager(BaseModel, Hint):
 
         params = {_dash_to_snake(key): value for key, value in inputs.items()}
 
-        descriptor = DataManager(metadata_class=self.metadata_class, **params)
+        descriptor = ExecutionHooksHint(metadata_class=self.metadata_class, **params)
         return get_registry().instantiate_plugin(descriptor)
 
     @classmethod
-    def from_cwl(cls, cwl_object: Any) -> "DataManager":
+    def from_cwl(cls, cwl_object: Any) -> "ExecutionHooksHint":
         """Extract metadata descriptor from CWL object using Hint interface."""
         descriptor = cls()
         hints = getattr(cwl_object, "hints", []) or []
@@ -334,7 +334,7 @@ class DataManager(BaseModel, Hint):
         return descriptor
 
 
-class TransformationDataManager(DataManager):
+class TransformationExecutionHooksHint(ExecutionHooksHint):
     """Extended data manager for transformations."""
 
     group_size: Optional[Dict[str, int]] = Field(
