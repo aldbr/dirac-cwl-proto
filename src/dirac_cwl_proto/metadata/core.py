@@ -11,7 +11,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, ClassVar, Dict, List, Mapping, Optional, TypeVar, Union
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
 
 logger = logging.getLogger(__name__)
 
@@ -118,18 +118,25 @@ class ExecutionHooksBasePlugin(BaseModel):
     version: ClassVar[str] = "1.0.0"
     description: ClassVar[str] = "Base metadata model"
 
-    # Data catalog interface - set dynamically in __init__
-    data_catalog: DataCatalogInterface
+    # Private attribute for data catalog interface - not part of Pydantic model validation
+    _data_catalog: DataCatalogInterface = PrivateAttr(
+        default_factory=DummyDataCatalogInterface
+    )
 
-    # Private attributes - not part of Pydantic model
-    model_config = {"arbitrary_types_allowed": True}
+    @property
+    def data_catalog(self) -> DataCatalogInterface:
+        """Get the data catalog interface."""
+        return self._data_catalog
+
+    @data_catalog.setter
+    def data_catalog(self, value: DataCatalogInterface) -> None:
+        """Set the data catalog interface."""
+        self._data_catalog = value
 
     def __init__(self, **data):
         """Initialize with data catalog interface."""
         super().__init__(**data)
-        # Set up data catalog interface after Pydantic initialization
-        # Use object.__setattr__ to bypass Pydantic validation
-        object.__setattr__(self, "data_catalog", DummyDataCatalogInterface())
+        # Data catalog will be set by subclasses as needed
 
     @classmethod
     def get_hook_plugin(cls) -> str:

@@ -80,7 +80,7 @@ class UserMetadata(ExecutionHooksBasePlugin):
 
     def __init__(self, **data):
         super().__init__(**data)
-        object.__setattr__(self, "data_catalog", DummyDataCatalogInterface())
+        self.data_catalog = DummyDataCatalogInterface()
 
 
 class AdminMetadata(ExecutionHooksBasePlugin):
@@ -107,7 +107,7 @@ class AdminMetadata(ExecutionHooksBasePlugin):
 
     def __init__(self, **data):
         super().__init__(**data)
-        object.__setattr__(self, "data_catalog", DummyDataCatalogInterface())
+        self.data_catalog = DummyDataCatalogInterface()
 
     def pre_process(
         self, job_path: Path, command: List[str], **kwargs: Any
@@ -143,15 +143,11 @@ class QueryBasedMetadata(ExecutionHooksBasePlugin):
     def __init__(self, **data):
         super().__init__(**data)
         # Create data catalog with current parameters
-        object.__setattr__(
-            self,
-            "data_catalog",
-            QueryBasedDataCatalogInterface(
-                query_root=self.query_root,
-                site=self.site,
-                campaign=self.campaign,
-                data_type=self.data_type,
-            ),
+        self.data_catalog = QueryBasedDataCatalogInterface(
+            query_root=self.query_root,
+            site=self.site,
+            campaign=self.campaign,
+            data_type=self.data_type,
         )
 
     def get_input_query(
@@ -239,4 +235,4 @@ class TaskWithMetadataQueryPlugin(ExecutionHooksBasePlugin):
     def __init__(self, **kwargs: Any):
         """Initialize with task query data catalog interface."""
         super().__init__(**kwargs)
-        object.__setattr__(self, "data_catalog", TaskQueryDataCatalogInterface())
+        self.data_catalog = TaskQueryDataCatalogInterface()

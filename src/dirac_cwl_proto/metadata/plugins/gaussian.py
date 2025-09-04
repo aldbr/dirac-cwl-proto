@@ -109,13 +109,9 @@ class DataGenerationMetadata(ExecutionHooksBasePlugin):
     def __init__(self, **kwargs: Any):
         """Initialize with unified Gaussian data catalog interface."""
         super().__init__(**kwargs)
-        object.__setattr__(
-            self,
-            "data_catalog",
-            GaussianDataCatalogInterface(
-                output_file_name_1=self.output_file_name_1,
-                output_file_name_2=self.output_file_name_2,
-            ),
+        self.data_catalog = GaussianDataCatalogInterface(
+            output_file_name_1=self.output_file_name_1,
+            output_file_name_2=self.output_file_name_2,
         )
 
     def post_process(self, job_path: Path, **kwargs: Any) -> bool:
@@ -169,10 +165,8 @@ class GaussianFitMetadata(ExecutionHooksBasePlugin):
     def __init__(self, **kwargs: Any):
         """Initialize with unified Gaussian data catalog interface."""
         super().__init__(**kwargs)
-        object.__setattr__(
-            self,
-            "data_catalog",
-            GaussianDataCatalogInterface(data1=self.data1, data2=self.data2),
+        self.data_catalog = GaussianDataCatalogInterface(
+            data1=self.data1, data2=self.data2
         )
 
     def post_process(self, job_path: Path, **kwargs: Any) -> bool:

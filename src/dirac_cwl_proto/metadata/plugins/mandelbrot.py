@@ -25,6 +25,8 @@ class MandelbrotDataCatalogInterface(DataCatalogInterface):
         height: int,
         # Merging parameters
         data: Optional[List] = None,
+        # Force workflow detection flags
+        is_merging_workflow: bool = False,
     ):
         """Initialize with Mandelbrot workflow-specific parameters.
 
@@ -36,14 +38,17 @@ class MandelbrotDataCatalogInterface(DataCatalogInterface):
             Image height in pixels
         data : List, optional
             List of input data files for merging workflow
+        is_merging_workflow : bool, optional
+            Force detection as merging workflow regardless of data state
         """
         self.width = width
         self.height = height
         self.data = data
+        self._force_merging_workflow = is_merging_workflow
 
     def _is_merging_workflow(self) -> bool:
         """Check if this is a merging workflow."""
-        return self.data is not None
+        return self._force_merging_workflow or (self.data is not None)
 
     def get_input_query(
         self, input_name: str, **kwargs: Any
@@ -137,11 +142,7 @@ class MandelBrotGenerationMetadata(ExecutionHooksBasePlugin):
     def __init__(self, **kwargs: Any):
         """Initialize with unified Mandelbrot data catalog interface."""
         super().__init__(**kwargs)
-        object.__setattr__(
-            self,
-            "data_catalog",
-            MandelbrotDataCatalogInterface(self.width, self.height),
-        )
+        self.data_catalog = MandelbrotDataCatalogInterface(self.width, self.height)
 
     def post_process(self, job_path: Path, **kwargs: Any) -> bool:
         """Post process the generated data files."""
@@ -200,10 +201,8 @@ class MandelBrotMergingMetadata(ExecutionHooksBasePlugin):
     def __init__(self, **kwargs: Any):
         """Initialize with unified Mandelbrot data catalog interface."""
         super().__init__(**kwargs)
-        object.__setattr__(
-            self,
-            "data_catalog",
-            MandelbrotDataCatalogInterface(self.width, self.height, data=self.data),
+        self.data_catalog = MandelbrotDataCatalogInterface(
+            self.width, self.height, data=self.data, is_merging_workflow=True
         )
 
     def post_process(self, job_path: Path, **kwargs: Any) -> bool:

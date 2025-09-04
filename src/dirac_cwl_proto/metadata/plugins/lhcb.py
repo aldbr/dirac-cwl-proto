@@ -239,9 +239,7 @@ class LHCbSimulationMetadata(LHCbMetadata):
     def __init__(self, **kwargs: Any):
         """Initialize with unified LHCb data catalog interface."""
         super().__init__(**kwargs)
-        object.__setattr__(
-            self, "data_catalog", LHCbDataCatalogInterface(self.task_id, self.run_id)
-        )
+        self.data_catalog = LHCbDataCatalogInterface(self.task_id, self.run_id)
 
     def pre_process(
         self, job_path: Path, command: List[str], **kwargs: Any
@@ -379,15 +377,11 @@ class LHCbReconstructionMetadata(LHCbMetadata):
     def __init__(self, **kwargs: Any):
         """Initialize with unified LHCb data catalog interface."""
         super().__init__(**kwargs)
-        object.__setattr__(
-            self,
-            "data_catalog",
-            LHCbDataCatalogInterface(
-                self.task_id,
-                self.run_id,
-                input_data_type=self.input_data_type,
-                output_data_type=self.output_data_type,
-            ),
+        self.data_catalog = LHCbDataCatalogInterface(
+            self.task_id,
+            self.run_id,
+            input_data_type=self.input_data_type,
+            output_data_type=self.output_data_type,
         )
 
     def pre_process(
@@ -459,17 +453,13 @@ class LHCbAnalysisMetadata(LHCbMetadata):
     def __init__(self, **kwargs: Any):
         """Initialize with unified LHCb data catalog interface."""
         super().__init__(**kwargs)
-        object.__setattr__(
-            self,
-            "data_catalog",
-            LHCbDataCatalogInterface(
-                self.task_id,
-                self.run_id,
-                user_name=self.user_name,
-                analysis_name=self.analysis_name,
-                analysis_version=self.analysis_version,
-                input_datasets=self.input_datasets,
-            ),
+        self.data_catalog = LHCbDataCatalogInterface(
+            self.task_id,
+            self.run_id,
+            user_name=self.user_name,
+            analysis_name=self.analysis_name,
+            analysis_version=self.analysis_version,
+            input_datasets=self.input_datasets,
         )
 
     def pre_process(
