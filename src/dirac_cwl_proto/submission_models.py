@@ -20,6 +20,7 @@ from pydantic import BaseModel, ConfigDict, field_serializer, model_validator
 from dirac_cwl_proto.metadata import (
     ExecutionHooksHint,
     SchedulingHint,
+    TransformationExecutionHooksHint,
 )
 
 # -----------------------------------------------------------------------------
@@ -65,14 +66,6 @@ class JobSubmissionModel(BaseModel):
 # -----------------------------------------------------------------------------
 
 
-class TransformationMetadataModel(ExecutionHooksHint):
-    """Transformation metadata."""
-
-    # Number of data to group together in a transformation
-    # Key: input name, Value: group size
-    group_size: dict[str, int] | None = None
-
-
 class TransformationSubmissionModel(BaseModel):
     """Transformation definition sent to the router."""
 
@@ -80,7 +73,7 @@ class TransformationSubmissionModel(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     task: CommandLineTool | Workflow | ExpressionTool
-    metadata: TransformationMetadataModel
+    metadata: TransformationExecutionHooksHint
     scheduling: SchedulingHint
 
     @field_serializer("task")
@@ -96,13 +89,6 @@ class TransformationSubmissionModel(BaseModel):
 # -----------------------------------------------------------------------------
 
 
-class ProductionStepMetadataModel(BaseModel):
-    """Step metadata for a transformation."""
-
-    scheduling: SchedulingHint
-    metadata: TransformationMetadataModel
-
-
 class ProductionSubmissionModel(BaseModel):
     """Production definition sent to the router."""
 
@@ -111,7 +97,9 @@ class ProductionSubmissionModel(BaseModel):
 
     task: Workflow
     # Key: step name, Value: description & metadata of a transformation
-    steps_metadata: dict[str, ProductionStepMetadataModel]
+    steps_metadata: dict[str, TransformationExecutionHooksHint | ExecutionHooksHint]
+    # Key: step name, Value: scheduling configuration for a transformation
+    steps_scheduling: dict[str, SchedulingHint] = {}
 
     @model_validator(mode="before")
     def validate_steps_metadata(cls, values):

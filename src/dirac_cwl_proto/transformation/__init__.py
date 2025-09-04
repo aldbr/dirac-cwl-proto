@@ -18,11 +18,10 @@ from ruamel.yaml import YAML
 from schema_salad.exceptions import ValidationException
 
 from dirac_cwl_proto.job import submit_job_router
-from dirac_cwl_proto.metadata import SchedulingHint
+from dirac_cwl_proto.metadata import SchedulingHint, TransformationExecutionHooksHint
 from dirac_cwl_proto.submission_models import (
     JobParameterModel,
     JobSubmissionModel,
-    TransformationMetadataModel,
     TransformationSubmissionModel,
 )
 
@@ -86,9 +85,9 @@ def submit_transformation_client(
     if metadata_path:
         with open(metadata_path, "r") as file:
             metadata = YAML(typ="safe").load(file)
-        metadata_model = TransformationMetadataModel(**metadata)
+        metadata_model = TransformationExecutionHooksHint(**metadata)
     else:
-        metadata_model = TransformationMetadataModel()
+        metadata_model = TransformationExecutionHooksHint()
     console.print("\t[green]:heavy_check_mark:[/green] Metadata")
 
     transformation_scheduling = SchedulingHint(

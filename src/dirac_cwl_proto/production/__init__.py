@@ -21,11 +21,13 @@ from rich.console import Console
 from ruamel.yaml import YAML
 from schema_salad.exceptions import ValidationException
 
-from dirac_cwl_proto.metadata import SchedulingHint
+from dirac_cwl_proto.metadata import (
+    ExecutionHooksHint,
+    SchedulingHint,
+    TransformationExecutionHooksHint,
+)
 from dirac_cwl_proto.submission_models import (
-    ProductionStepMetadataModel,
     ProductionSubmissionModel,
-    TransformationMetadataModel,
     TransformationSubmissionModel,
 )
 from dirac_cwl_proto.transformation import (
@@ -85,17 +87,24 @@ def submit_production_client(
             steps_metadata = YAML(typ="safe").load(file)
 
     production_step_metadata = {}
+    production_step_scheduling = {}
     for step_name, step_data in steps_metadata.items():
-        production_step_metadata[step_name] = ProductionStepMetadataModel(
-            scheduling=step_data.get("scheduling", {}),
-            metadata=step_data.get("metadata", {}),
+        # Extract metadata and scheduling from step_data
+        metadata_config = step_data.get("metadata", {})
+        scheduling_config = step_data.get("scheduling", {})
+
+        # Create TransformationExecutionHooksHint with the metadata
+        production_step_metadata[step_name] = TransformationExecutionHooksHint(
+            **metadata_config
         )
+        production_step_scheduling[step_name] = SchedulingHint(**scheduling_config)
     console.print("\t[green]:heavy_check_mark:[/green] Metadata")
 
     # Create the production
     transformation = ProductionSubmissionModel(
         task=task,
         steps_metadata=production_step_metadata,
+        steps_scheduling=production_step_scheduling,
     )
     console.print(
         "[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Production validated."
@@ -170,20 +179,23 @@ def _get_transformations(
 
         # Get the metadata & description for the step
         step_id = step.id.split("#")[-1]
-        step_data: ProductionStepMetadataModel = production.steps_metadata.get(
-            step_id,
-            ProductionStepMetadataModel(
-                scheduling=SchedulingHint(),
-                metadata=TransformationMetadataModel(),
-            ),
+        step_data: TransformationExecutionHooksHint | ExecutionHooksHint = (
+            production.steps_metadata.get(
+                step_id,
+                TransformationExecutionHooksHint(),
+            )
         )
-        step_data.metadata.configuration = configuration
+        step_scheduling: SchedulingHint = production.steps_scheduling.get(
+            step_id,
+            SchedulingHint(),
+        )
+        step_data.configuration.update(configuration)
 
         transformations.append(
             TransformationSubmissionModel(
                 task=step_task,
-                metadata=step_data.metadata,
-                scheduling=step_data.scheduling,
+                metadata=step_data,
+                scheduling=step_scheduling,
             )
         )
     return transformations

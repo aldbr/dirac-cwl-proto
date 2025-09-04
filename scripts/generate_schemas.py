@@ -61,7 +61,6 @@ def collect_pydantic_models() -> Dict[str, Any]:
         from dirac_cwl_proto.submission_models import (
             JobParameterModel,
             JobSubmissionModel,
-            ProductionStepMetadataModel,
             ProductionSubmissionModel,
             TransformationSubmissionModel,
         )
@@ -72,7 +71,6 @@ def collect_pydantic_models() -> Dict[str, Any]:
                 "JobSubmissionModel": JobSubmissionModel,
                 "TransformationSubmissionModel": TransformationSubmissionModel,
                 "ProductionSubmissionModel": ProductionSubmissionModel,
-                "ProductionStepMetadataModel": ProductionStepMetadataModel,
             }
         )
         logger.info("Collected submission models")
