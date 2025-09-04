@@ -99,7 +99,7 @@ def submit_transformation_client(
 
     transformation = TransformationSubmissionModel(
         task=task,
-        metadata=metadata_model,
+        execution_hooks=metadata_model,
         scheduling=transformation_scheduling,
     )
     console.print(
@@ -144,18 +144,23 @@ def submit_transformation_router(transformation: TransformationSubmissionModel) 
     logger.info("Transformation validated!")
 
     # Check if the transformation is waiting for an input
-    # - if there is no metadata, the transformation is not waiting for an input and can go on
-    # - if there is metadata, the transformation is waiting for an input
+    # - if there is no execution_hooks, the transformation is not waiting for an input and can go on
+    # - if there is execution_hooks, the transformation is waiting for an input
     job_model_params = []
-    if transformation.metadata.configuration and transformation.metadata.group_size:
+    if (
+        transformation.execution_hooks.configuration
+        and transformation.execution_hooks.group_size
+    ):
         # Get the metadata class
-        transformation_metadata = transformation.metadata.to_runtime(transformation)
+        transformation_metadata = transformation.execution_hooks.to_runtime(
+            transformation
+        )
 
         # Build the input cwl for the jobs to submit
         logger.info("Getting the input data for the transformation...")
         input_data_dict = {}
         min_length = None
-        for input_name, group_size in transformation.metadata.group_size.items():
+        for input_name, group_size in transformation.execution_hooks.group_size.items():
             # Get input query
             logger.info(f"\t- Getting input query for {input_name}...")
             input_query = transformation_metadata.get_input_query(input_name)
@@ -186,7 +191,7 @@ def submit_transformation_router(transformation: TransformationSubmissionModel) 
         task=transformation.task,
         parameters=job_model_params,
         scheduling=transformation.scheduling,
-        metadata=transformation.metadata,
+        execution_hooks=transformation.execution_hooks,
     )
     logger.info("Jobs built!")
 

@@ -103,7 +103,7 @@ def submit_production_client(
     # Create the production
     transformation = ProductionSubmissionModel(
         task=task,
-        steps_metadata=production_step_metadata,
+        steps_execution_hooks=production_step_metadata,
         steps_scheduling=production_step_scheduling,
     )
     console.print(
@@ -177,10 +177,10 @@ def _get_transformations(
         )
         configuration = _get_configuration(production.task)
 
-        # Get the metadata & description for the step
+        # Get the execution_hooks & description for the step
         step_id = step.id.split("#")[-1]
         step_data: TransformationExecutionHooksHint | ExecutionHooksHint = (
-            production.steps_metadata.get(
+            production.steps_execution_hooks.get(
                 step_id,
                 TransformationExecutionHooksHint(),
             )
@@ -194,7 +194,7 @@ def _get_transformations(
         transformations.append(
             TransformationSubmissionModel(
                 task=step_task,
-                metadata=step_data,
+                execution_hooks=step_data,
                 scheduling=step_scheduling,
             )
         )

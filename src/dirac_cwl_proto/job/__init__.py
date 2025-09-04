@@ -130,7 +130,7 @@ def submit_job_client(
         task=task,
         parameters=parameters,
         scheduling=job_scheduling,
-        metadata=job_metadata,
+        execution_hooks=job_metadata,
     )
     console.print(
         "[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Job(s) validated."
@@ -231,7 +231,7 @@ def submit_job_router(job: JobSubmissionModel) -> bool:
                     task=job.task,
                     parameters=[parameter],
                     scheduling=job.scheduling,
-                    metadata=job.metadata,
+                    execution_hooks=job.execution_hooks,
                 )
             )
     logger.info("Job(s) validated!")
@@ -364,7 +364,9 @@ def run_job(job: JobSubmissionModel) -> bool:
     logger = logging.getLogger("JobWrapper")
     # Instantiate runtime metadata from the serializable descriptor and
     # the job context so implementations can access task inputs/overrides.
-    runtime_metadata = job.metadata.to_runtime(job) if job.metadata else None
+    runtime_metadata = (
+        job.execution_hooks.to_runtime(job) if job.execution_hooks else None
+    )
 
     # Isolate the job in a specific directory
     job_path = Path(".") / "workernode" / f"{random.randint(1000, 9999)}"

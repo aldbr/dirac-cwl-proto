@@ -51,7 +51,7 @@ class JobSubmissionModel(BaseModel):
     task: CommandLineTool | Workflow | ExpressionTool
     parameters: list[JobParameterModel] | None = None
     scheduling: SchedulingHint
-    metadata: ExecutionHooksHint
+    execution_hooks: ExecutionHooksHint
 
     @field_serializer("task")
     def serialize_task(self, value):
@@ -73,7 +73,7 @@ class TransformationSubmissionModel(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     task: CommandLineTool | Workflow | ExpressionTool
-    metadata: TransformationExecutionHooksHint
+    execution_hooks: TransformationExecutionHooksHint
     scheduling: SchedulingHint
 
     @field_serializer("task")
@@ -96,20 +96,22 @@ class ProductionSubmissionModel(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     task: Workflow
-    # Key: step name, Value: description & metadata of a transformation
-    steps_metadata: dict[str, TransformationExecutionHooksHint | ExecutionHooksHint]
+    # Key: step name, Value: description & execution_hooks of a transformation
+    steps_execution_hooks: dict[
+        str, TransformationExecutionHooksHint | ExecutionHooksHint
+    ]
     # Key: step name, Value: scheduling configuration for a transformation
     steps_scheduling: dict[str, SchedulingHint] = {}
 
     @model_validator(mode="before")
     def validate_steps_metadata(cls, values):
         task = values.get("task")
-        steps_metadata = values.get("steps_metadata")
+        steps_execution_hooks = values.get("steps_execution_hooks")
 
-        if task and steps_metadata:
+        if task and steps_execution_hooks:
             # Extract the available steps in the task
             task_steps = set([step.id.split("#")[-1] for step in task.steps])
-            metadata_keys = set(steps_metadata.keys())
+            metadata_keys = set(steps_execution_hooks.keys())
 
             # Check if all metadata keys exist in the task's workflow steps
             missing_steps = metadata_keys - task_steps
