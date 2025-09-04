@@ -10,13 +10,11 @@ providing enhanced functionality through the new plugin system.
 from .core import (
     DataCatalogInterface,
     DataManager,
-    ExecutionHooks,
+    ExecutionHooksBasePlugin,
     SchedulingHint,
-    TaskRuntimeBasePlugin,
     TransformationDataManager,
 )
 from .registry import (
-    MetadataPluginRegistry,
     discover_plugins,
     get_registry,
 )
@@ -32,15 +30,12 @@ except Exception:
     pass
 
 __all__ = [
-    # Core classes
-    "TaskRuntimeBasePlugin",
-    "DataCatalogInterface",
+    # Core metadata and plugins
     "DataManager",
-    "ExecutionHooks",
-    "SchedulingHint",
     "TransformationDataManager",
-    # Registry functions
-    "MetadataPluginRegistry",
-    "discover_plugins",
+    "ExecutionHooksBasePlugin",
+    "SchedulingHint",
+    "DataCatalogInterface",
+    "MetadataRegistry",
     "get_registry",
 ]

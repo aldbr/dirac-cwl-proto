@@ -34,8 +34,8 @@ class TestUserMetadata:
         result = metadata.pre_process(Path("/tmp"), command)
         assert result == command
 
-        # Test post_process (should return True)
-        assert metadata.post_process(Path("/tmp")) is True
+        # Test post_process (should not raise exception)
+        metadata.post_process(Path("/tmp"), exit_code=0)  # Should not raise exception
 
         # Test get_input_query (should return None)
         assert metadata.get_input_query("test_input") is None
@@ -132,7 +132,7 @@ class TestQueryBasedMetadata:
         """Test QueryBasedMetadata creation."""
         metadata = QueryBasedMetadata()
         assert metadata.get_metadata_class() == "QueryBased"
-        assert metadata.query_root is None
+        assert metadata.query_root == "/"  # Default value
         assert metadata.site is None
         assert metadata.campaign is None
         assert metadata.data_type is None
@@ -189,8 +189,8 @@ class TestQueryBasedMetadata:
 
         result = metadata.get_input_query("test_input")
 
-        # Should use default "filecatalog" root
-        expected = Path("filecatalog/Test")
+        # Should use default "/" root with campaign
+        expected = Path("/Test")
         assert result == expected
 
     def test_get_input_query_with_kwargs(self):
@@ -252,10 +252,8 @@ class TestQueryBasedMetadata:
         """Test that post_process works correctly."""
         metadata = QueryBasedMetadata()
 
-        result = metadata.post_process(Path("/tmp"))
-
-        # Should return True
-        assert result is True
+        # Should not raise exception
+        metadata.post_process(Path("/tmp"))
 
 
 class TestPluginIntegration:

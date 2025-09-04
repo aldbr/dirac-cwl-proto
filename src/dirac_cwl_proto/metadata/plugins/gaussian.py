@@ -10,13 +10,14 @@ import glob
 from pathlib import Path
 from typing import Any, ClassVar, List, Optional, Union
 
-from ..core import TaskRuntimeBasePlugin
+from ..core import ExecutionHooksBasePlugin
 
 
-class DataGenerationMetadata(TaskRuntimeBasePlugin):
+class DataGenerationMetadata(ExecutionHooksBasePlugin):
     """Data generation metadata model for Gaussian fitting.
 
-    This model handles generation of test data for Gaussian fitting algorithms.
+    This model handles generation of test data for Gaussian fitting algorithms.:w
+
     It supports generating multiple output files with configurable names.
 
     Parameters
@@ -43,7 +44,7 @@ class DataGenerationMetadata(TaskRuntimeBasePlugin):
 
         return base_path / "data-generation"
 
-    def post_process(self, job_path: Path) -> bool:
+    def post_process(self, job_path: Path, **kwargs: Any) -> bool:
         """Post process the generated data files."""
         success = False
 
@@ -71,7 +72,7 @@ class DataGenerationMetadata(TaskRuntimeBasePlugin):
         return success
 
 
-class GaussianFitMetadata(TaskRuntimeBasePlugin):
+class GaussianFitMetadata(ExecutionHooksBasePlugin):
     """Gaussian fitting metadata model.
 
     This model handles Gaussian fitting analysis on generated data sets.
@@ -85,7 +86,7 @@ class GaussianFitMetadata(TaskRuntimeBasePlugin):
         Second set of input data files.
     """
 
-    description: ClassVar[str] = "Gaussian fitting analysis on data sets"
+    description: ClassVar[str] = "Gaussian fitting analysis for generated data"
 
     # Input data
     data1: Optional[List] = None
@@ -110,7 +111,7 @@ class GaussianFitMetadata(TaskRuntimeBasePlugin):
             return Path("filecatalog") / "gaussian_fit" / "fit"
         return None
 
-    def post_process(self, job_path: Path) -> bool:
+    def post_process(self, job_path: Path, **kwargs: Any) -> bool:
         """Post process the fitting results."""
         outputs = glob.glob(str(job_path / "fit*"))
         if outputs:

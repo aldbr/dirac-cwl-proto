@@ -2,7 +2,7 @@
 Tests for the core metadata plugin system.
 
 This module tests the foundational classes and interfaces of the metadata
-plugin system, including TaskRuntimeBasePlugin, DataManager, and core
+plugin system, including ExecutionHooksBasePlugin, DataManager, and core
 abstract interfaces.
 """
 
@@ -14,30 +14,35 @@ import pytest
 from dirac_cwl_proto.metadata.core import (
     DataCatalogInterface,
     DataManager,
-    ExecutionHooks,
+    ExecutionHooksBasePlugin,
     SchedulingHint,
-    TaskRuntimeBasePlugin,
     TransformationDataManager,
 )
 
 
-class TestExecutionHooks:
-    """Test the ExecutionHooks abstract base class."""
+class TestExecutionHook:
+    """Test the ExecutionHooksBasePlugin abstract base class."""
 
-    def test_abstract_methods(self):
-        """Test that ExecutionHooks cannot be instantiated directly."""
-        with pytest.raises(TypeError):
-            ExecutionHooks()
+    def test_instantiation(self):
+        """Test that ExecutionHooksBasePlugin can be instantiated directly with default behavior."""
+        hook = ExecutionHooksBasePlugin()
+
+        # Test default pre_process behavior
+        command = ["echo", "hello"]
+        result = hook.pre_process(Path("/tmp"), command)
+        assert result == command  # Should return command unchanged
+
+        # Test default post_process behavior
+        hook.post_process(Path("/tmp"), exit_code=0)  # Should not raise any exception
 
     def test_concrete_implementation(self):
         """Test that concrete implementations work correctly."""
 
-        class ConcreteHook(ExecutionHooks):
-            def pre_process(self, job_path: Path, command: List[str]) -> List[str]:
+        class ConcreteHook(ExecutionHooksBasePlugin):
+            def pre_process(
+                self, job_path: Path, command: List[str], **kwargs: Any
+            ) -> List[str]:
                 return command + ["--processed"]
-
-            def post_process(self, job_path: Path) -> bool:
-                return True
 
         processor = ConcreteHook()
 
@@ -46,7 +51,7 @@ class TestExecutionHooks:
         assert result == ["echo", "hello", "--processed"]
 
         # Test post_process
-        assert processor.post_process(Path("/tmp")) is True
+        processor.post_process(Path("/tmp"))  # Should not raise exception
 
 
 class TestDataCatalogInterface:
@@ -86,13 +91,13 @@ class TestDataCatalogInterface:
         catalog.store_output("test_output", "/tmp/test")  # Should not raise an error
 
 
-class TestTaskRuntimeBasePlugin:
-    """Test the TaskRuntimeBasePlugin foundation class."""
+class TestExecutionHookExtended:
+    """Test the ExecutionHooksBasePlugin foundation class methods."""
 
     def test_creation(self):
-        """Test TaskRuntimeBasePlugin can be instantiated."""
+        """Test ExecutionHooksBasePlugin can be instantiated with concrete implementations."""
 
-        class TestModel(TaskRuntimeBasePlugin):
+        class TestModel(ExecutionHooksBasePlugin):
             test_field: str = "default"
 
         model = TestModel()
@@ -104,7 +109,7 @@ class TestTaskRuntimeBasePlugin:
     def test_pydantic_validation(self):
         """Test that Pydantic validation works correctly."""
 
-        class TestModel(TaskRuntimeBasePlugin):
+        class TestModel(ExecutionHooksBasePlugin):
             required_field: str
             optional_field: Optional[int] = None
 
@@ -120,16 +125,10 @@ class TestTaskRuntimeBasePlugin:
     def test_default_interface_methods(self):
         """Test that default interface methods are implemented."""
 
-        class TestModel(TaskRuntimeBasePlugin):
+        class TestModel(ExecutionHooksBasePlugin):
             pass
 
         model = TestModel()
-
-        # Test ExecutionHooks methods
-        result = model.pre_process(Path("/tmp"), ["echo"])
-        assert result == ["echo"]
-
-        assert model.post_process(Path("/tmp")) is True
 
         # Test DataCatalogInterface methods
         assert model.get_input_query("test") is None
@@ -142,7 +141,7 @@ class TestTaskRuntimeBasePlugin:
     def test_model_serialization(self):
         """Test that model serialization works correctly."""
 
-        class TestModel(TaskRuntimeBasePlugin):
+        class TestModel(ExecutionHooksBasePlugin):
             name: str
             value: int = 42
 

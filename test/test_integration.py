@@ -15,8 +15,8 @@ from dirac_cwl_proto.metadata import (
 )
 from dirac_cwl_proto.metadata.core import (
     DataManager,
+    ExecutionHooksBasePlugin,
     SchedulingHint,
-    TaskRuntimeBasePlugin,
 )
 
 
@@ -82,22 +82,6 @@ class TestSystemIntegration:
             runtime_metadata.get_metadata_class() == "QueryBased"
         )  # Test that CWL parameters are available
         # (Note: exact parameter extraction depends on implementation)
-
-    def test_legacy_compatibility_integration(self):
-        """Test that legacy metadata models integrate correctly."""
-        # Test that legacy models are still accessible
-        legacy_plugins = [
-            "PiSimulate",
-            "PiGather",
-            "LHCbSimulation",
-            "MandelBrotGeneration",
-            "GaussianFit",
-        ]
-
-        registry = get_registry()
-        registered = registry.list_plugins()
-        for plugin in legacy_plugins:
-            assert plugin in registered
 
 
 class TestRealWorldScenarios:
@@ -262,7 +246,7 @@ class TestErrorHandling:
         """Test handling of plugin registration conflicts."""
 
         # Create a test plugin
-        class ConflictTestPlugin(TaskRuntimeBasePlugin):
+        class ConflictTestPlugin(ExecutionHooksBasePlugin):
             description = "Test plugin for conflict testing"
 
         # Register it

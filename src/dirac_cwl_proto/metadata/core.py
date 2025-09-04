@@ -19,48 +19,6 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T", bound="SchedulingHint")
 
 
-class ExecutionHooks(ABC):
-    """Abstract base class for execution hooks.
-
-    This class defines the interface for pre/post processing operations
-    that can be performed during job execution.
-    """
-
-    @abstractmethod
-    def pre_process(self, job_path: Path, command: List[str]) -> List[str]:
-        """Pre-process job inputs and command.
-
-        Parameters
-        ----------
-        job_path : Path
-            Path to the job working directory.
-        command : List[str]
-            The command to be executed.
-
-        Returns
-        -------
-        List[str]
-            Modified command list.
-        """
-        pass
-
-    @abstractmethod
-    def post_process(self, job_path: Path) -> bool:
-        """Post-process job outputs.
-
-        Parameters
-        ----------
-        job_path : Path
-            Path to the job working directory.
-
-        Returns
-        -------
-        bool
-            True if post-processing succeeded, False otherwise.
-        """
-        pass
-
-
 class DataCatalogInterface(ABC):
     """Abstract interface for data catalog operations."""
 
@@ -120,8 +78,8 @@ class DataCatalogInterface(ABC):
         logger.info(f"Output {output_name} stored in {dest}")
 
 
-class TaskRuntimeBasePlugin(BaseModel, DataCatalogInterface, ExecutionHooks):
-    """Base class for all runtime plugin models.
+class ExecutionHooksBasePlugin(BaseModel, DataCatalogInterface):
+    """Base class for all runtime plugin models with execution hooks.
 
     This class combines Pydantic validation with the execution hooks
     and data catalog interfaces to provide a complete foundation for runtime plugin implementations.
@@ -151,12 +109,33 @@ class TaskRuntimeBasePlugin(BaseModel, DataCatalogInterface, ExecutionHooks):
             name = name[:-8]  # Remove "Metadata" suffix
         return name
 
-    def pre_process(self, job_path: Path, command: List[str]) -> List[str]:
-        """Default pre-processing: return command unchanged."""
+    def pre_process(
+        self, job_path: Path, command: List[str], **kwargs: Any
+    ) -> List[str]:
+        """Pre-process job inputs and command.
+
+        Parameters
+        ----------
+        job_path : Path
+            Path to the job working directory.
+        command : List[str]
+            The command to be executed.
+
+        Returns
+        -------
+        List[str]
+            Modified command list.
+        """
         return command
 
-    def post_process(self, job_path: Path) -> bool:
-        """Default post-processing: always succeed."""
+    def post_process(self, job_path: Path, **kwargs: Any) -> bool:
+        """Post-process job outputs.
+
+        Parameters
+        ----------
+        job_path : Path
+            Path to the job working directory.
+        """
         return True
 
     def get_input_query(
@@ -284,11 +263,11 @@ class DataManager(BaseModel, Hint):
 
         return super().model_copy(update=merged_update, deep=deep)
 
-    def to_runtime(self, submitted: Optional[Any] = None) -> "TaskRuntimeBasePlugin":
+    def to_runtime(self, submitted: Optional[Any] = None) -> "ExecutionHooksBasePlugin":
         """
             Build and instantiate the runtime metadata implementation.
 
-        The returned object is an instance of :class:`TaskRuntimeBasePlugin` created
+        The returned object is an instance of :class:`ExecutionHooksBasePlugin` created
         by the metadata registry. The instantiation parameters are constructed
             by merging, in order:
 
@@ -308,7 +287,7 @@ class DataManager(BaseModel, Hint):
 
             Returns
             -------
-            TaskRuntimeBasePlugin
+            ExecutionHooksBasePlugin
                 Runtime plugin implementation instantiated from the registry.
         """
         # Import here to avoid circular imports

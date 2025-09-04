@@ -10,10 +10,10 @@ import glob
 from pathlib import Path
 from typing import Any, ClassVar, List, Optional, Union
 
-from ..core import TaskRuntimeBasePlugin
+from ..core import ExecutionHooksBasePlugin
 
 
-class MandelBrotGenerationMetadata(TaskRuntimeBasePlugin):
+class MandelBrotGenerationMetadata(ExecutionHooksBasePlugin):
     """Mandelbrot set generation metadata model.
 
     This model handles the generation of Mandelbrot set data with specified
@@ -67,7 +67,7 @@ class MandelBrotGenerationMetadata(TaskRuntimeBasePlugin):
             )
         return None
 
-    def post_process(self, job_path: Path) -> bool:
+    def post_process(self, job_path: Path, **kwargs: Any) -> bool:
         """Post process the generated data files."""
         outputs = glob.glob(str(job_path / "data*.txt"))
         if outputs:
@@ -76,7 +76,7 @@ class MandelBrotGenerationMetadata(TaskRuntimeBasePlugin):
         return False
 
 
-class MandelBrotMergingMetadata(TaskRuntimeBasePlugin):
+class MandelBrotMergingMetadata(ExecutionHooksBasePlugin):
     """Mandelbrot set merging metadata model.
 
     This model handles merging of multiple Mandelbrot data files into
@@ -148,7 +148,7 @@ class MandelBrotMergingMetadata(TaskRuntimeBasePlugin):
             )
         return None
 
-    def post_process(self, job_path: Path) -> bool:
+    def post_process(self, job_path: Path, **kwargs: Any) -> bool:
         """Post process the merged image files."""
         outputs = glob.glob(str(job_path / "mandelbrot_image*bmp"))
         if outputs:

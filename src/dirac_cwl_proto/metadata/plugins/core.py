@@ -9,10 +9,12 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, ClassVar, List, Optional, Union
 
-from ..core import TaskRuntimeBasePlugin
+from pydantic import Field
+
+from ..core import ExecutionHooksBasePlugin
 
 
-class UserMetadata(TaskRuntimeBasePlugin):
+class UserMetadata(ExecutionHooksBasePlugin):
     """Default user metadata model with no special processing.
 
     This is the simplest metadata model that performs no special input/output
@@ -22,7 +24,7 @@ class UserMetadata(TaskRuntimeBasePlugin):
     description: ClassVar[str] = "Basic user metadata with no special processing"
 
 
-class AdminMetadata(TaskRuntimeBasePlugin):
+class AdminMetadata(ExecutionHooksBasePlugin):
     """Administrative metadata model with enhanced logging.
 
     This metadata model provides additional logging and monitoring
@@ -44,13 +46,15 @@ class AdminMetadata(TaskRuntimeBasePlugin):
     enable_monitoring: bool = True
     admin_level: int = 1
 
-    def pre_process(self, job_path: Path, command: List[str]) -> List[str]:
+    def pre_process(
+        self, job_path: Path, command: List[str], **kwargs: Any
+    ) -> List[str]:
         """Add logging configuration to command."""
         if self.log_level != "INFO":
             command.extend(["--log-level", self.log_level])
         return command
 
-    def post_process(self, job_path: Path) -> bool:
+    def post_process(self, job_path: Path, **kwargs: Any) -> bool:
         """Enhanced post-processing with monitoring."""
         if self.enable_monitoring:
             # Could send metrics to monitoring system
@@ -58,20 +62,20 @@ class AdminMetadata(TaskRuntimeBasePlugin):
         return True
 
 
-class QueryBasedMetadata(TaskRuntimeBasePlugin):
+class QueryBasedMetadata(ExecutionHooksBasePlugin):
     """Metadata model that supports query-based input resolution.
 
     This model demonstrates how to implement query-based data discovery
     using metadata parameters.
     """
 
-    description: ClassVar[str] = "Metadata with query-based input resolution"
+    description: ClassVar[str] = "Query-based metadata for data discovery"
 
     # Query parameters
-    query_root: Optional[str] = None
-    site: Optional[str] = None
-    campaign: Optional[str] = None
-    data_type: Optional[str] = None
+    query_root: str = Field(default="/", description="Root path for queries")
+    site: Optional[str] = Field(default=None, description="Site to query")
+    campaign: Optional[str] = Field(default=None, description="Campaign name")
+    data_type: Optional[str] = Field(default=None, description="Data type")
 
     def get_input_query(
         self, input_name: str, **kwargs: Any
@@ -118,7 +122,7 @@ class QueryBasedMetadata(TaskRuntimeBasePlugin):
         return base_path / "default"
 
 
-class TaskWithMetadataQueryPlugin(TaskRuntimeBasePlugin):
+class TaskWithMetadataQueryPlugin(ExecutionHooksBasePlugin):
     """Metadata plugin that demonstrates query-based input resolution.
 
     This class provides methods to query metadata and generate input paths

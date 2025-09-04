@@ -10,14 +10,14 @@ from typing import Any, ClassVar, Optional
 
 import pytest
 
-from dirac_cwl_proto.metadata.core import DataManager, TaskRuntimeBasePlugin
+from dirac_cwl_proto.metadata.core import DataManager, ExecutionHooksBasePlugin
 from dirac_cwl_proto.metadata.registry import (
     MetadataPluginRegistry,
     get_registry,
 )
 
 
-class TestPluginMetadata(TaskRuntimeBasePlugin):
+class TestPluginMetadata(ExecutionHooksBasePlugin):
     """Test plugin for registry testing."""
 
     description: ClassVar[str] = "Test plugin for unit tests"
@@ -25,7 +25,7 @@ class TestPluginMetadata(TaskRuntimeBasePlugin):
     test_param: str = "default"
 
 
-class TestVOPlugin(TaskRuntimeBasePlugin):
+class TestVOPlugin(ExecutionHooksBasePlugin):
     """Test vo-specific plugin."""
 
     description: ClassVar[str] = "Test VO plugin"
@@ -34,7 +34,7 @@ class TestVOPlugin(TaskRuntimeBasePlugin):
     exp_param: int = 42
 
 
-class TestSecondVOPlugin(TaskRuntimeBasePlugin):
+class TestSecondVOPlugin(ExecutionHooksBasePlugin):
     """Test plugin for second vo."""
 
     description: ClassVar[str] = "Test plugin for second VO"
@@ -220,9 +220,9 @@ class TestPluginSystem:
 
     def test_direct_plugin_usage(self):
         """Test using plugins directly without legacy wrapper."""
-        from dirac_cwl_proto.metadata.core import TaskRuntimeBasePlugin
+        from dirac_cwl_proto.metadata.core import ExecutionHooksBasePlugin
 
-        class DirectPlugin(TaskRuntimeBasePlugin):
+        class DirectPlugin(ExecutionHooksBasePlugin):
             test_param: str = "default"
 
             def get_input_query(self, input_name: str, **kwargs: Any) -> Optional[Path]:
@@ -242,9 +242,9 @@ class TestPluginSystem:
 
     def test_plugin_parameter_handling(self):
         """Test that parameters are passed correctly to plugins."""
-        from dirac_cwl_proto.metadata.core import TaskRuntimeBasePlugin
+        from dirac_cwl_proto.metadata.core import ExecutionHooksBasePlugin
 
-        class ParameterTestPlugin(TaskRuntimeBasePlugin):
+        class ParameterTestPlugin(ExecutionHooksBasePlugin):
             test_param: str = "default"
             another_param: str = "default"
 

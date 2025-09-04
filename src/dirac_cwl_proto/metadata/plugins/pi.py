@@ -10,10 +10,10 @@ import glob
 from pathlib import Path
 from typing import Any, ClassVar, List, Optional, Union
 
-from ..core import TaskRuntimeBasePlugin
+from ..core import ExecutionHooksBasePlugin
 
 
-class PiSimulateMetadata(TaskRuntimeBasePlugin):
+class PiSimulateMetadata(ExecutionHooksBasePlugin):
     """PI simulation metadata model.
 
     This model handles PI simulation jobs that generate simulation data
@@ -37,7 +37,7 @@ class PiSimulateMetadata(TaskRuntimeBasePlugin):
             return Path("filecatalog") / "pi" / str(self.num_points)
         return None
 
-    def post_process(self, job_path: Path) -> bool:
+    def post_process(self, job_path: Path, **kwargs: Any) -> bool:
         """Post process the simulation outputs."""
         outputs = glob.glob(str(job_path / "*.sim"))
         if outputs:
@@ -46,7 +46,7 @@ class PiSimulateMetadata(TaskRuntimeBasePlugin):
         return False
 
 
-class PiSimulateV2Metadata(TaskRuntimeBasePlugin):
+class PiSimulateV2Metadata(ExecutionHooksBasePlugin):
     """PI simulation metadata model version 2.
 
     Enhanced version with configurable output path.
@@ -72,7 +72,7 @@ class PiSimulateV2Metadata(TaskRuntimeBasePlugin):
             return Path("filecatalog") / "pi" / str(self.num_points)
         return None
 
-    def post_process(self, job_path: Path) -> bool:
+    def post_process(self, job_path: Path, **kwargs: Any) -> bool:
         """Post process the simulation outputs."""
         outputs = job_path / self.output_path
         if outputs.exists():
@@ -81,7 +81,7 @@ class PiSimulateV2Metadata(TaskRuntimeBasePlugin):
         return False
 
 
-class PiGatherMetadata(TaskRuntimeBasePlugin):
+class PiGatherMetadata(ExecutionHooksBasePlugin):
     """PI gathering metadata model.
 
     This model handles gathering and aggregation of PI simulation results
@@ -118,7 +118,7 @@ class PiGatherMetadata(TaskRuntimeBasePlugin):
             return Path("filecatalog") / "pi" / str(total_points)
         return None
 
-    def post_process(self, job_path: Path) -> bool:
+    def post_process(self, job_path: Path, **kwargs: Any) -> bool:
         """Post process the gathered results."""
         outputs = glob.glob(str(job_path / "*.sim"))
         if outputs:

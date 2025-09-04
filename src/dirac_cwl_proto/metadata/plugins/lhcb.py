@@ -17,10 +17,10 @@ from cwl_utils.parser.cwl_v1_2_utils import load_inputfile
 from pydantic import Field
 from ruamel.yaml import YAML
 
-from ..core import TaskRuntimeBasePlugin
+from ..core import ExecutionHooksBasePlugin
 
 
-class LHCbMetadata(TaskRuntimeBasePlugin):
+class LHCbMetadata(ExecutionHooksBasePlugin):
     """Base metadata model for LHCb experiment.
 
     This class provides common functionality for all LHCb metadata models,
@@ -84,7 +84,9 @@ class LHCbSimulationMetadata(LHCbMetadata):
 
         return base / "outputs"
 
-    def pre_process(self, job_path: Path, command: List[str]) -> List[str]:
+    def pre_process(
+        self, job_path: Path, command: List[str], **kwargs: Any
+    ) -> List[str]:
         """Pre-process LHCb simulation job.
 
         This method calculates the optimal number of events to simulate
@@ -170,7 +172,7 @@ class LHCbSimulationMetadata(LHCbMetadata):
         with open(parameters_path, "w") as f:
             YAML().dump(parameter_dict, f)
 
-    def post_process(self, job_path: Path) -> bool:
+    def post_process(self, job_path: Path, **kwargs: Any) -> bool:
         """Post-process LHCb simulation outputs."""
         success = True
 
@@ -248,7 +250,9 @@ class LHCbReconstructionMetadata(LHCbMetadata):
 
         return base / "outputs"
 
-    def pre_process(self, job_dir: Path, command: List[str]) -> List[str]:
+    def pre_process(
+        self, job_path: Path, command: List[str], **kwargs: Any
+    ) -> List[str]:
         """Pre-process the job command for reconstruction."""
         # Only add LHCb-specific arguments if this is not a CWL workflow execution
         # (i.e., when running LHCb applications directly, not cwltool)
@@ -263,7 +267,7 @@ class LHCbReconstructionMetadata(LHCbMetadata):
 
         return command
 
-    def post_process(self, job_path: Path) -> bool:
+    def post_process(self, job_path: Path, **kwargs: Any) -> bool:
         """Post-process LHCb reconstruction outputs."""
         success = True
 
@@ -355,7 +359,9 @@ class LHCbAnalysisMetadata(LHCbMetadata):
 
         return base / "results"
 
-    def pre_process(self, job_path: Path, command: List[str]) -> List[str]:
+    def pre_process(
+        self, job_path: Path, command: List[str], **kwargs: Any
+    ) -> List[str]:
         """Pre-process LHCb analysis job."""
         # Add analysis-specific parameters
         command.extend(["--analysis", self.analysis_name])
@@ -369,7 +375,7 @@ class LHCbAnalysisMetadata(LHCbMetadata):
 
         return command
 
-    def post_process(self, job_path: Path) -> bool:
+    def post_process(self, job_path: Path, **kwargs: Any) -> bool:
         """Post-process LHCb analysis outputs."""
         success = True
 

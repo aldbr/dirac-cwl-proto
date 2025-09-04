@@ -12,7 +12,7 @@ import logging
 import pkgutil
 from typing import Any, Dict, List, Optional, Type
 
-from .core import DataManager, TaskRuntimeBasePlugin
+from .core import DataManager, ExecutionHooksBasePlugin
 
 logger = logging.getLogger(__name__)
 
@@ -21,18 +21,18 @@ class MetadataPluginRegistry:
     """Registry for metadata plugin discovery and management."""
 
     def __init__(self) -> None:
-        self._plugins: Dict[str, Type[TaskRuntimeBasePlugin]] = {}
-        self._vo_plugins: Dict[str, Dict[str, Type[TaskRuntimeBasePlugin]]] = {}
+        self._plugins: Dict[str, Type[ExecutionHooksBasePlugin]] = {}
+        self._vo_plugins: Dict[str, Dict[str, Type[ExecutionHooksBasePlugin]]] = {}
         self._plugin_info: Dict[str, Dict[str, Any]] = {}
 
     def register_plugin(
-        self, plugin_class: Type[TaskRuntimeBasePlugin], override: bool = False
+        self, plugin_class: Type[ExecutionHooksBasePlugin], override: bool = False
     ) -> None:
         """Register a metadata plugin.
 
         Parameters
         ----------
-        plugin_class : Type[TaskRuntimeBasePlugin]
+        plugin_class : Type[ExecutionHooksBasePlugin]
             The metadata model class to register.
         override : bool, optional
             Whether to override existing registrations, by default False.
@@ -42,9 +42,9 @@ class MetadataPluginRegistry:
         ValueError
             If plugin is already registered and override=False.
         """
-        if not issubclass(plugin_class, TaskRuntimeBasePlugin):
+        if not issubclass(plugin_class, ExecutionHooksBasePlugin):
             raise ValueError(
-                f"Plugin {plugin_class} must inherit from TaskRuntimeBasePlugin"
+                f"Plugin {plugin_class} must inherit from ExecutionHooksBasePlugin"
             )
 
         plugin_key = plugin_class.get_metadata_class()
@@ -76,7 +76,7 @@ class MetadataPluginRegistry:
 
     def get_plugin(
         self, plugin_key: str, vo: Optional[str] = None
-    ) -> Optional[Type[TaskRuntimeBasePlugin]]:
+    ) -> Optional[Type[ExecutionHooksBasePlugin]]:
         """Get a registered plugin.
 
         Parameters
@@ -88,7 +88,7 @@ class MetadataPluginRegistry:
 
         Returns
         -------
-        Optional[Type[TaskRuntimeBasePlugin]]
+        Optional[Type[ExecutionHooksBasePlugin]]
             The plugin class or None if not found.
         """
         # Try VO-specific first if specified
@@ -101,7 +101,7 @@ class MetadataPluginRegistry:
 
     def instantiate_plugin(
         self, descriptor: DataManager, **kwargs: Any
-    ) -> TaskRuntimeBasePlugin:
+    ) -> ExecutionHooksBasePlugin:
         """Instantiate a metadata plugin from a descriptor.
 
         Parameters
@@ -113,7 +113,7 @@ class MetadataPluginRegistry:
 
         Returns
         -------
-        TaskRuntimeBasePlugin
+        ExecutionHooksBasePlugin
             Instantiated metadata model.
 
         Raises
@@ -222,8 +222,8 @@ class MetadataPluginRegistry:
                     attr = getattr(module, attr_name)
                     if (
                         isinstance(attr, type)
-                        and issubclass(attr, TaskRuntimeBasePlugin)
-                        and attr is not TaskRuntimeBasePlugin
+                        and issubclass(attr, ExecutionHooksBasePlugin)
+                        and attr is not ExecutionHooksBasePlugin
                     ):
                         self.register_plugin(attr)
                         discovered += 1
