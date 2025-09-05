@@ -38,6 +38,8 @@ class LHCbDataCatalogInterface(DataCatalogInterface):
         analysis_name: Optional[str] = None,
         analysis_version: Optional[str] = None,
         input_datasets: Optional[List[str]] = None,
+        # Workflow type hint
+        workflow_type: Optional[str] = None,
     ):
         """Initialize with LHCb workflow-specific parameters.
 
@@ -70,6 +72,7 @@ class LHCbDataCatalogInterface(DataCatalogInterface):
         self.analysis_name = analysis_name
         self.analysis_version = analysis_version
         self.input_datasets = input_datasets
+        self.workflow_type = workflow_type
 
     def get_lhcb_base_path(self) -> Path:
         """Get the base path for LHCb data organization."""
@@ -81,11 +84,14 @@ class LHCbDataCatalogInterface(DataCatalogInterface):
 
     def _is_reconstruction_workflow(self) -> bool:
         """Check if this is a reconstruction workflow."""
+        # Check if explicitly marked as reconstruction workflow
+        if self.workflow_type == "reconstruction":
+            return True
+
+        # Fallback: Reconstruction workflow has non-default data types OR is explicitly doing reconstruction
         return (
-            self.input_data_type != "RAW"
-            or self.output_data_type != "DST"
-            or not self._is_analysis_workflow()
-        )
+            self.input_data_type != "RAW" or self.output_data_type != "DST"
+        ) and not self._is_analysis_workflow()
 
     def get_input_query(
         self, input_name: str, **kwargs: Any
@@ -119,17 +125,19 @@ class LHCbDataCatalogInterface(DataCatalogInterface):
             base = self.get_lhcb_base_path()
 
             if input_name == "raw_data":
-                return base / "raw"
+                result = base / "raw"
             elif input_name == "conditions":
-                return base / "conditions"
+                result = base / "conditions"
             elif input_name == "input_files":
                 # Use input_data_type to determine the subdirectory
-                return base / self.input_data_type.lower()
+                result = base / self.input_data_type.lower()
             elif input_name == "files":
                 # Files input typically refers to simulation output files
-                return base / "simulation"
+                result = base / "simulation"
+            else:
+                result = base
 
-            return base
+            return result
 
         # Simulation workflow (default)
         else:
@@ -382,6 +390,7 @@ class LHCbReconstructionMetadata(LHCbMetadata):
             self.run_id,
             input_data_type=self.input_data_type,
             output_data_type=self.output_data_type,
+            workflow_type="reconstruction",
         )
 
     def pre_process(
