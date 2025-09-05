@@ -338,7 +338,7 @@ def main():
         save_schema(unified_schema, unified_file, args.format)
 
     # Generate plugin summary
-    plugin_models = {k: v for k, v in models.items() if hasattr(v, "get_hook_plugin")}
+    plugin_models = {k: v for k, v in models.items() if hasattr(v, "name")}
     if plugin_models:
         summary = {
             "plugins": {
