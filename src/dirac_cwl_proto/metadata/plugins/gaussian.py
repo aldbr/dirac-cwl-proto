@@ -65,7 +65,7 @@ class GaussianDataCatalogInterface(DataCatalogInterface):
 
         return None
 
-    def get_output_query(self, output_name: str) -> Optional[Path]:
+    def get_output_query(self, output_name: str, **kwargs: Any) -> Optional[Path]:
         """Get output path for both generation and fitting."""
         base_path = Path("filecatalog") / "gaussian_fit"
 
@@ -86,10 +86,10 @@ class GaussianDataCatalogInterface(DataCatalogInterface):
         return None
 
 
-class DataGenerationMetadata(ExecutionHooksBasePlugin):
+class DataGenerationPlugin(ExecutionHooksBasePlugin):
     """Data generation metadata model for Gaussian fitting.
 
-    This model handles generation of test data for Gaussian fitting algorithms.:w
+    This plugin handles generation of test data for Gaussian fitting algorithms.:w
 
     It supports generating multiple output files with configurable names.
 
@@ -142,10 +142,10 @@ class DataGenerationMetadata(ExecutionHooksBasePlugin):
         return success
 
 
-class GaussianFitMetadata(ExecutionHooksBasePlugin):
+class GaussianFitPlugin(ExecutionHooksBasePlugin):
     """Gaussian fitting metadata model.
 
-    This model handles Gaussian fitting analysis on generated data sets.
+    This plugin handles Gaussian fitting analysis on generated data sets.
     It processes multiple input data files and produces fitting results.
 
     Parameters

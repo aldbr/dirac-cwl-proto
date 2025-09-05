@@ -17,7 +17,7 @@ from dirac_cwl_proto.metadata.registry import (
 )
 
 
-class TestPluginMetadata(ExecutionHooksBasePlugin):
+class TestPlugin(ExecutionHooksBasePlugin):
     """Test plugin for registry testing."""
 
     description: ClassVar[str] = "Test plugin for unit tests"
@@ -56,7 +56,7 @@ class TestMetadataPluginRegistry:
         """Test plugin registration."""
         registry = MetadataPluginRegistry()
 
-        registry.register_plugin(TestPluginMetadata)
+        registry.register_plugin(TestPlugin)
 
         plugins = registry.list_plugins()
         assert "TestPlugin" in plugins
@@ -81,18 +81,18 @@ class TestMetadataPluginRegistry:
         """Test that duplicate registration raises error."""
         registry = MetadataPluginRegistry()
 
-        registry.register_plugin(TestPluginMetadata)
+        registry.register_plugin(TestPlugin)
 
         # Should raise error without override
         with pytest.raises(ValueError, match="already registered"):
-            registry.register_plugin(TestPluginMetadata)
+            registry.register_plugin(TestPlugin)
 
     def test_register_duplicate_plugin_with_override(self):
         """Test that duplicate registration works with override."""
         registry = MetadataPluginRegistry()
 
-        registry.register_plugin(TestPluginMetadata)
-        registry.register_plugin(TestPluginMetadata, override=True)
+        registry.register_plugin(TestPlugin)
+        registry.register_plugin(TestPlugin, override=True)
 
         # Should not raise error with override=True
         plugins = registry.list_plugins()
@@ -102,10 +102,10 @@ class TestMetadataPluginRegistry:
         """Test getting registered plugin."""
         registry = MetadataPluginRegistry()
 
-        registry.register_plugin(TestPluginMetadata)
+        registry.register_plugin(TestPlugin)
 
         plugin_class = registry.get_plugin("TestPlugin")
-        assert plugin_class is TestPluginMetadata
+        assert plugin_class is TestPlugin
 
     def test_get_nonexistent_plugin(self):
         """Test getting non-existent plugin."""
@@ -127,12 +127,12 @@ class TestMetadataPluginRegistry:
         """Test plugin instantiation."""
         registry = MetadataPluginRegistry()
 
-        registry.register_plugin(TestPluginMetadata)
+        registry.register_plugin(TestPlugin)
 
         descriptor = ExecutionHooksHint(hook_plugin="TestPlugin", test_param="custom")
         instance = registry.instantiate_plugin(descriptor)
 
-        assert isinstance(instance, TestPluginMetadata)
+        assert isinstance(instance, TestPlugin)
         assert instance.test_param == "custom"
 
     def test_instantiate_plugin_with_vo(self):
@@ -188,7 +188,7 @@ class TestMetadataPluginRegistry:
         """Test listing plugins by vo."""
         registry = MetadataPluginRegistry()
 
-        registry.register_plugin(TestPluginMetadata)  # No vo
+        registry.register_plugin(TestPlugin)  # No vo
         registry.register_plugin(TestVOPlugin)  # test_exp vo
 
         # All plugins

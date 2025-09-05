@@ -57,7 +57,7 @@ class QueryBasedDataCatalogInterface(DataCatalogInterface):
 
         return None
 
-    def get_output_query(self, output_name: str) -> Optional[Path]:
+    def get_output_query(self, output_name: str, **kwargs: Any) -> Optional[Path]:
         """Generate output path based on metadata parameters."""
         base_path = Path("filecatalog") / "outputs"
 
@@ -69,24 +69,24 @@ class QueryBasedDataCatalogInterface(DataCatalogInterface):
             return base_path
 
 
-class UserMetadata(ExecutionHooksBasePlugin):
-    """Default user metadata model with no special processing.
+class UserPlugin(ExecutionHooksBasePlugin):
+    """Default user plugin with no special processing.
 
-    This is the simplest metadata model that performs no special input/output
+    This is the simplest plugin that performs no special input/output
     processing and is suitable for basic job execution.
     """
 
-    description: ClassVar[str] = "Basic user metadata with no special processing"
+    description: ClassVar[str] = "Basic user plugin with no special processing"
 
     def __init__(self, **data):
         super().__init__(**data)
         self.data_catalog = DummyDataCatalogInterface()
 
 
-class AdminMetadata(ExecutionHooksBasePlugin):
-    """Administrative metadata model with enhanced logging.
+class AdminPlugin(ExecutionHooksBasePlugin):
+    """Administrative plugin with enhanced logging.
 
-    This metadata model provides additional logging and monitoring
+    This plugin provides additional logging and monitoring
     capabilities for administrative tasks.
 
     Parameters
@@ -99,7 +99,7 @@ class AdminMetadata(ExecutionHooksBasePlugin):
         Administrative privilege level. Defaults to 1.
     """
 
-    description: ClassVar[str] = "Administrative metadata with enhanced logging"
+    description: ClassVar[str] = "Administrative plugin with enhanced logging"
 
     log_level: str = "INFO"
     enable_monitoring: bool = True
@@ -125,10 +125,10 @@ class AdminMetadata(ExecutionHooksBasePlugin):
         return True
 
 
-class QueryBasedMetadata(ExecutionHooksBasePlugin):
-    """Metadata model that supports query-based input resolution.
+class QueryBasedPlugin(ExecutionHooksBasePlugin):
+    """Metadata plugin that supports query-based input resolution.
 
-    This model demonstrates how to implement query-based data discovery
+    This plugin demonstrates how to implement query-based data discovery
     using metadata parameters.
     """
 
@@ -213,7 +213,7 @@ class TaskQueryDataCatalogInterface(DataCatalogInterface):
         else:
             return None
 
-    def get_output_query(self, output_name: str) -> Optional[Path]:
+    def get_output_query(self, output_name: str, **kwargs: Any) -> Optional[Path]:
         """Simple output path generation."""
         return Path("filecatalog") / "outputs"
 

@@ -71,10 +71,14 @@ class TestDataCatalogInterface:
             ) -> Union[Path, List[Path], None]:
                 return Path(f"/data/{input_name}")
 
-            def get_output_query(self, output_name: str) -> Optional[Path]:
+            def get_output_query(
+                self, output_name: str, **kwargs: Any
+            ) -> Optional[Path]:
                 return Path(f"/output/{output_name}")
 
-            def store_output(self, output_name: str, src_path: str) -> None:
+            def store_output(
+                self, output_name: str, src_path: str, **kwargs: Any
+            ) -> None:
                 pass
 
         catalog = ConcreteCatalog()
@@ -142,19 +146,19 @@ class TestExecutionHookExtended:
         """Test that model serialization works correctly."""
 
         class TestModel(ExecutionHooksBasePlugin):
-            name: str
+            field: str = ""
             value: int = 42
 
-        model = TestModel(name="test")
+        model = TestModel(field="test")
 
         # Test dict conversion
         data = model.model_dump()
-        assert data == {"name": "test", "value": 42}
+        assert data == {"field": "test", "value": 42}
 
         # Test JSON schema generation
         schema = model.model_json_schema()
         assert "properties" in schema
-        assert "name" in schema["properties"]
+        assert "field" in schema["properties"]
         assert "value" in schema["properties"]
 
 
@@ -192,7 +196,7 @@ class TestExecutionHooksHint:
         descriptor = ExecutionHooksHint.from_cwl(mock_cwl)
 
         # Should create default descriptor
-        assert descriptor.hook_plugin == "User"
+        assert descriptor.hook_plugin == "UserPlugin"
 
     def test_from_cwl_no_dirac_hints(self, mocker):
         """Test extraction when no DIRAC hints are present."""
@@ -202,11 +206,11 @@ class TestExecutionHooksHint:
         descriptor = ExecutionHooksHint.from_cwl(mock_cwl)
 
         # Should create default descriptor
-        assert descriptor.hook_plugin == "User"
+        assert descriptor.hook_plugin == "UserPlugin"
 
     def test_model_copy_merges_dict_fields(self):
         """Test model_copy merges dict fields and updates values."""
-        descriptor = ExecutionHooksHint(hook_plugin="LHCbSimulation")
+        descriptor = ExecutionHooksHint(hook_plugin="LHCbSimulationPlugin")
 
         updated = descriptor.model_copy(
             update={"hook_plugin": "NewClass", "new_field": "value"}
@@ -217,9 +221,9 @@ class TestExecutionHooksHint:
 
     def test_default_values(self):
         """Test default values."""
-        descriptor = ExecutionHooksHint(hook_plugin="User", user_id="test123")
+        descriptor = ExecutionHooksHint(hook_plugin="UserPlugin", user_id="test123")
 
-        assert descriptor.hook_plugin == "User"
+        assert descriptor.hook_plugin == "UserPlugin"
         assert getattr(descriptor, "user_id", None) == "test123"
 
 
@@ -280,21 +284,21 @@ class TestTransformationExecutionHooksHint:
     def test_creation(self):
         """Test TransformationExecutionHooksHint creation."""
         descriptor = TransformationExecutionHooksHint(
-            hook_plugin="QueryBased", group_size={"input_data": 100}
+            hook_plugin="QueryBasedPlugin", group_size={"input_data": 100}
         )
-        assert descriptor.hook_plugin == "QueryBased"
+        assert descriptor.hook_plugin == "QueryBasedPlugin"
         assert descriptor.group_size == {"input_data": 100}
 
     def test_inheritance(self):
         """Test that it inherits from ExecutionHooksHint."""
         descriptor = TransformationExecutionHooksHint(
-            hook_plugin="LHCbSimulation",
+            hook_plugin="LHCbSimulationPlugin",
             group_size={"sim_data": 50},
             n_events=1000,
         )
 
         # Test that it has the fields from both classes
-        assert descriptor.hook_plugin == "LHCbSimulation"
+        assert descriptor.hook_plugin == "LHCbSimulationPlugin"
         assert descriptor.group_size == {"sim_data": 50}
         assert getattr(descriptor, "n_events", None) == 1000
 
@@ -302,10 +306,10 @@ class TestTransformationExecutionHooksHint:
         """Test group_size validation."""
         # Valid group_size
         descriptor = TransformationExecutionHooksHint(
-            hook_plugin="User", group_size={"files": 10}
+            hook_plugin="UserPlugin", group_size={"files": 10}
         )
         assert descriptor.group_size == {"files": 10}
 
         # Test with no group_size
-        descriptor2 = TransformationExecutionHooksHint(hook_plugin="User")
+        descriptor2 = TransformationExecutionHooksHint(hook_plugin="UserPlugin")
         assert descriptor2.group_size is None

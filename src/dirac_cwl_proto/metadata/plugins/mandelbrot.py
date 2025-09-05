@@ -68,7 +68,7 @@ class MandelbrotDataCatalogInterface(DataCatalogInterface):
         # Generation workflow - no input queries
         return None
 
-    def get_output_query(self, output_name: str) -> Optional[Path]:
+    def get_output_query(self, output_name: str, **kwargs: Any) -> Optional[Path]:
         """Get output path for Mandelbrot workflows."""
         # Merging workflow
         if self._is_merging_workflow():
@@ -97,7 +97,7 @@ class MandelbrotDataCatalogInterface(DataCatalogInterface):
             return None
 
 
-class MandelBrotGenerationMetadata(ExecutionHooksBasePlugin):
+class MandelBrotGenerationPlugin(ExecutionHooksBasePlugin):
     """Mandelbrot set generation metadata model.
 
     This model handles the generation of Mandelbrot set data with specified
@@ -153,7 +153,7 @@ class MandelBrotGenerationMetadata(ExecutionHooksBasePlugin):
         return False
 
 
-class MandelBrotMergingMetadata(ExecutionHooksBasePlugin):
+class MandelBrotMergingPlugin(ExecutionHooksBasePlugin):
     """Mandelbrot set merging metadata model.
 
     This model handles merging of multiple Mandelbrot data files into

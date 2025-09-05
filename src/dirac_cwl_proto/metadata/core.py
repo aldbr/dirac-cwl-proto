@@ -43,7 +43,7 @@ class DataCatalogInterface(ABC):
         pass
 
     @abstractmethod
-    def get_output_query(self, output_name: str) -> Optional[Path]:
+    def get_output_query(self, output_name: str, **kwargs: Any) -> Optional[Path]:
         """Generate output data path.
 
         Parameters
@@ -58,7 +58,7 @@ class DataCatalogInterface(ABC):
         """
         ...
 
-    def store_output(self, output_name: str, src_path: str) -> None:
+    def store_output(self, output_name: str, src_path: str, **kwargs: Any) -> None:
         """Store output in the data catalog.
 
         Parameters
@@ -68,7 +68,7 @@ class DataCatalogInterface(ABC):
         src_path : str | Path
             Source path of the output file.
         """
-        output_path = self.get_output_query(output_name)
+        output_path = self.get_output_query(output_name, **kwargs)
         if not output_path:
             raise RuntimeError(f"No output path defined for {output_name}")
 
@@ -91,7 +91,7 @@ class DummyDataCatalogInterface(DataCatalogInterface):
         """Return None - no input data available."""
         return None
 
-    def get_output_query(self, output_name: str) -> Optional[Path]:
+    def get_output_query(self, output_name: str, **kwargs: Any) -> Optional[Path]:
         """Return None - no output path available."""
         return None
 
@@ -139,13 +139,9 @@ class ExecutionHooksBasePlugin(BaseModel):
         # Data catalog will be set by subclasses as needed
 
     @classmethod
-    def get_hook_plugin(cls) -> str:
+    def name(cls) -> str:
         """Auto-derive hook plugin identifier from class name."""
-        name = cls.__name__
-        # LHCbSimulationMetadata → LHCbSimulation
-        if name.endswith("Metadata"):
-            name = name[:-8]  # Remove "Metadata" suffix
-        return name
+        return cls.__name__
 
     def pre_process(
         self, job_path: Path, command: List[str], **kwargs: Any
@@ -194,7 +190,7 @@ class ExecutionHooksBasePlugin(BaseModel):
     def get_schema_info(cls) -> Dict[str, Any]:
         """Get schema information for this metadata model."""
         return {
-            "hook_plugin": cls.get_hook_plugin(),
+            "hook_plugin": cls.name(),
             "vo": cls.vo,
             "version": cls.version,
             "description": cls.description,
@@ -263,7 +259,8 @@ class ExecutionHooksHint(BaseModel, Hint):
     )
 
     hook_plugin: str = Field(
-        default="User", description="Registry key for the metadata implementation class"
+        default="UserPlugin",
+        description="Registry key for the metadata implementation class",
     )
 
     # Enhanced fields for submission functionality

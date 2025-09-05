@@ -47,7 +47,7 @@ class MetadataPluginRegistry:
                 f"Plugin {plugin_class} must inherit from ExecutionHooksBasePlugin"
             )
 
-        plugin_key = plugin_class.get_hook_plugin()
+        plugin_key = plugin_class.name()
         vo = plugin_class.vo
 
         # Check for conflicts

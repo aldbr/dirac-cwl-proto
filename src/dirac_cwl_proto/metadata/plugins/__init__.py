@@ -5,40 +5,40 @@ when the metadata system is imported.
 """
 
 from .core import (
-    AdminMetadata,
-    QueryBasedMetadata,
+    AdminPlugin,
+    QueryBasedPlugin,
     TaskWithMetadataQueryPlugin,
-    UserMetadata,
+    UserPlugin,
 )
-from .gaussian import DataGenerationMetadata, GaussianFitMetadata
+from .gaussian import DataGenerationPlugin, GaussianFitPlugin
 from .lhcb import (
-    LHCbAnalysisMetadata,
-    LHCbReconstructionMetadata,
-    LHCbSimulationMetadata,
+    LHCbAnalysisPlugin,
+    LHCbReconstructionPlugin,
+    LHCbSimulationPlugin,
 )
-from .mandelbrot import MandelBrotGenerationMetadata, MandelBrotMergingMetadata
-from .pi import PiGatherMetadata, PiSimulateMetadata, PiSimulateV2Metadata
+from .mandelbrot import MandelBrotGenerationPlugin, MandelBrotMergingPlugin
+from .pi import PiGatherPlugin, PiSimulatePlugin, PiSimulateV2Plugin
 
 # Plugins will be auto-registered through the metaclass or discovery system
 
 __all__ = [
     # Core plugins
-    "AdminMetadata",
-    "QueryBasedMetadata",
-    "UserMetadata",
+    "AdminPlugin",
+    "QueryBasedPlugin",
+    "UserPlugin",
     "TaskWithMetadataQueryPlugin",
     # PI simulation plugins
-    "PiSimulateMetadata",
-    "PiSimulateV2Metadata",
-    "PiGatherMetadata",
+    "PiSimulatePlugin",
+    "PiSimulateV2Plugin",
+    "PiGatherPlugin",
     # Mandelbrot plugins
-    "MandelBrotGenerationMetadata",
-    "MandelBrotMergingMetadata",
+    "MandelBrotGenerationPlugin",
+    "MandelBrotMergingPlugin",
     # Gaussian fit plugins
-    "DataGenerationMetadata",
-    "GaussianFitMetadata",
+    "DataGenerationPlugin",
+    "GaussianFitPlugin",
     # LHCb plugins
-    "LHCbSimulationMetadata",
-    "LHCbReconstructionMetadata",
-    "LHCbAnalysisMetadata",
+    "LHCbSimulationPlugin",
+    "LHCbReconstructionPlugin",
+    "LHCbAnalysisPlugin",
 ]

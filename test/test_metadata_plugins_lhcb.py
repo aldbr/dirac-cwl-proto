@@ -8,78 +8,76 @@ reconstruction, and analysis metadata implementations.
 from pathlib import Path
 
 from dirac_cwl_proto.metadata.plugins.lhcb import (
-    LHCbAnalysisMetadata,
-    LHCbMetadata,
-    LHCbReconstructionMetadata,
-    LHCbSimulationMetadata,
+    LHCbAnalysisPlugin,
+    LHCbBasePlugin,
+    LHCbReconstructionPlugin,
+    LHCbSimulationPlugin,
 )
 
 
-class TestLHCbMetadata:
-    """Test the base LHCbMetadata class."""
+class TestLHCbBasePlugin:
+    """Test the base LHCbBasePlugin class."""
 
     def test_creation_and_path_generation(self):
-        """Test LHCbMetadata creation and path generation."""
-        metadata = LHCbMetadata(task_id=123, run_id=456)
-        assert metadata.task_id == 123
-        assert metadata.run_id == 456
-        assert metadata.vo == "lhcb"
+        """Test LHCbBasePlugin creation and path generation."""
+        plugin = LHCbBasePlugin(task_id=123, run_id=456)
+        assert plugin.task_id == 123
+        assert plugin.run_id == 456
+        assert plugin.vo == "lhcb"
 
-        # Test LHCb-specific path generation
-        metadata = LHCbMetadata(task_id=12345, run_id=1)
+        # Test LHCb-specific path generation through data catalog interface
+        from dirac_cwl_proto.metadata.plugins.lhcb import LHCbDataCatalogInterface
 
-        # Test get_lhcb_base_path method
-        path = metadata.get_lhcb_base_path()
+        data_catalog = LHCbDataCatalogInterface()
+        path = data_catalog.get_lhcb_base_path(task_id=12345, run_id=1)
         expected = Path("filecatalog/lhcb/12345/1")
         assert path == expected
 
     def test_get_input_query(self):
         """Test base get_input_query implementation."""
-        metadata = LHCbMetadata(task_id=1, run_id=1)
+        plugin = LHCbBasePlugin(task_id=1, run_id=1)
 
-        result = metadata.get_input_query("input_file")
-        # Base LHCbMetadata returns None - only derived classes implement queries
+        result = plugin.get_input_query("input_file")
+        # Base LHCbBasePlugin returns None - only derived classes implement queries
         assert result is None
 
     def test_get_output_query(self):
         """Test base get_output_query implementation."""
-        metadata = LHCbMetadata(task_id=2, run_id=2)
+        plugin = LHCbBasePlugin(task_id=2, run_id=2)
 
-        result = metadata.get_output_query("output_file")
-        # Base LHCbMetadata returns None - only derived classes implement queries
+        result = plugin.get_output_query("output_file")
+        # Base LHCbBasePlugin returns None - only derived classes implement queries
         assert result is None
 
 
-class TestLHCbSimulationMetadata:
-    """Test the LHCbSimulationMetadata class."""
+class TestLHCbSimulationPlugin:
+    """Test the LHCbSimulationPlugin class."""
 
     def test_creation_and_simulation_parameters(self):
-        """Test LHCbSimulationMetadata creation with simulation-specific parameters."""
+        """Test LHCbSimulationPlugin creation with simulation-specific parameters."""
         # Test basic creation
-        metadata = LHCbSimulationMetadata(task_id=123, run_id=1)
-        assert metadata.get_hook_plugin() == "LHCbSimulation"
-        assert "LHCb simulation" in metadata.description
+        plugin = LHCbSimulationPlugin(task_id=123, run_id=1)
+        assert plugin.name() == "LHCbSimulationPlugin"
+        assert "LHCb simulation" in plugin.description
 
         # Test creation with simulation-specific parameters
-        metadata = LHCbSimulationMetadata(
+        plugin = LHCbSimulationPlugin(
             task_id=123,
             run_id=1,
             detector_conditions="sim-20230101-vc-md100",
             beam_energy=6500.0,
             generator_config="Pythia8",
         )
-        assert metadata.detector_conditions == "sim-20230101-vc-md100"
-        assert metadata.beam_energy == 6500.0
-        assert metadata.generator_config == "Pythia8"
+        assert plugin.detector_conditions == "sim-20230101-vc-md100"
+        assert plugin.beam_energy == 6500.0
+        assert plugin.generator_config == "Pythia8"
 
     def test_pre_process_simulation(self):
         """Test simulation pre_process method."""
-        metadata = LHCbSimulationMetadata(
-            task_id=123, run_id=1, generator_config="Pythia8"
-        )
+        plugin = LHCbSimulationPlugin(task_id=123, run_id=1, generator_config="Pythia8")
 
         command = ["lhcb-simulation", "workflow.cwl"]
-        result = metadata.pre_process(Path("/tmp/job"), command)
+        result = plugin.pre_process(Path("/tmp/job"), command)
 
         # The pre_process method calculates optimal events and updates parameters
         # It returns the original command unchanged
@@ -89,7 +87,7 @@ class TestLHCbSimulationMetadata:
 
     def test_update_job_parameters(self, mocker):
         """Test job parameter updates."""
-        metadata = LHCbSimulationMetadata(task_id=123, run_id=1)
+        plugin = LHCbSimulationPlugin(task_id=123, run_id=1)
 
         # Mock parameter file loading
         mock_load_inputfile = mocker.patch(
@@ -102,7 +100,7 @@ class TestLHCbSimulationMetadata:
         job_path = Path("/tmp/job")
         command = ["simulate.py", "--config", "params.yaml"]
 
-        metadata._update_job_parameters(job_path, command)
+        plugin._update_job_parameters(job_path, command)
 
         # Should have loaded parameters file
         mock_load_inputfile.assert_called_once()
@@ -113,7 +111,7 @@ class TestLHCbSimulationMetadata:
 
     def test_update_job_parameters_file_error(self, mocker):
         """Test job parameter update with file error."""
-        metadata = LHCbSimulationMetadata(task_id=123, run_id=1)
+        plugin = LHCbSimulationPlugin(task_id=123, run_id=1)
 
         # Mock file loading error
         mock_load_inputfile = mocker.patch(
@@ -127,7 +125,7 @@ class TestLHCbSimulationMetadata:
         command = ["simulate.py", "--config", "params.yaml"]
 
         # Should handle error gracefully
-        metadata._update_job_parameters(job_path, command)
+        plugin._update_job_parameters(job_path, command)
 
         # Should still try to open file for writing
         mock_open.assert_called_once()
@@ -136,102 +134,96 @@ class TestLHCbSimulationMetadata:
 
     def test_pre_process(self):
         """Test simulation pre_process method."""
-        metadata = LHCbSimulationMetadata(
-            task_id=123, run_id=1, generator_config="Pythia8"
-        )
+        plugin = LHCbSimulationPlugin(task_id=123, run_id=1, generator_config="Pythia8")
 
         command = ["lhcb-simulation", "workflow.cwl"]
-        result = metadata.pre_process(Path("/tmp/job"), command)
+        result = plugin.pre_process(Path("/tmp/job"), command)
 
         # The pre_process method calculates optimal events and updates parameters
         # It returns the original command unchanged (actual implementation doesn't modify command)
         assert isinstance(result, list)
         assert result[0] == "lhcb-simulation"
         assert result[1] == "workflow.cwl"
-        # The number of events is calculated and stored in the metadata
-        assert metadata.number_of_events >= 0  # Should have calculated events
+        # The number of events is calculated and stored in the plugin
+        assert plugin.number_of_events >= 0  # Should have calculated events
 
     def test_post_process(self, mocker):
         """Test simulation post_process method."""
-        metadata = LHCbSimulationMetadata(task_id=123, run_id=1)
+        plugin = LHCbSimulationPlugin(task_id=123, run_id=1)
 
         job_path = Path("/tmp/job")
 
         # Mock glob to find simulation files
         mock_glob = mocker.patch("dirac_cwl_proto.metadata.plugins.lhcb.glob.glob")
         # Mock the store_output method on the data_catalog instance
-        mock_store = mocker.patch.object(metadata.data_catalog, "store_output")
+        mock_store = mocker.patch.object(plugin.data_catalog, "store_output")
         mock_glob.side_effect = [
             ["/tmp/job/output.sim"],  # sim files
             ["/tmp/job/pool_xml_catalog.xml"],  # catalog files
         ]
 
-        result = metadata.post_process(job_path)
+        result = plugin.post_process(job_path)
 
         assert result is True
         # Should call store_output for sim and catalog files
         assert mock_store.call_count == 2
 
 
-class TestLHCbReconstructionMetadata:
-    """Test the LHCbReconstructionMetadata class."""
+class TestLHCbReconstructionPlugin:
+    """Test the LHCbReconstructionPlugin class."""
 
     def test_creation(self):
-        """Test LHCbReconstructionMetadata creation."""
-        metadata = LHCbReconstructionMetadata(task_id=456, run_id=1)
-        assert metadata.get_hook_plugin() == "LHCbReconstruction"
-        assert "LHCb reconstruction" in metadata.description
+        """Test LHCbReconstructionPlugin creation."""
+        plugin = LHCbReconstructionPlugin(task_id=456, run_id=1)
+        assert plugin.name() == "LHCbReconstructionPlugin"
+        assert "LHCb reconstruction" in plugin.description
 
     def test_creation_with_reconstruction_parameters(self):
         """Test creation with reconstruction-specific parameters."""
-        metadata = LHCbReconstructionMetadata(
+        plugin = LHCbReconstructionPlugin(
             task_id=456,
             run_id=1,
             input_data_type="SIM",
             output_data_type="DST",
             reconstruction_version="v50r1",
         )
-        assert metadata.input_data_type == "SIM"
-        assert metadata.output_data_type == "DST"
-        assert metadata.reconstruction_version == "v50r1"
+        assert plugin.input_data_type == "SIM"
+        assert plugin.output_data_type == "DST"
+        assert plugin.reconstruction_version == "v50r1"
 
     def test_validate_data_types(self):
         """Test data type validation."""
         # Valid data types
-        metadata = LHCbReconstructionMetadata(
+        plugin = LHCbReconstructionPlugin(
             task_id=456, run_id=1, input_data_type="SIM", output_data_type="DST"
         )
-        assert metadata.input_data_type == "SIM"
-        assert metadata.output_data_type == "DST"
+        assert plugin.input_data_type == "SIM"
+        assert plugin.output_data_type == "DST"
 
     def test_get_input_query_with_data_type(self):
         """Test input query with data type filtering."""
-        metadata = LHCbReconstructionMetadata(
-            task_id=456, run_id=1, input_data_type="SIM"
-        )
+        plugin = LHCbReconstructionPlugin(task_id=456, run_id=1, input_data_type="SIM")
 
-        result = metadata.get_input_query("input_files")
+        result = plugin.get_input_query("input_files")
         expected = Path("filecatalog/lhcb/456/1/sim")
         assert result == expected
 
     def test_get_output_query_with_data_type(self):
         """Test output query with data type specification."""
-        metadata = LHCbReconstructionMetadata(
-            task_id=456, run_id=1, output_data_type="DST"
-        )
+        plugin = LHCbReconstructionPlugin(task_id=456, run_id=1, output_data_type="DST")
 
-        result = metadata.get_output_query("output_files")
+        result = plugin.get_output_query("output_files")
         expected = Path("filecatalog/lhcb/456/1/dst")
         assert result == expected
 
     def test_pre_process(self):
         """Test reconstruction pre_process method."""
-        metadata = LHCbReconstructionMetadata(
+        plugin = LHCbReconstructionPlugin(
             task_id=456, run_id=1, reconstruction_version="v50r1"
         )
 
         command = ["lhcb-reconstruction", "--input", "sim.dst"]
-        result = metadata.pre_process(Path("/tmp/job"), command)
+        result = plugin.pre_process(Path("/tmp/job"), command)
 
         # Should add reconstruction-specific parameters
         assert "--version" in result
@@ -242,58 +234,58 @@ class TestLHCbReconstructionMetadata:
         assert "DST" in result  # default output_data_type
 
 
-class TestLHCbAnalysisMetadata:
-    """Test the LHCbAnalysisMetadata class."""
+class TestLHCbAnalysisPlugin:
+    """Test the LHCbAnalysisPlugin class."""
 
     def test_creation(self):
-        """Test LHCbAnalysisMetadata creation."""
-        metadata = LHCbAnalysisMetadata(
+        """Test LHCbAnalysisPlugin creation."""
+        plugin = LHCbAnalysisPlugin(
             task_id=789, run_id=1, analysis_name="TestAnalysis", user_name="testuser"
         )
-        assert metadata.get_hook_plugin() == "LHCbAnalysis"
-        assert "LHCb analysis" in metadata.description
+        assert plugin.name() == "LHCbAnalysisPlugin"
+        assert "LHCb analysis" in plugin.description
 
     def test_creation_with_analysis_parameters(self):
         """Test creation with analysis-specific parameters."""
-        metadata = LHCbAnalysisMetadata(
+        plugin = LHCbAnalysisPlugin(
             task_id=789,
             run_id=1,
             analysis_name="B2KstarMuMu",
             user_name="alice",
             analysis_version="v1.0",
         )
-        assert metadata.analysis_name == "B2KstarMuMu"
-        assert metadata.user_name == "alice"
-        assert metadata.analysis_version == "v1.0"
+        assert plugin.analysis_name == "B2KstarMuMu"
+        assert plugin.user_name == "alice"
+        assert plugin.analysis_version == "v1.0"
 
     def test_user_path_generation(self):
         """Test user-specific path generation."""
-        metadata = LHCbAnalysisMetadata(
+        plugin = LHCbAnalysisPlugin(
             task_id=789, run_id=1, user_name="alice", analysis_name="B2KstarMuMu"
         )
 
-        result = metadata.get_input_query("input_data")
+        result = plugin.get_input_query("input_data")
         expected = Path("filecatalog/lhcb/analysis/alice/B2KstarMuMu/input")
         assert result == expected
 
     def test_get_output_query_with_analysis(self):
         """Test output query with analysis-specific paths."""
-        metadata = LHCbAnalysisMetadata(
+        plugin = LHCbAnalysisPlugin(
             task_id=789, run_id=1, user_name="alice", analysis_name="B2KstarMuMu"
         )
 
-        result = metadata.get_output_query("results")
+        result = plugin.get_output_query("results")
         expected = Path("filecatalog/lhcb/analysis/alice/B2KstarMuMu/results")
         assert result == expected
 
     def test_pre_process(self):
         """Test analysis pre_process method."""
-        metadata = LHCbAnalysisMetadata(
+        plugin = LHCbAnalysisPlugin(
             task_id=789, run_id=1, analysis_name="B2KstarMuMu", user_name="alice"
         )
 
         command = ["python", "analysis.py"]
-        result = metadata.pre_process(Path("/tmp/job"), command)
+        result = plugin.pre_process(Path("/tmp/job"), command)
 
         # Should add analysis-specific parameters
         assert "--analysis" in result
@@ -303,7 +295,7 @@ class TestLHCbAnalysisMetadata:
 
     def test_post_process_with_user_output(self, mocker):
         """Test analysis post_process with user-specific output handling."""
-        metadata = LHCbAnalysisMetadata(
+        plugin = LHCbAnalysisPlugin(
             task_id=789, run_id=1, user_name="alice", analysis_name="TestAnalysis"
         )
 
@@ -312,7 +304,7 @@ class TestLHCbAnalysisMetadata:
         # Mock glob to find ROOT files and plot files
         mock_glob = mocker.patch("dirac_cwl_proto.metadata.plugins.lhcb.glob.glob")
         # Mock the store_output method on the data_catalog instance
-        mock_store = mocker.patch.object(metadata.data_catalog, "store_output")
+        mock_store = mocker.patch.object(plugin.data_catalog, "store_output")
         mock_glob.side_effect = [
             ["/tmp/job/results.root"],  # ROOT files
             [],  # PNG files
@@ -321,7 +313,7 @@ class TestLHCbAnalysisMetadata:
             [],  # SVG files
         ]
 
-        result = metadata.post_process(job_path)
+        result = plugin.post_process(job_path)
 
         # The method should succeed
         assert result is True
@@ -329,16 +321,16 @@ class TestLHCbAnalysisMetadata:
         mock_store.assert_called()
 
 
-class TestLHCbPluginIntegration:
+class TestLHCbBasePluginIntegration:
     """Test integration between LHCb plugins."""
 
     def test_all_lhcb_plugins_have_vo_namespace(self):
         """Test that all LHCb plugins have the correct VO namespace."""
         plugins = [
-            LHCbMetadata,
-            LHCbSimulationMetadata,
-            LHCbReconstructionMetadata,
-            LHCbAnalysisMetadata,
+            LHCbBasePlugin,
+            LHCbSimulationPlugin,
+            LHCbReconstructionPlugin,
+            LHCbAnalysisPlugin,
         ]
 
         for plugin_class in plugins:
@@ -346,24 +338,24 @@ class TestLHCbPluginIntegration:
             assert plugin_class.vo == "lhcb"
 
     def test_lhcb_plugins_inheritance(self):
-        """Test that all LHCb plugins inherit from LHCbMetadata."""
+        """Test that all LHCb plugins inherit from LHCbBasePlugin."""
         plugins = [
-            LHCbSimulationMetadata,
-            LHCbReconstructionMetadata,
-            LHCbAnalysisMetadata,
+            LHCbSimulationPlugin,
+            LHCbReconstructionPlugin,
+            LHCbAnalysisPlugin,
         ]
 
         for plugin_class in plugins:
-            assert issubclass(plugin_class, LHCbMetadata)
+            assert issubclass(plugin_class, LHCbBasePlugin)
 
     def test_lhcb_path_consistency(self):
         """Test that all LHCb plugins generate consistent paths."""
         plugins = [
-            ("simulation", LHCbSimulationMetadata(task_id=1, run_id=1)),
-            ("reconstruction", LHCbReconstructionMetadata(task_id=2, run_id=2)),
+            ("simulation", LHCbSimulationPlugin(task_id=1, run_id=1)),
+            ("reconstruction", LHCbReconstructionPlugin(task_id=2, run_id=2)),
             (
                 "analysis",
-                LHCbAnalysisMetadata(
+                LHCbAnalysisPlugin(
                     task_id=3, run_id=3, analysis_name="test", user_name="test"
                 ),
             ),

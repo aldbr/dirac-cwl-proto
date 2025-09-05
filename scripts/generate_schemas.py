@@ -202,7 +202,7 @@ def generate_schema(model_class: Any, model_name: str) -> Dict[str, Any]:
         if hasattr(model_class, "vo"):
             schema["dirac_vo"] = model_class.vo
         if hasattr(model_class, "get_hook_plugin"):
-            schema["dirac_hook_plugin"] = model_class.get_hook_plugin()
+            schema["dirac_hook_plugin"] = model_class.name()
 
         # Set title if not present
         if "title" not in schema:
@@ -345,7 +345,7 @@ def main():
                 name: {
                     "class": model_class.__name__,
                     "hook_plugin": (
-                        model_class.get_hook_plugin()
+                        model_class.name()
                         if hasattr(model_class, "get_hook_plugin")
                         else None
                     ),

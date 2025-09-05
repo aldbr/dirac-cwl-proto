@@ -32,16 +32,16 @@ class TestSystemIntegration:
         # Test that core plugins are registered
         registry = get_registry()
         plugins = registry.list_plugins()
-        core_plugins = {"User", "Admin", "QueryBased"}
+        core_plugins = {"UserPlugin", "AdminPlugin", "QueryBasedPlugin"}
         assert core_plugins.issubset(set(plugins))
 
     def test_plugin_instantiation_flow(self):
         """Test the complete plugin instantiation flow."""
         # Test each core plugin
         test_cases = [
-            ("User", {}),
-            ("Admin", {"admin_level": 5, "log_level": "DEBUG"}),
-            ("QueryBased", {"query_root": "/data", "campaign": "Test"}),
+            ("UserPlugin", {}),
+            ("AdminPlugin", {"admin_level": 5, "log_level": "DEBUG"}),
+            ("QueryBasedPlugin", {"query_root": "/data", "campaign": "Test"}),
         ]
 
         for plugin_type, params in test_cases:
@@ -49,14 +49,14 @@ class TestSystemIntegration:
             registry = get_registry()
             descriptor = ExecutionHooksHint(hook_plugin=plugin_type, **params)
             instance = registry.instantiate_plugin(descriptor)
-            assert instance.get_hook_plugin() == plugin_type
+            assert instance.name() == plugin_type
 
             # Test via descriptor
             descriptor = ExecutionHooksHint(
                 hook_plugin=plugin_type, configuration=params
             )
             runtime = descriptor.to_runtime()
-            assert runtime.get_hook_plugin() == plugin_type
+            assert runtime.name() == plugin_type
 
     def test_vo_plugin_support(self):
         """Test VO-specific plugin functionality."""
@@ -74,14 +74,14 @@ class TestSystemIntegration:
         """Test complete CWL integration workflow."""
         # Create an enhanced descriptor directly to test CWL integration
         metadata_descriptor = ExecutionHooksHint(
-            hook_plugin="QueryBased",
+            hook_plugin="QueryBasedPlugin",
             configuration={"campaign": "Run3", "data_type": "AOD", "site": "CERN"},
         )
 
         # Convert to runtime
         runtime_metadata = metadata_descriptor.to_runtime()
         assert (
-            runtime_metadata.get_hook_plugin() == "QueryBased"
+            runtime_metadata.name() == "QueryBasedPlugin"
         )  # Test that CWL parameters are available
         # (Note: exact parameter extraction depends on implementation)
 
@@ -92,7 +92,7 @@ class TestRealWorldScenarios:
     def test_user_workflow_scenario(self):
         """Test a typical user workflow scenario."""
         # User creates a basic job with user metadata
-        user_descriptor = ExecutionHooksHint(hook_plugin="User")
+        user_descriptor = ExecutionHooksHint(hook_plugin="UserPlugin")
         user_runtime = user_descriptor.to_runtime()
 
         # Simulate job execution
@@ -111,7 +111,7 @@ class TestRealWorldScenarios:
         """Test an administrative workflow scenario."""
         # Admin creates a job with enhanced logging
         admin_descriptor = ExecutionHooksHint(
-            hook_plugin="Admin",
+            hook_plugin="AdminPlugin",
             configuration={
                 "admin_level": 8,
                 "log_level": "DEBUG",
@@ -136,7 +136,7 @@ class TestRealWorldScenarios:
         """Test a data analysis workflow scenario."""
         # Analyst creates a job with query-based data discovery
         analysis_descriptor = ExecutionHooksHint(
-            hook_plugin="QueryBased",
+            hook_plugin="QueryBasedPlugin",
             configuration={
                 "query_root": "/grid/data",
                 "campaign": "Run3_2024",
@@ -161,18 +161,17 @@ class TestRealWorldScenarios:
         """Test an LHCb simulation workflow scenario."""
         # Test if LHCb simulation plugin is available
         lhcb_descriptor = ExecutionHooksHint(
-            hook_plugin="LHCbSimulation",
+            hook_plugin="LHCbSimulationPlugin",
             configuration={
                 "task_id": 123,
                 "run_id": 2,
-                "generator": "Pythia8",
-                "n_events": 10000,
+                "number_of_events": 10000,
             },
         )
         lhcb_runtime = lhcb_descriptor.to_runtime()
 
         # Test LHCb-specific functionality
-        assert lhcb_runtime.get_hook_plugin() == "LHCbSimulation"
+        assert lhcb_runtime.name() == "LHCbSimulationPlugin"
 
         # Test path generation
         input_path = lhcb_runtime.get_input_query("gen_file")
@@ -204,7 +203,8 @@ class TestRealWorldScenarios:
         """Test parameter override scenarios."""
         # Base descriptor with default parameters
         base_descriptor = ExecutionHooksHint(
-            hook_plugin="Admin", configuration={"admin_level": 3, "log_level": "INFO"}
+            hook_plugin="AdminPlugin",
+            configuration={"admin_level": 3, "log_level": "INFO"},
         )
 
         # Create variants with different overrides
@@ -239,9 +239,9 @@ class TestErrorHandling:
         """Test handling of missing required parameters."""
         # Some plugins might require specific parameters
         with pytest.raises(
-            ValueError, match="Failed to instantiate plugin 'LHCbSimulation'"
+            ValueError, match="Failed to instantiate plugin 'LHCbSimulationPlugin'"
         ):
-            descriptor = ExecutionHooksHint(hook_plugin="LHCbSimulation")
+            descriptor = ExecutionHooksHint(hook_plugin="LHCbSimulationPlugin")
             descriptor.to_runtime()
 
     def test_plugin_registration_conflicts(self):
@@ -266,17 +266,14 @@ class TestErrorHandling:
         mock_cwl.hints = None
 
         descriptor = ExecutionHooksHint.from_cwl(mock_cwl)
-        assert descriptor.hook_plugin == "User"  # Should use default
+        assert descriptor.hook_plugin == "UserPlugin"  # Should use default
 
         # Test with empty hints
         mock_cwl.hints = []
         descriptor = ExecutionHooksHint.from_cwl(mock_cwl)
-        assert descriptor.hook_plugin == "User"  # Should use default
+        assert descriptor.hook_plugin == "UserPlugin"  # Should use default
 
         # Test with malformed hints
         mock_cwl.hints = [{"invalid": "hint"}]
         descriptor = ExecutionHooksHint.from_cwl(mock_cwl)
-        assert descriptor.hook_plugin == "User"  # Should ignore and use default
-
-
-# Performance tests removed - should be in separate performance test suite if needed
+        assert descriptor.hook_plugin == "UserPlugin"  # Should ignore and use default

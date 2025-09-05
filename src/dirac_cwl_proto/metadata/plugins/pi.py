@@ -73,7 +73,7 @@ class PiDataCatalogInterface(DataCatalogInterface):
         # Simulation workflows (V1 and V2) - no input queries
         return None
 
-    def get_output_query(self, output_name: str) -> Optional[Path]:
+    def get_output_query(self, output_name: str, **kwargs: Any) -> Optional[Path]:
         """Get output path for PI workflows."""
         # Gather workflow
         if self._is_gather_workflow():
@@ -89,7 +89,7 @@ class PiDataCatalogInterface(DataCatalogInterface):
             return None
 
 
-class PiSimulateMetadata(ExecutionHooksBasePlugin):
+class PiSimulatePlugin(ExecutionHooksBasePlugin):
     """PI simulation metadata model.
 
     This model handles PI simulation jobs that generate simulation data
@@ -121,7 +121,7 @@ class PiSimulateMetadata(ExecutionHooksBasePlugin):
         return False
 
 
-class PiSimulateV2Metadata(ExecutionHooksBasePlugin):
+class PiSimulateV2Plugin(ExecutionHooksBasePlugin):
     """PI simulation metadata model version 2.
 
     Enhanced version with configurable output path.
@@ -159,7 +159,7 @@ class PiSimulateV2Metadata(ExecutionHooksBasePlugin):
         return False
 
 
-class PiGatherMetadata(ExecutionHooksBasePlugin):
+class PiGatherPlugin(ExecutionHooksBasePlugin):
     """PI gathering metadata model.
 
     This model handles gathering and aggregation of PI simulation results
