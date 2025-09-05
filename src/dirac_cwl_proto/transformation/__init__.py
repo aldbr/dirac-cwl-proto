@@ -18,11 +18,10 @@ from ruamel.yaml import YAML
 from schema_salad.exceptions import ValidationException
 
 from dirac_cwl_proto.job import submit_job_router
+from dirac_cwl_proto.metadata import SchedulingHint, TransformationExecutionHooksHint
 from dirac_cwl_proto.submission_models import (
-    JobParameterModel,
+    JobInputModel,
     JobSubmissionModel,
-    TaskDescriptionModel,
-    TransformationMetadataModel,
     TransformationSubmissionModel,
 )
 
@@ -86,12 +85,12 @@ def submit_transformation_client(
     if metadata_path:
         with open(metadata_path, "r") as file:
             metadata = YAML(typ="safe").load(file)
-        metadata_model = TransformationMetadataModel(**metadata)
+        metadata_model = TransformationExecutionHooksHint(**metadata)
     else:
-        metadata_model = TransformationMetadataModel()
+        metadata_model = TransformationExecutionHooksHint()
     console.print("\t[green]:heavy_check_mark:[/green] Metadata")
 
-    transformation_description = TaskDescriptionModel(
+    transformation_scheduling = SchedulingHint(
         platform=platform,
         priority=priority,
         sites=sites,
@@ -100,8 +99,8 @@ def submit_transformation_client(
 
     transformation = TransformationSubmissionModel(
         task=task,
-        metadata=metadata_model,
-        description=transformation_description,
+        execution_hooks=metadata_model,
+        scheduling=transformation_scheduling,
     )
     console.print(
         "[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Transformation validated."
@@ -145,18 +144,23 @@ def submit_transformation_router(transformation: TransformationSubmissionModel) 
     logger.info("Transformation validated!")
 
     # Check if the transformation is waiting for an input
-    # - if there is no metadata, the transformation is not waiting for an input and can go on
-    # - if there is metadata, the transformation is waiting for an input
+    # - if there is no execution_hooks, the transformation is not waiting for an input and can go on
+    # - if there is execution_hooks, the transformation is waiting for an input
     job_model_params = []
-    if transformation.metadata.query_params and transformation.metadata.group_size:
+    if (
+        transformation.execution_hooks.configuration
+        and transformation.execution_hooks.group_size
+    ):
         # Get the metadata class
-        transformation_metadata = transformation.metadata.to_runtime(transformation)
+        transformation_metadata = transformation.execution_hooks.to_runtime(
+            transformation
+        )
 
         # Build the input cwl for the jobs to submit
         logger.info("Getting the input data for the transformation...")
         input_data_dict = {}
         min_length = None
-        for input_name, group_size in transformation.metadata.group_size.items():
+        for input_name, group_size in transformation.execution_hooks.group_size.items():
             # Get input query
             logger.info(f"\t- Getting input query for {input_name}...")
             input_query = transformation_metadata.get_input_query(input_name)
@@ -186,8 +190,8 @@ def submit_transformation_router(transformation: TransformationSubmissionModel) 
     jobs = JobSubmissionModel(
         task=transformation.task,
         parameters=job_model_params,
-        description=transformation.description,
-        metadata=transformation.metadata,
+        scheduling=transformation.scheduling,
+        execution_hooks=transformation.execution_hooks,
     )
     logger.info("Jobs built!")
 
@@ -236,7 +240,7 @@ def _get_inputs(input_query: Path | list[Path], group_size: int) -> List[List[st
 
 def _generate_job_model_parameter(
     input_data_dict: Dict[str, List[List[str]]]
-) -> List[JobParameterModel]:
+) -> List[JobInputModel]:
     """Generate job model parameters from input data provided."""
     job_model_params = []
 
@@ -252,6 +256,6 @@ def _generate_job_model_parameter(
                 File(path=str(Path(path).resolve())) for path in input_data
             ]
 
-        job_model_params.append(JobParameterModel(sandbox=None, cwl=cwl_inputs))
+        job_model_params.append(JobInputModel(sandbox=None, cwl=cwl_inputs))
 
     return job_model_params

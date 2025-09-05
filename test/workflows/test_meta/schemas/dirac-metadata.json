@@ -68,17 +68,17 @@
       "title": "DIRAC Metadata Model",
       "type": "object"
     },
-    "DataManager": {
+    "ExecutionHooksHint": {
       "additionalProperties": true,
       "description": "Data management configuration for DIRAC jobs",
       "properties": {
-        "metadata_class": {
+        "hook_plugin": {
           "default": "User",
           "description": "Registry key for the metadata implementation class",
           "title": "Metadata Class",
           "type": "string"
         },
-        "query_params": {
+        "configuration": {
           "description": "Additional parameters for metadata plugins",
           "title": "Query Params",
           "type": "object"
@@ -223,17 +223,17 @@
     },
     "JobSubmissionModel": {
       "$defs": {
-        "DataManager": {
+        "ExecutionHooksHint": {
           "additionalProperties": true,
           "description": "Data management configuration for DIRAC jobs",
           "properties": {
-            "metadata_class": {
+            "hook_plugin": {
               "default": "User",
               "description": "Registry key for the metadata implementation class",
               "title": "Metadata Class",
               "type": "string"
             },
-            "query_params": {
+            "configuration": {
               "description": "Additional parameters for metadata plugins",
               "title": "Query Params",
               "type": "object"
@@ -347,7 +347,7 @@
           "$ref": "#/$defs/TaskDescriptionModel"
         },
         "metadata": {
-          "$ref": "#/$defs/DataManager"
+          "$ref": "#/$defs/ExecutionHooksHint"
         },
         "parameters": {
           "anyOf": [
@@ -857,13 +857,13 @@
               "default": null,
               "title": "Group Size"
             },
-            "metadata_class": {
+            "hook_plugin": {
               "default": "User",
               "description": "Registry key for the metadata implementation class",
               "title": "Metadata Class",
               "type": "string"
             },
-            "query_params": {
+            "configuration": {
               "description": "Additional parameters for metadata plugins",
               "title": "Query Params",
               "type": "object"
@@ -1048,7 +1048,7 @@
       "title": "DIRAC Metadata Model",
       "type": "object"
     },
-    "TransformationDataManager": {
+    "TransformationExecutionHooksHint": {
       "additionalProperties": true,
       "description": "Data management configuration for DIRAC jobs",
       "properties": {
@@ -1068,13 +1068,13 @@
           "description": "Input grouping configuration for transformation jobs",
           "title": "Group Size"
         },
-        "metadata_class": {
+        "hook_plugin": {
           "default": "User",
           "description": "Registry key for the metadata implementation class",
           "title": "Metadata Class",
           "type": "string"
         },
-        "query_params": {
+        "configuration": {
           "description": "Additional parameters for metadata plugins",
           "title": "Query Params",
           "type": "object"
@@ -1173,13 +1173,13 @@
               "default": null,
               "title": "Group Size"
             },
-            "metadata_class": {
+            "hook_plugin": {
               "default": "User",
               "description": "Registry key for the metadata implementation class",
               "title": "Metadata Class",
               "type": "string"
             },
-            "query_params": {
+            "configuration": {
               "description": "Additional parameters for metadata plugins",
               "title": "Query Params",
               "type": "object"

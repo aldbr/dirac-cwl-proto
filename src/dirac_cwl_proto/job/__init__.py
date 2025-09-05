@@ -27,9 +27,9 @@ from rich.text import Text
 from ruamel.yaml import YAML
 from schema_salad.exceptions import ValidationException
 
-from dirac_cwl_proto.metadata.core import BaseMetadataModel
+from dirac_cwl_proto.metadata.core import ExecutionHooksBasePlugin
 from dirac_cwl_proto.submission_models import (
-    JobParameterModel,
+    JobInputModel,
     JobSubmissionModel,
     extract_dirac_hints,
 )
@@ -81,7 +81,7 @@ def submit_job_client(
 
     # Extract and validate dirac hints; unknown hints are logged as warnings.
     try:
-        job_metadata, job_description = extract_dirac_hints(task)
+        job_metadata, job_scheduling = extract_dirac_hints(task)
     except Exception as exc:
         console.print(
             f"[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Invalid DIRAC hints:\n{exc}"
@@ -106,18 +106,18 @@ def submit_job_client(
             if overrides:
                 override_hints = overrides[next(iter(overrides))].get("hints", {})
                 if override_hints:
-                    job_description = job_description.model_copy(
-                        update=override_hints.pop("dirac:job-execution", {})
+                    job_scheduling = job_scheduling.model_copy(
+                        update=override_hints.pop("dirac:scheduling", {})
                     )
                     job_metadata = job_metadata.model_copy(
-                        update=override_hints.pop("dirac:data-management", {})
+                        update=override_hints.pop("dirac:execution-hooks", {})
                     )
 
             # Upload the local files to the sandbox store
             sandbox_id = upload_local_input_files(parameter)
 
             parameters.append(
-                JobParameterModel(
+                JobInputModel(
                     sandbox=[sandbox_id] if sandbox_id else None,
                     cwl=parameter,
                 )
@@ -129,8 +129,8 @@ def submit_job_client(
     job = JobSubmissionModel(
         task=task,
         parameters=parameters,
-        description=job_description,
-        metadata=job_metadata,
+        scheduling=job_scheduling,
+        execution_hooks=job_metadata,
     )
     console.print(
         "[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Job(s) validated."
@@ -230,8 +230,8 @@ def submit_job_router(job: JobSubmissionModel) -> bool:
                 JobSubmissionModel(
                     task=job.task,
                     parameters=[parameter],
-                    description=job.description,
-                    metadata=job.metadata,
+                    scheduling=job.scheduling,
+                    execution_hooks=job.execution_hooks,
                 )
             )
     logger.info("Job(s) validated!")
@@ -255,8 +255,8 @@ def submit_job_router(job: JobSubmissionModel) -> bool:
 
 def _pre_process(
     executable: CommandLineTool | Workflow | ExpressionTool,
-    arguments: JobParameterModel | None,
-    runtime_metadata: BaseMetadataModel | None,
+    arguments: JobInputModel | None,
+    runtime_metadata: ExecutionHooksBasePlugin | None,
     job_path: Path,
 ) -> list[str]:
     """
@@ -334,7 +334,7 @@ def _post_process(
     stdout: str,
     stderr: str,
     job_path: Path,
-    runtime_metadata: BaseMetadataModel | None,
+    runtime_metadata: ExecutionHooksBasePlugin | None,
 ):
     """
     Post-process the job after execution.
@@ -364,7 +364,9 @@ def run_job(job: JobSubmissionModel) -> bool:
     logger = logging.getLogger("JobWrapper")
     # Instantiate runtime metadata from the serializable descriptor and
     # the job context so implementations can access task inputs/overrides.
-    runtime_metadata = job.metadata.to_runtime(job) if job.metadata else None
+    runtime_metadata = (
+        job.execution_hooks.to_runtime(job) if job.execution_hooks else None
+    )
 
     # Isolate the job in a specific directory
     job_path = Path(".") / "workernode" / f"{random.randint(1000, 9999)}"

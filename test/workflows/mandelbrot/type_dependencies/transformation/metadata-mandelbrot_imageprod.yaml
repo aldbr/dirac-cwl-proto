@@ -1,1 +1,1 @@
-metadata_class: MandelBrotGeneration
+hook_plugin: MandelBrotGenerationPlugin

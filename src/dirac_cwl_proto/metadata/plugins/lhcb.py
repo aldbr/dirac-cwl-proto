@@ -17,10 +17,143 @@ from cwl_utils.parser.cwl_v1_2_utils import load_inputfile
 from pydantic import Field
 from ruamel.yaml import YAML
 
-from ..core import BaseMetadataModel
+from ..core import DataCatalogInterface, ExecutionHooksBasePlugin
 
 
-class LHCbMetadata(BaseMetadataModel):
+class LHCbDataCatalogInterface(DataCatalogInterface):
+    """Unified data catalog interface for LHCb experiment.
+
+    Handles simulation, reconstruction, and analysis workflows for LHCb.
+    """
+
+    def __init__(self):
+        """Initialize LHCb data catalog interface."""
+        pass
+
+    def get_lhcb_base_path(self, task_id: int, run_id: int) -> Path:
+        """Get the base path for LHCb data organization."""
+        return Path("filecatalog") / "lhcb" / str(task_id) / str(run_id)
+
+    def get_input_query(  # type: ignore[override]
+        self,
+        input_name: str,
+        task_id: int,
+        run_id: int,
+        workflow_type: str = "simulation",
+        input_data_type: str = "RAW",
+        user_name: Optional[str] = None,
+        analysis_name: Optional[str] = None,
+        input_datasets: Optional[List[str]] = None,
+    ) -> Union[Path, List[Path], None]:
+        """Get input query for LHCb workflows."""
+        # Analysis workflow
+        if workflow_type == "analysis":
+            # user_name and analysis_name are required for analysis workflows
+            if not user_name or not analysis_name:
+                raise ValueError(
+                    "user_name and analysis_name are required for analysis workflows"
+                )
+
+            base = Path("filecatalog") / "lhcb" / "analysis" / user_name / analysis_name
+
+            if input_datasets:
+                # Return paths for all specified datasets
+                dataset_paths = []
+                for dataset in input_datasets:
+                    dataset_paths.append(base / "datasets" / dataset)
+                return dataset_paths
+
+            return base / "input"
+
+        # Reconstruction workflow
+        elif workflow_type == "reconstruction":
+            base = self.get_lhcb_base_path(task_id, run_id)
+
+            if input_name == "raw_data":
+                result = base / "raw"
+            elif input_name == "conditions":
+                result = base / "conditions"
+            elif input_name == "input_files":
+                # Use input_data_type to determine the subdirectory
+                result = base / input_data_type.lower()
+            elif input_name == "files":
+                # Files input typically refers to simulation output files
+                result = base / "simulation"
+            else:
+                result = base
+
+            return result
+
+        # Simulation workflow (default)
+        else:
+            if input_name == "conditions":
+                return self.get_lhcb_base_path(task_id, run_id) / "conditions"
+            elif input_name == "geometry":
+                return self.get_lhcb_base_path(task_id, run_id) / "geometry"
+
+            return self.get_lhcb_base_path(task_id, run_id)
+
+    def get_output_query(  # type: ignore[override]
+        self,
+        output_name: str,
+        task_id: int,
+        run_id: int,
+        workflow_type: str = "simulation",
+        output_data_type: str = "DST",
+        user_name: Optional[str] = None,
+        analysis_name: Optional[str] = None,
+        analysis_version: Optional[str] = None,
+    ) -> Optional[Path]:
+        """Get output path for LHCb workflows."""
+        # Analysis workflow
+        if workflow_type == "analysis":
+            # user_name and analysis_name are required for analysis workflows
+            if not user_name or not analysis_name:
+                raise ValueError(
+                    "user_name and analysis_name are required for analysis workflows"
+                )
+
+            base = Path("filecatalog") / "lhcb" / "analysis" / user_name / analysis_name
+
+            if analysis_version:
+                base = base / analysis_version
+
+            if output_name == "ntuples":
+                return base / "ntuples"
+            elif output_name == "histograms":
+                return base / "histograms"
+            elif output_name == "plots":
+                return base / "plots"
+
+            return base / "results"
+
+        # Reconstruction workflow
+        elif workflow_type == "reconstruction":
+            base = self.get_lhcb_base_path(task_id, run_id)
+
+            if output_name == "dst":
+                return base / "reconstruction" / output_data_type.lower()
+            elif output_name == "log":
+                return base / "logs"
+            elif output_name == "output_files":
+                # Use output_data_type to determine the subdirectory
+                return base / output_data_type.lower()
+
+            return base / "outputs"
+
+        # Simulation workflow (default)
+        else:
+            base = self.get_lhcb_base_path(task_id, run_id)
+
+            if output_name == "sim":
+                return base / "simulation"
+            elif output_name == "pool_xml_catalog":
+                return base / "catalogs"
+
+            return base / "outputs"
+
+
+class LHCbBasePlugin(ExecutionHooksBasePlugin):
     """Base metadata model for LHCb experiment.
 
     This class provides common functionality for all LHCb metadata models,
@@ -33,12 +166,8 @@ class LHCbMetadata(BaseMetadataModel):
     task_id: int = Field(description="LHCb task identifier")
     run_id: int = Field(description="LHCb run identifier")
 
-    def get_lhcb_base_path(self) -> Path:
-        """Get the base path for LHCb data organization."""
-        return Path("filecatalog") / "lhcb" / str(self.task_id) / str(self.run_id)
 
-
-class LHCbSimulationMetadata(LHCbMetadata):
+class LHCbSimulationPlugin(LHCbBasePlugin):
     """Metadata model for LHCb simulation jobs.
 
     This model handles the specific requirements of LHCb simulation jobs,
@@ -62,29 +191,14 @@ class LHCbSimulationMetadata(LHCbMetadata):
         default=None, description="Generator configuration"
     )
 
-    def get_input_query(
-        self, input_name: str, **kwargs: Any
-    ) -> Union[Path, List[Path], None]:
-        """Get input data for LHCb simulation."""
-        if input_name == "conditions":
-            return self.get_lhcb_base_path() / "conditions"
-        elif input_name == "geometry":
-            return self.get_lhcb_base_path() / "geometry"
+    def __init__(self, **kwargs: Any):
+        """Initialize with unified LHCb data catalog interface."""
+        super().__init__(**kwargs)
+        self.data_catalog = LHCbDataCatalogInterface()
 
-        return self.get_lhcb_base_path()
-
-    def get_output_query(self, output_name: str) -> Optional[Path]:
-        """Get output path for LHCb simulation."""
-        base = self.get_lhcb_base_path()
-
-        if output_name == "sim":
-            return base / "simulation"
-        elif output_name == "pool_xml_catalog":
-            return base / "catalogs"
-
-        return base / "outputs"
-
-    def pre_process(self, job_path: Path, command: List[str]) -> List[str]:
+    def pre_process(
+        self, job_path: Path, command: List[str], **kwargs: Any
+    ) -> List[str]:
         """Pre-process LHCb simulation job.
 
         This method calculates the optimal number of events to simulate
@@ -170,7 +284,29 @@ class LHCbSimulationMetadata(LHCbMetadata):
         with open(parameters_path, "w") as f:
             YAML().dump(parameter_dict, f)
 
-    def post_process(self, job_path: Path) -> bool:
+    def get_input_query(
+        self, input_name: str, **kwargs: Any
+    ) -> Union[Path, List[Path], None]:
+        """Get input query for simulation workflow."""
+        return self.data_catalog.get_input_query(
+            input_name,
+            task_id=self.task_id,
+            run_id=self.run_id,
+            workflow_type="simulation",
+            **kwargs,
+        )
+
+    def get_output_query(self, output_name: str, **kwargs: Any) -> Optional[Path]:
+        """Get output query for simulation workflow."""
+        return self.data_catalog.get_output_query(
+            output_name,
+            task_id=self.task_id,
+            run_id=self.run_id,
+            workflow_type="simulation",
+            **kwargs,
+        )
+
+    def post_process(self, job_path: Path, **kwargs: Any) -> bool:
         """Post-process LHCb simulation outputs."""
         success = True
 
@@ -178,7 +314,9 @@ class LHCbSimulationMetadata(LHCbMetadata):
         sim_files = glob.glob(str(job_path / "*.sim"))
         for sim_file in sim_files:
             try:
-                self.store_output("sim", sim_file)
+                self.store_output(
+                    "sim", sim_file, task_id=self.task_id, run_id=self.run_id
+                )
             except Exception as e:
                 print(f"Failed to store simulation output {sim_file}: {e}")
                 success = False
@@ -195,7 +333,7 @@ class LHCbSimulationMetadata(LHCbMetadata):
         return success
 
 
-class LHCbReconstructionMetadata(LHCbMetadata):
+class LHCbReconstructionPlugin(LHCbBasePlugin):
     """Metadata model for LHCb reconstruction jobs.
 
     This model handles LHCb data reconstruction, including input file
@@ -215,40 +353,38 @@ class LHCbReconstructionMetadata(LHCbMetadata):
 
     output_data_type: str = Field(default="DST", description="Type of output data")
 
+    def __init__(self, **kwargs: Any):
+        """Initialize with unified LHCb data catalog interface."""
+        super().__init__(**kwargs)
+        self.data_catalog = LHCbDataCatalogInterface()
+
     def get_input_query(
         self, input_name: str, **kwargs: Any
     ) -> Union[Path, List[Path], None]:
-        """Get input data for LHCb reconstruction."""
-        base = self.get_lhcb_base_path()
+        """Get input query for reconstruction workflow."""
+        return self.data_catalog.get_input_query(
+            input_name,
+            task_id=self.task_id,
+            run_id=self.run_id,
+            workflow_type="reconstruction",
+            input_data_type=self.input_data_type,
+            **kwargs,
+        )
 
-        if input_name == "raw_data":
-            return base / "raw"
-        elif input_name == "conditions":
-            return base / "conditions"
-        elif input_name == "input_files":
-            # Use input_data_type to determine the subdirectory
-            return base / self.input_data_type.lower()
-        elif input_name == "files":
-            # Files input typically refers to simulation output files
-            return base / "simulation"
+    def get_output_query(self, output_name: str, **kwargs: Any) -> Optional[Path]:
+        """Get output query for reconstruction workflow."""
+        return self.data_catalog.get_output_query(
+            output_name,
+            task_id=self.task_id,
+            run_id=self.run_id,
+            workflow_type="reconstruction",
+            output_data_type=self.output_data_type,
+            **kwargs,
+        )
 
-        return base
-
-    def get_output_query(self, output_name: str) -> Optional[Path]:
-        """Get output path for LHCb reconstruction."""
-        base = self.get_lhcb_base_path()
-
-        if output_name == "dst":
-            return base / "reconstruction" / self.output_data_type.lower()
-        elif output_name == "log":
-            return base / "logs"
-        elif output_name == "output_files":
-            # Use output_data_type to determine the subdirectory
-            return base / self.output_data_type.lower()
-
-        return base / "outputs"
-
-    def pre_process(self, job_dir: Path, command: List[str]) -> List[str]:
+    def pre_process(
+        self, job_path: Path, command: List[str], **kwargs: Any
+    ) -> List[str]:
         """Pre-process the job command for reconstruction."""
         # Only add LHCb-specific arguments if this is not a CWL workflow execution
         # (i.e., when running LHCb applications directly, not cwltool)
@@ -263,7 +399,7 @@ class LHCbReconstructionMetadata(LHCbMetadata):
 
         return command
 
-    def post_process(self, job_path: Path) -> bool:
+    def post_process(self, job_path: Path, **kwargs: Any) -> bool:
         """Post-process LHCb reconstruction outputs."""
         success = True
 
@@ -288,7 +424,7 @@ class LHCbReconstructionMetadata(LHCbMetadata):
         return success
 
 
-class LHCbAnalysisMetadata(LHCbMetadata):
+class LHCbAnalysisPlugin(LHCbBasePlugin):
     """Metadata model for LHCb analysis jobs.
 
     This model supports user analysis jobs with flexible input/output
@@ -312,50 +448,42 @@ class LHCbAnalysisMetadata(LHCbMetadata):
         default=None, description="Event selection criteria"
     )
 
+    def __init__(self, **kwargs: Any):
+        """Initialize with unified LHCb data catalog interface."""
+        super().__init__(**kwargs)
+        self.data_catalog = LHCbDataCatalogInterface()
+
     def get_input_query(
         self, input_name: str, **kwargs: Any
     ) -> Union[Path, List[Path], None]:
-        """Get input data for LHCb analysis."""
-        base = (
-            Path("filecatalog")
-            / "lhcb"
-            / "analysis"
-            / self.user_name
-            / self.analysis_name
+        """Get input query for analysis workflow."""
+        return self.data_catalog.get_input_query(
+            input_name,
+            task_id=self.task_id,
+            run_id=self.run_id,
+            workflow_type="analysis",
+            user_name=self.user_name,
+            analysis_name=self.analysis_name,
+            input_datasets=self.input_datasets,
+            **kwargs,
         )
 
-        if self.input_datasets:
-            # Return paths for all specified datasets
-            dataset_paths = []
-            for dataset in self.input_datasets:
-                dataset_paths.append(base / "datasets" / dataset)
-            return dataset_paths
-
-        return base / "input"
-
-    def get_output_query(self, output_name: str) -> Optional[Path]:
-        """Get output path for LHCb analysis."""
-        base = (
-            Path("filecatalog")
-            / "lhcb"
-            / "analysis"
-            / self.user_name
-            / self.analysis_name
+    def get_output_query(self, output_name: str, **kwargs: Any) -> Optional[Path]:
+        """Get output query for analysis workflow."""
+        return self.data_catalog.get_output_query(
+            output_name,
+            task_id=self.task_id,
+            run_id=self.run_id,
+            workflow_type="analysis",
+            user_name=self.user_name,
+            analysis_name=self.analysis_name,
+            analysis_version=self.analysis_version,
+            **kwargs,
         )
 
-        if self.analysis_version:
-            base = base / self.analysis_version
-
-        if output_name == "ntuples":
-            return base / "ntuples"
-        elif output_name == "histograms":
-            return base / "histograms"
-        elif output_name == "plots":
-            return base / "plots"
-
-        return base / "results"
-
-    def pre_process(self, job_path: Path, command: List[str]) -> List[str]:
+    def pre_process(
+        self, job_path: Path, command: List[str], **kwargs: Any
+    ) -> List[str]:
         """Pre-process LHCb analysis job."""
         # Add analysis-specific parameters
         command.extend(["--analysis", self.analysis_name])
@@ -369,7 +497,7 @@ class LHCbAnalysisMetadata(LHCbMetadata):
 
         return command
 
-    def post_process(self, job_path: Path) -> bool:
+    def post_process(self, job_path: Path, **kwargs: Any) -> bool:
         """Post-process LHCb analysis outputs."""
         success = True
 

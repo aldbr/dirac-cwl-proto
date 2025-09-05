@@ -4,7 +4,7 @@
 This script automatically generates JSON schemas for all registered metadata
 plugins in the DIRAC CWL prototype system. It includes schemas for:
 
-1. Core metadata models (BaseMetadataModel, MetadataDescriptor, TaskDescriptor)
+1. Core metadata models (ExecutionHooksBasePlugin, MetadataDescriptor, TaskDescriptor)
 2. Submission models (JobSubmissionModel, etc.)
 3. All registered metadata plugins (user plugins included)
 
@@ -38,18 +38,18 @@ def collect_pydantic_models() -> Dict[str, Any]:
     # Import core models
     try:
         from dirac_cwl_proto.metadata.core import (
-            BaseMetadataModel,
-            DataManager,
-            JobExecutor,
-            TransformationDataManager,
+            ExecutionHooksBasePlugin,
+            ExecutionHooksHint,
+            SchedulingHint,
+            TransformationExecutionHooksHint,
         )
 
         models.update(
             {
-                "BaseMetadataModel": BaseMetadataModel,
-                "DataManager": DataManager,
-                "JobExecutor": JobExecutor,
-                "TransformationDataManager": TransformationDataManager,
+                "ExecutionHooksBasePlugin": ExecutionHooksBasePlugin,
+                "ExecutionHooksHint": ExecutionHooksHint,
+                "SchedulingHint": SchedulingHint,
+                "TransformationExecutionHooksHint": TransformationExecutionHooksHint,
             }
         )
         logger.info("Collected core metadata models")
@@ -59,22 +59,18 @@ def collect_pydantic_models() -> Dict[str, Any]:
     # Import submission models
     try:
         from dirac_cwl_proto.submission_models import (
-            JobParameterModel,
+            JobInputModel,
             JobSubmissionModel,
-            ProductionStepMetadataModel,
             ProductionSubmissionModel,
-            TaskDescriptionModel,
             TransformationSubmissionModel,
         )
 
         models.update(
             {
-                "TaskDescriptionModel": TaskDescriptionModel,
-                "JobParameterModel": JobParameterModel,
+                "JobInputModel": JobInputModel,
                 "JobSubmissionModel": JobSubmissionModel,
                 "TransformationSubmissionModel": TransformationSubmissionModel,
                 "ProductionSubmissionModel": ProductionSubmissionModel,
-                "ProductionStepMetadataModel": ProductionStepMetadataModel,
             }
         )
         logger.info("Collected submission models")
@@ -103,9 +99,6 @@ def collect_pydantic_models() -> Dict[str, Any]:
 
         excluded_prefixes = (
             "BaseMetadata",
-            "MetadataDescriptor",
-            "TaskDescriptor",
-            "TaskDescription",
             "Job",
             "Transformation",
             "Production",
@@ -208,8 +201,8 @@ def generate_schema(model_class: Any, model_name: str) -> Dict[str, Any]:
             schema["dirac_description"] = model_class.description
         if hasattr(model_class, "vo"):
             schema["dirac_vo"] = model_class.vo
-        if hasattr(model_class, "get_metadata_class"):
-            schema["dirac_metadata_class"] = model_class.get_metadata_class()
+        if hasattr(model_class, "get_hook_plugin"):
+            schema["dirac_hook_plugin"] = model_class.name()
 
         # Set title if not present
         if "title" not in schema:
@@ -345,17 +338,15 @@ def main():
         save_schema(unified_schema, unified_file, args.format)
 
     # Generate plugin summary
-    plugin_models = {
-        k: v for k, v in models.items() if hasattr(v, "get_metadata_class")
-    }
+    plugin_models = {k: v for k, v in models.items() if hasattr(v, "name")}
     if plugin_models:
         summary = {
             "plugins": {
                 name: {
                     "class": model_class.__name__,
-                    "metadata_class": (
-                        model_class.get_metadata_class()
-                        if hasattr(model_class, "get_metadata_class")
+                    "hook_plugin": (
+                        model_class.name()
+                        if hasattr(model_class, "get_hook_plugin")
                         else None
                     ),
                     "description": getattr(model_class, "description", None),

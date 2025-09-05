@@ -1,9 +1,9 @@
 # The step does not exist
 this-step-doesnot-exist:
   metadata:
-    metadata_class: MandelBrotGeneration
+    hook_plugin: MandelBrotGeneration
 image-merge:
   metadata:
-    metadata_class: MandelBrotMerging
+    hook_plugin: MandelBrotMerging
     group_size:
       data: 5

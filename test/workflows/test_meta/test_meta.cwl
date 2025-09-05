@@ -12,12 +12,12 @@ baseCommand: ["echo", "Hello World"]
 $namespaces:
   dirac: "./schemas/dirac-metadata.json#" # Generated schema from Pydantic models
 hints:
-  dirac:data-management:
-    metadata_class: "User"
-    query_params:
+  dirac:execution-hooks:
+    hook_plugin: "User"
+    configuration:
       campaign: PROD5
       site: LaPalma
-  dirac:job-execution:
+  dirac:scheduling:
     platform: x86_64
     priority: 10
     sites: null
