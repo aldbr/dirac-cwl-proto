@@ -183,7 +183,7 @@ class QueryBasedPlugin(ExecutionHooksBasePlugin):
 
         return None
 
-    def get_output_query(self, output_name: str) -> Optional[Path]:
+    def get_output_query(self, output_name: str, **kwargs: Any) -> Optional[Path]:
         """Generate output path based on metadata parameters."""
         base_path = Path("filecatalog") / "outputs"
 

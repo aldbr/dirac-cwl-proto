@@ -1,11 +1,11 @@
 simulate_step1:
   metadata:
-    hook_plugin: PiSimulateV2
+    hook_plugin: PiSimulateV2Plugin
 simulate_step2:
   metadata:
-    hook_plugin: PiSimulateV2
+    hook_plugin: PiSimulateV2Plugin
 gathering:
   metadata:
-    hook_plugin: PiGather
+    hook_plugin: PiGatherPlugin
     group_size:
       input-data: 2

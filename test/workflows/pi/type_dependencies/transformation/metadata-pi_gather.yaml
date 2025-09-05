@@ -1,4 +1,4 @@
-hook_plugin: PiGather
+hook_plugin: PiGatherPlugin
 group_size:
   input-data: 5
 configuration:

@@ -1,5 +1,4 @@
 hook_plugin: PiGather
-group_size:
-  input-data: 2
 configuration:
   num_points: 1000
+  input-data: 2

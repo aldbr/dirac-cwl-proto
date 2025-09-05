@@ -1,9 +1,13 @@
 data-generation:
   metadata:
-    hook_plugin: DataGeneration
+    hook_plugin: DataGenerationPlugin
+    configuration:
+      output_file_name_1: data_gen1.txt
+      output_file_name_2: data_gen2.txt
 fit:
   metadata:
-    hook_plugin: GaussianFit
+    hook_plugin: GaussianFitPlugin
     group_size:
       data1: 1
       data2: 1
+    configuration: {}

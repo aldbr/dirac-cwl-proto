@@ -1,4 +1,4 @@
-hook_plugin: LHCbReconstruction
+hook_plugin: LHCbReconstructionPlugin
 group_size:
   files: 3
 configuration:

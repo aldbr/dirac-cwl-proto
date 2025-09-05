@@ -314,7 +314,9 @@ class LHCbSimulationPlugin(LHCbBasePlugin):
         sim_files = glob.glob(str(job_path / "*.sim"))
         for sim_file in sim_files:
             try:
-                self.store_output("sim", sim_file)
+                self.store_output(
+                    "sim", sim_file, task_id=self.task_id, run_id=self.run_id
+                )
             except Exception as e:
                 print(f"Failed to store simulation output {sim_file}: {e}")
                 success = False

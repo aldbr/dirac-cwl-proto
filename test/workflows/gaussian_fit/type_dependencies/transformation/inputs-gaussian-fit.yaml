@@ -1,4 +1,4 @@
-hook_plugin: GaussianFit
+hook_plugin: GaussianFitPlugin
 group_size:
   data1: 1
   data2: 1

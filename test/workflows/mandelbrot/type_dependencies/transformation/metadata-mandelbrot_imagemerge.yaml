@@ -1,4 +1,4 @@
-hook_plugin: MandelBrotMerging
+hook_plugin: MandelBrotMergingPlugin
 group_size:
   data: 3
 configuration:

@@ -178,13 +178,13 @@ class ExecutionHooksBasePlugin(BaseModel):
         """Delegate to data catalog interface."""
         return self.data_catalog.get_input_query(input_name, **kwargs)
 
-    def get_output_query(self, output_name: str) -> Optional[Path]:
+    def get_output_query(self, output_name: str, **kwargs: Any) -> Optional[Path]:
         """Delegate to data catalog interface."""
-        return self.data_catalog.get_output_query(output_name)
+        return self.data_catalog.get_output_query(output_name, **kwargs)
 
-    def store_output(self, output_name: str, src_path: str) -> None:
+    def store_output(self, output_name: str, src_path: str, **kwargs: Any) -> None:
         """Delegate to data catalog interface."""
-        self.data_catalog.store_output(output_name, src_path)
+        self.data_catalog.store_output(output_name, src_path, **kwargs)
 
     @classmethod
     def get_schema_info(cls) -> Dict[str, Any]:
