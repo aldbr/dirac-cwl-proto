@@ -22,7 +22,6 @@ from ruamel.yaml import YAML
 from schema_salad.exceptions import ValidationException
 
 from dirac_cwl_proto.metadata import (
-    ExecutionHooksHint,
     SchedulingHint,
     TransformationExecutionHooksHint,
 )
@@ -94,7 +93,7 @@ def submit_production_client(
         scheduling_config = step_data.get("scheduling", {})
 
         # Create TransformationExecutionHooksHint with the metadata
-        production_step_metadata[step_name] = TransformationExecutionHooksHint(
+        production_step_execution_hooks[step_name] = TransformationExecutionHooksHint(
             **metadata_config
         )
         production_step_scheduling[step_name] = SchedulingHint(**scheduling_config)
@@ -103,7 +102,7 @@ def submit_production_client(
     # Create the production
     transformation = ProductionSubmissionModel(
         task=task,
-        steps_execution_hooks=production_step_metadata,
+        steps_execution_hooks=production_step_execution_hooks,
         steps_scheduling=production_step_scheduling,
     )
     console.print(

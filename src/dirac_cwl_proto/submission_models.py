@@ -97,9 +97,7 @@ class ProductionSubmissionModel(BaseModel):
 
     task: Workflow
     # Key: step name, Value: description & execution_hooks of a transformation
-    steps_execution_hooks: dict[
-        str, TransformationExecutionHooksHint | ExecutionHooksHint
-    ]
+    steps_execution_hooks: dict[str, TransformationExecutionHooksHint]
     # Key: step name, Value: scheduling configuration for a transformation
     steps_scheduling: dict[str, SchedulingHint] = {}
 
