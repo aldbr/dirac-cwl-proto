@@ -90,7 +90,7 @@ def submit_production_client(
     production_step_scheduling = {}
     for step_name, step_data in steps_metadata.items():
         # Extract metadata and scheduling from step_data
-        metadata_config = step_data.get("metadata", {})
+        metadata_config = step_data.get("execution-hooks", {})
         scheduling_config = step_data.get("scheduling", {})
 
         # Create TransformationExecutionHooksHint with the metadata
