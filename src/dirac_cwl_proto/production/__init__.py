@@ -86,7 +86,7 @@ def submit_production_client(
         with open(steps_metadata_path, "r") as file:
             steps_metadata = YAML(typ="safe").load(file)
 
-    production_step_metadata = {}
+    production_step_execution_hooks = {}
     production_step_scheduling = {}
     for step_name, step_data in steps_metadata.items():
         # Extract metadata and scheduling from step_data
