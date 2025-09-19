@@ -179,7 +179,7 @@ def _get_transformations(
 
         # Get the execution_hooks & description for the step
         step_id = step.id.split("#")[-1]
-        step_data: TransformationExecutionHooksHint | ExecutionHooksHint = (
+        step_data: TransformationExecutionHooksHint = (
             production.steps_execution_hooks.get(
                 step_id,
                 TransformationExecutionHooksHint(),
