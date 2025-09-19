@@ -1,8 +1,8 @@
 simulate:
-  metadata:
+  execution-hooks:
     hook_plugin: PiSimulatePlugin
 gathering:
-  metadata:
+  execution-hooks:
     hook_plugin: PiGatherPlugin
     group_size:
       input-data: 1

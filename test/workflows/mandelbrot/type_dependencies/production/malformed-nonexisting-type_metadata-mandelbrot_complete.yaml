@@ -1,11 +1,11 @@
 image-prod:
-  metadata:
+  execution-hooks:
     # This type does not exist
     hook_plugin: MandelBrotDoesNotExist
     group_size:
       data: 1
 image-merge:
-  metadata:
+  execution-hooks:
     hook_plugin: MandelBrotMerging
     group_size:
       data: 5
