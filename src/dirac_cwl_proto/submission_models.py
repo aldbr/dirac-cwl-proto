@@ -18,70 +18,18 @@ from cwl_utils.parser.cwl_v1_2 import (
 from pydantic import BaseModel, ConfigDict, field_serializer, model_validator
 
 from dirac_cwl_proto.metadata import (
-    DataManager,
-    JobExecutor,
+    ExecutionHooksHint,
+    SchedulingHint,
+    TransformationExecutionHooksHint,
 )
-
-# Local imports
-
-# -----------------------------------------------------------------------------
-# Task models
-# -----------------------------------------------------------------------------
-
-
-class TaskDescriptionModel(JobExecutor):
-    """
-    Description of a task (job/transformation/production step).
-
-    This class extends the core JobExecutor with additional methods
-    for CWL integration and backward compatibility.
-
-    Parameters
-    ----------
-    platform : str | None
-        Target platform name (for example ``"DIRAC"``). If ``None``, no
-        platform preference is encoded.
-    priority : int, optional
-        Scheduling priority. Higher values indicate higher priority.
-        Defaults to ``10``.
-    sites : list[str] | None
-        Optional list of candidate site names where the task may run.
-
-    Notes
-    -----
-    This is a serialisable Pydantic descriptor intended to carry CWL hints
-    related to runtime placement and scheduling. Prefer using the class
-    factory ``TaskDescriptionModel.from_hints(cwl)`` when extracting hints
-    from parsed CWL objects.
-    """
-
-    @classmethod
-    def from_hints(cls, cwl: Any) -> "TaskDescriptionModel":
-        """
-        Create a ``TaskDescriptionModel`` from CWL hints.
-
-        Parameters
-        ----------
-        cwl : Any
-            A parsed CWL ``CommandLineTool`` or ``Workflow`` object (for
-            example from ``cwl-utils``).
-
-        Returns
-        -------
-        TaskDescriptionModel
-            Descriptor populated from CWL hints. Unknown or missing hints
-            are ignored and sensible defaults are used.
-        """
-        return cls.from_cwl_hints(cwl)
-
 
 # -----------------------------------------------------------------------------
 # Job models
 # -----------------------------------------------------------------------------
 
 
-class JobParameterModel(BaseModel):
-    """Parameter of a job."""
+class JobInputModel(BaseModel):
+    """Input data and sandbox files for a job execution."""
 
     # Allow arbitrary types to be passed to the model
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -101,9 +49,9 @@ class JobSubmissionModel(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     task: CommandLineTool | Workflow | ExpressionTool
-    parameters: list[JobParameterModel] | None = None
-    description: TaskDescriptionModel
-    metadata: DataManager
+    parameters: list[JobInputModel] | None = None
+    scheduling: SchedulingHint
+    execution_hooks: ExecutionHooksHint
 
     @field_serializer("task")
     def serialize_task(self, value):
@@ -118,14 +66,6 @@ class JobSubmissionModel(BaseModel):
 # -----------------------------------------------------------------------------
 
 
-class TransformationMetadataModel(DataManager):
-    """Transformation metadata."""
-
-    # Number of data to group together in a transformation
-    # Key: input name, Value: group size
-    group_size: dict[str, int] | None = None
-
-
 class TransformationSubmissionModel(BaseModel):
     """Transformation definition sent to the router."""
 
@@ -133,8 +73,8 @@ class TransformationSubmissionModel(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     task: CommandLineTool | Workflow | ExpressionTool
-    metadata: TransformationMetadataModel
-    description: TaskDescriptionModel
+    execution_hooks: TransformationExecutionHooksHint
+    scheduling: SchedulingHint
 
     @field_serializer("task")
     def serialize_task(self, value):
@@ -149,13 +89,6 @@ class TransformationSubmissionModel(BaseModel):
 # -----------------------------------------------------------------------------
 
 
-class ProductionStepMetadataModel(BaseModel):
-    """Step metadata for a transformation."""
-
-    description: TaskDescriptionModel
-    metadata: TransformationMetadataModel
-
-
 class ProductionSubmissionModel(BaseModel):
     """Production definition sent to the router."""
 
@@ -163,18 +96,20 @@ class ProductionSubmissionModel(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     task: Workflow
-    # Key: step name, Value: description & metadata of a transformation
-    steps_metadata: dict[str, ProductionStepMetadataModel]
+    # Key: step name, Value: description & execution_hooks of a transformation
+    steps_execution_hooks: dict[str, TransformationExecutionHooksHint]
+    # Key: step name, Value: scheduling configuration for a transformation
+    steps_scheduling: dict[str, SchedulingHint] = {}
 
     @model_validator(mode="before")
     def validate_steps_metadata(cls, values):
         task = values.get("task")
-        steps_metadata = values.get("steps_metadata")
+        steps_execution_hooks = values.get("steps_execution_hooks")
 
-        if task and steps_metadata:
+        if task and steps_execution_hooks:
             # Extract the available steps in the task
             task_steps = set([step.id.split("#")[-1] for step in task.steps])
-            metadata_keys = set(steps_metadata.keys())
+            metadata_keys = set(steps_execution_hooks.keys())
 
             # Check if all metadata keys exist in the task's workflow steps
             missing_steps = metadata_keys - task_steps
@@ -198,11 +133,11 @@ class ProductionSubmissionModel(BaseModel):
 # -----------------------------------------------------------------------------
 
 
-def extract_dirac_hints(cwl: Any) -> tuple[DataManager, TaskDescriptionModel]:
-    """Thin wrapper that returns (DataManager, TaskDescriptionModel).
+def extract_dirac_hints(cwl: Any) -> tuple[ExecutionHooksHint, SchedulingHint]:
+    """Thin wrapper that returns (ExecutionHooksHint, SchedulingHint).
 
-    Prefer the class-factory APIs `DataManager.from_hints` and
-    `TaskDescriptionModel.from_hints` for new code. This helper remains for
+    Prefer the class-factory APIs `ExecutionHooksHint.from_cwl` and
+    `SchedulingHint.from_cwl` for new code. This helper remains for
     convenience.
     """
-    return DataManager.from_hints(cwl), TaskDescriptionModel.from_hints(cwl)
+    return ExecutionHooksHint.from_cwl(cwl), SchedulingHint.from_cwl(cwl)

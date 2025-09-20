@@ -9,23 +9,84 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, ClassVar, List, Optional, Union
 
-from ..core import BaseMetadataModel
+from pydantic import Field
+
+from ..core import (
+    DataCatalogInterface,
+    DummyDataCatalogInterface,
+    ExecutionHooksBasePlugin,
+)
 
 
-class UserMetadata(BaseMetadataModel):
-    """Default user metadata model with no special processing.
+class QueryBasedDataCatalogInterface(DataCatalogInterface):
+    """Data catalog interface for query-based data discovery.
 
-    This is the simplest metadata model that performs no special input/output
+    This interface builds paths based on query parameters like campaign,
+    site, and data type for structured data organization.
+    """
+
+    def __init__(
+        self,
+        query_root: str = "/",
+        site: Optional[str] = None,
+        campaign: Optional[str] = None,
+        data_type: Optional[str] = None,
+    ):
+        self.query_root = query_root
+        self.site = site
+        self.campaign = campaign
+        self.data_type = data_type
+
+    def get_input_query(
+        self, input_name: str, **kwargs: Any
+    ) -> Union[Path, List[Path], None]:
+        """Generate input query based on metadata parameters."""
+        base_path = Path(self.query_root) if self.query_root else Path("filecatalog")
+
+        # Build query path from metadata
+        query_parts = []
+        if self.campaign:
+            query_parts.append(self.campaign)
+        if self.site:
+            query_parts.append(self.site)
+        if self.data_type:
+            query_parts.append(self.data_type)
+
+        if query_parts:
+            return base_path / Path(*query_parts)
+
+        return None
+
+    def get_output_query(self, output_name: str, **kwargs: Any) -> Optional[Path]:
+        """Generate output path based on metadata parameters."""
+        base_path = Path("filecatalog") / "outputs"
+
+        if self.campaign and self.site:
+            return base_path / self.campaign / self.site
+        elif self.campaign:
+            return base_path / self.campaign
+        else:
+            return base_path
+
+
+class UserPlugin(ExecutionHooksBasePlugin):
+    """Default user plugin with no special processing.
+
+    This is the simplest plugin that performs no special input/output
     processing and is suitable for basic job execution.
     """
 
-    description: ClassVar[str] = "Basic user metadata with no special processing"
+    description: ClassVar[str] = "Basic user plugin with no special processing"
+
+    def __init__(self, **data):
+        super().__init__(**data)
+        self.data_catalog = DummyDataCatalogInterface()
 
 
-class AdminMetadata(BaseMetadataModel):
-    """Administrative metadata model with enhanced logging.
+class AdminPlugin(ExecutionHooksBasePlugin):
+    """Administrative plugin with enhanced logging.
 
-    This metadata model provides additional logging and monitoring
+    This plugin provides additional logging and monitoring
     capabilities for administrative tasks.
 
     Parameters
@@ -38,19 +99,25 @@ class AdminMetadata(BaseMetadataModel):
         Administrative privilege level. Defaults to 1.
     """
 
-    description: ClassVar[str] = "Administrative metadata with enhanced logging"
+    description: ClassVar[str] = "Administrative plugin with enhanced logging"
 
     log_level: str = "INFO"
     enable_monitoring: bool = True
     admin_level: int = 1
 
-    def pre_process(self, job_path: Path, command: List[str]) -> List[str]:
+    def __init__(self, **data):
+        super().__init__(**data)
+        self.data_catalog = DummyDataCatalogInterface()
+
+    def pre_process(
+        self, job_path: Path, command: List[str], **kwargs: Any
+    ) -> List[str]:
         """Add logging configuration to command."""
         if self.log_level != "INFO":
             command.extend(["--log-level", self.log_level])
         return command
 
-    def post_process(self, job_path: Path) -> bool:
+    def post_process(self, job_path: Path, **kwargs: Any) -> bool:
         """Enhanced post-processing with monitoring."""
         if self.enable_monitoring:
             # Could send metrics to monitoring system
@@ -58,20 +125,30 @@ class AdminMetadata(BaseMetadataModel):
         return True
 
 
-class QueryBasedMetadata(BaseMetadataModel):
-    """Metadata model that supports query-based input resolution.
+class QueryBasedPlugin(ExecutionHooksBasePlugin):
+    """Metadata plugin that supports query-based input resolution.
 
-    This model demonstrates how to implement query-based data discovery
+    This plugin demonstrates how to implement query-based data discovery
     using metadata parameters.
     """
 
-    description: ClassVar[str] = "Metadata with query-based input resolution"
+    description: ClassVar[str] = "Query-based metadata for data discovery"
 
     # Query parameters
-    query_root: Optional[str] = None
-    site: Optional[str] = None
-    campaign: Optional[str] = None
-    data_type: Optional[str] = None
+    query_root: str = Field(default="/", description="Root path for queries")
+    site: Optional[str] = Field(default=None, description="Site to query")
+    campaign: Optional[str] = Field(default=None, description="Campaign name")
+    data_type: Optional[str] = Field(default=None, description="Data type")
+
+    def __init__(self, **data):
+        super().__init__(**data)
+        # Create data catalog with current parameters
+        self.data_catalog = QueryBasedDataCatalogInterface(
+            query_root=self.query_root,
+            site=self.site,
+            campaign=self.campaign,
+            data_type=self.data_type,
+        )
 
     def get_input_query(
         self, input_name: str, **kwargs: Any
@@ -106,7 +183,7 @@ class QueryBasedMetadata(BaseMetadataModel):
 
         return None
 
-    def get_output_query(self, output_name: str) -> Optional[Path]:
+    def get_output_query(self, output_name: str, **kwargs: Any) -> Optional[Path]:
         """Generate output path based on metadata parameters."""
         base_path = Path("filecatalog") / "outputs"
 
@@ -118,7 +195,30 @@ class QueryBasedMetadata(BaseMetadataModel):
         return base_path / "default"
 
 
-class TaskWithMetadataQueryPlugin(BaseMetadataModel):
+class TaskQueryDataCatalogInterface(DataCatalogInterface):
+    """Simple data catalog interface for task query example."""
+
+    def get_input_query(
+        self, input_name: str, **kwargs: Any
+    ) -> Union[Path, List[Path], None]:
+        """Generate query paths based on site and campaign metadata."""
+        site = kwargs.get("site", "")
+        campaign = kwargs.get("campaign", "")
+
+        # Example implementation
+        if site and campaign:
+            return [Path("filecatalog") / campaign / site]
+        elif site:
+            return Path("filecatalog") / site
+        else:
+            return None
+
+    def get_output_query(self, output_name: str, **kwargs: Any) -> Optional[Path]:
+        """Simple output path generation."""
+        return Path("filecatalog") / "outputs"
+
+
+class TaskWithMetadataQueryPlugin(ExecutionHooksBasePlugin):
     """Metadata plugin that demonstrates query-based input resolution.
 
     This class provides methods to query metadata and generate input paths
@@ -132,40 +232,7 @@ class TaskWithMetadataQueryPlugin(BaseMetadataModel):
         str
     ] = "Example metadata plugin with query-based input resolution"
 
-    def get_input_query(
-        self, input_name: str, **kwargs: Any
-    ) -> Union[Path, List[Path], None]:
-        """
-        Generates a query to retrieve input paths based on provided metadata.
-
-        Parameters
-        ----------
-        input_name : str
-            Name of the input parameter.
-        **kwargs : dict
-            Keyword arguments representing metadata attributes. Expected keys are:
-            - site (str): The site name.
-            - campaign (str): The campaign name.
-
-        Returns
-        -------
-        Union[Path, List[Path], None]
-            A Path or list of Paths representing the input query based on the provided metadata.
-            Returns None if neither site nor campaign is provided.
-
-        Notes
-        -----
-        This is an example implementation. In a real implementation,
-        an actual query should be made to the metadata service,
-        resulting in an array of Logical File Names (LFNs) being returned.
-        """
-        site = kwargs.get("site", "")
-        campaign = kwargs.get("campaign", "")
-
-        # Example implementation
-        if site and campaign:
-            return [Path("filecatalog") / campaign / site]
-        elif site:
-            return Path("filecatalog") / site
-        else:
-            return None
+    def __init__(self, **kwargs: Any):
+        """Initialize with task query data catalog interface."""
+        super().__init__(**kwargs)
+        self.data_catalog = TaskQueryDataCatalogInterface()

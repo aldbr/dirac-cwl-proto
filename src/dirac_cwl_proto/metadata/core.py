@@ -11,54 +11,12 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, ClassVar, Dict, List, Mapping, Optional, TypeVar, Union
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
 
 logger = logging.getLogger(__name__)
 
 # TypeVar for generic class methods
-T = TypeVar("T", bound="JobExecutor")
-
-
-class MetadataProcessor(ABC):
-    """Abstract base class for metadata processing hooks.
-
-    This class defines the interface for pre/post processing operations
-    that can be performed during job execution.
-    """
-
-    @abstractmethod
-    def pre_process(self, job_path: Path, command: List[str]) -> List[str]:
-        """Pre-process job inputs and command.
-
-        Parameters
-        ----------
-        job_path : Path
-            Path to the job working directory.
-        command : List[str]
-            The command to be executed.
-
-        Returns
-        -------
-        List[str]
-            Modified command list.
-        """
-        pass
-
-    @abstractmethod
-    def post_process(self, job_path: Path) -> bool:
-        """Post-process job outputs.
-
-        Parameters
-        ----------
-        job_path : Path
-            Path to the job working directory.
-
-        Returns
-        -------
-        bool
-            True if post-processing succeeded, False otherwise.
-        """
-        pass
+T = TypeVar("T", bound="SchedulingHint")
 
 
 class DataCatalogInterface(ABC):
@@ -85,7 +43,7 @@ class DataCatalogInterface(ABC):
         pass
 
     @abstractmethod
-    def get_output_query(self, output_name: str) -> Optional[Path]:
+    def get_output_query(self, output_name: str, **kwargs: Any) -> Optional[Path]:
         """Generate output data path.
 
         Parameters
@@ -98,19 +56,19 @@ class DataCatalogInterface(ABC):
         Optional[Path]
             Path where output should be stored or None.
         """
-        pass
+        ...
 
-    def store_output(self, output_name: str, src_path: str) -> None:
+    def store_output(self, output_name: str, src_path: str, **kwargs: Any) -> None:
         """Store output in the data catalog.
 
         Parameters
         ----------
         output_name : str
             Name of the output parameter.
-        src_path : str
+        src_path : str | Path
             Source path of the output file.
         """
-        output_path = self.get_output_query(output_name)
+        output_path = self.get_output_query(output_name, **kwargs)
         if not output_path:
             raise RuntimeError(f"No output path defined for {output_name}")
 
@@ -120,11 +78,29 @@ class DataCatalogInterface(ABC):
         logger.info(f"Output {output_name} stored in {dest}")
 
 
-class BaseMetadataModel(BaseModel, DataCatalogInterface, MetadataProcessor):
-    """Base class for all metadata models.
+class DummyDataCatalogInterface(DataCatalogInterface):
+    """Default implementation that returns None for all queries.
 
-    This class combines Pydantic validation with the metadata processing
-    interfaces to provide a complete foundation for metadata implementations.
+    This is used as the default data catalog when no specific implementation
+    is provided by a plugin.
+    """
+
+    def get_input_query(
+        self, input_name: str, **kwargs: Any
+    ) -> Union[Path, List[Path], None]:
+        """Return None - no input data available."""
+        return None
+
+    def get_output_query(self, output_name: str, **kwargs: Any) -> Optional[Path]:
+        """Return None - no output path available."""
+        return None
+
+
+class ExecutionHooksBasePlugin(BaseModel):
+    """Base class for all runtime plugin models with execution hooks.
+
+    This class uses composition instead of inheritance for data catalog operations,
+    providing better separation of concerns and flexibility.
     """
 
     model_config = ConfigDict(
@@ -142,38 +118,79 @@ class BaseMetadataModel(BaseModel, DataCatalogInterface, MetadataProcessor):
     version: ClassVar[str] = "1.0.0"
     description: ClassVar[str] = "Base metadata model"
 
-    @classmethod
-    def get_metadata_class(cls) -> str:
-        """Auto-derive metadata class identifier from class name."""
-        name = cls.__name__
-        # LHCbSimulationMetadata → LHCbSimulation
-        if name.endswith("Metadata"):
-            name = name[:-8]  # Remove "Metadata" suffix
-        return name
+    # Private attribute for data catalog interface - not part of Pydantic model validation
+    _data_catalog: DataCatalogInterface = PrivateAttr(
+        default_factory=DummyDataCatalogInterface
+    )
 
-    def pre_process(self, job_path: Path, command: List[str]) -> List[str]:
-        """Default pre-processing: return command unchanged."""
+    @property
+    def data_catalog(self) -> DataCatalogInterface:
+        """Get the data catalog interface."""
+        return self._data_catalog
+
+    @data_catalog.setter
+    def data_catalog(self, value: DataCatalogInterface) -> None:
+        """Set the data catalog interface."""
+        self._data_catalog = value
+
+    def __init__(self, **data):
+        """Initialize with data catalog interface."""
+        super().__init__(**data)
+        # Data catalog will be set by subclasses as needed
+
+    @classmethod
+    def name(cls) -> str:
+        """Auto-derive hook plugin identifier from class name."""
+        return cls.__name__
+
+    def pre_process(
+        self, job_path: Path, command: List[str], **kwargs: Any
+    ) -> List[str]:
+        """Pre-process job inputs and command.
+
+        Parameters
+        ----------
+        job_path : Path
+            Path to the job working directory.
+        command : List[str]
+            The command to be executed.
+
+        Returns
+        -------
+        List[str]
+            Modified command list.
+        """
         return command
 
-    def post_process(self, job_path: Path) -> bool:
-        """Default post-processing: always succeed."""
+    def post_process(self, job_path: Path, **kwargs: Any) -> bool:
+        """Post-process job outputs.
+
+        Parameters
+        ----------
+        job_path : Path
+            Path to the job working directory.
+        """
         return True
 
     def get_input_query(
         self, input_name: str, **kwargs: Any
     ) -> Union[Path, List[Path], None]:
-        """Default input query: return None."""
-        return None
+        """Delegate to data catalog interface."""
+        return self.data_catalog.get_input_query(input_name, **kwargs)
 
-    def get_output_query(self, output_name: str) -> Optional[Path]:
-        """Default output query: return None."""
-        return None
+    def get_output_query(self, output_name: str, **kwargs: Any) -> Optional[Path]:
+        """Delegate to data catalog interface."""
+        return self.data_catalog.get_output_query(output_name, **kwargs)
+
+    def store_output(self, output_name: str, src_path: str, **kwargs: Any) -> None:
+        """Delegate to data catalog interface."""
+        self.data_catalog.store_output(output_name, src_path, **kwargs)
 
     @classmethod
     def get_schema_info(cls) -> Dict[str, Any]:
         """Get schema information for this metadata model."""
         return {
-            "metadata_class": cls.get_metadata_class(),
+            "hook_plugin": cls.name(),
             "vo": cls.vo,
             "version": cls.version,
             "description": cls.description,
@@ -181,7 +198,48 @@ class BaseMetadataModel(BaseModel, DataCatalogInterface, MetadataProcessor):
         }
 
 
-class DataManager(BaseModel):
+class Hint(ABC):
+    """Base class for all DIRAC hints and requirements models."""
+
+    @classmethod
+    @abstractmethod
+    def from_cwl(cls, cwl_object: Any) -> "Hint":
+        """Extract hint information from a CWL object."""
+        pass
+
+
+class SchedulingHint(BaseModel, Hint):
+    """Descriptor for job execution configuration."""
+
+    model_config = ConfigDict(extra="forbid", validate_assignment=True)
+
+    platform: Optional[str] = Field(
+        default=None, description="Target platform (e.g., 'DIRAC', 'DIRACX')"
+    )
+
+    priority: int = Field(
+        default=10, description="Job priority (higher values = higher priority)"
+    )
+
+    sites: Optional[List[str]] = Field(
+        default=None, description="Candidate execution sites"
+    )
+
+    @classmethod
+    def from_cwl(cls: type[T], cwl_object: Any) -> T:
+        """Extract task descriptor from CWL hints."""
+        descriptor = cls()
+
+        hints = getattr(cwl_object, "hints", []) or []
+        for hint in hints:
+            if hint.get("class") == "dirac:scheduling":
+                hint_data = {k: v for k, v in hint.items() if k != "class"}
+                descriptor = descriptor.model_copy(update=hint_data)
+
+        return descriptor
+
+
+class ExecutionHooksHint(BaseModel, Hint):
     """Descriptor for data management configuration in CWL hints.
 
     This class represents the serializable data management configuration that
@@ -200,33 +258,28 @@ class DataManager(BaseModel):
         },
     )
 
-    metadata_class: str = Field(
-        default="User", description="Registry key for the metadata implementation class"
+    hook_plugin: str = Field(
+        default="UserPlugin",
+        description="Registry key for the metadata implementation class",
     )
-
-    vo: Optional[str] = Field(
-        default=None,
-        description="Virtual Organization namespace (e.g., 'lhcb', 'ctao')",
-    )
-
-    version: Optional[str] = Field(default=None, description="Metadata model version")
 
     # Enhanced fields for submission functionality
-    query_params: Dict[str, Any] = Field(
+    configuration: Dict[str, Any] = Field(
         default_factory=dict, description="Additional parameters for metadata plugins"
     )
 
-    def model_copy_with_merge(
+    def model_copy(
         self,
+        update: Optional[Mapping[str, Any]] = None,
         *,
-        update: Optional[Dict[str, Any]] = None,
         deep: bool = False,
-    ) -> "DataManager":
-        """Create a copy with intelligent merging of nested dictionaries."""
+    ) -> "ExecutionHooksHint":
+        """Enhanced model copy with intelligent merging of dict fields (including configuration)."""
         if update is None:
-            return self.model_copy(deep=deep)
+            update = {}
+        else:
+            update = dict(update)
 
-        # Handle nested dictionary merging for vo-specific fields
         merged_update = {}
         for key, value in update.items():
             if (
@@ -240,54 +293,34 @@ class DataManager(BaseModel):
             else:
                 merged_update[key] = value
 
-        return self.model_copy(update=merged_update, deep=deep)
+        return super().model_copy(update=merged_update, deep=deep)
 
-    def model_copy(
-        self,
-        update: Optional[Mapping[str, Any]] = None,
-        *,
-        deep: bool = False,
-    ) -> "DataManager":
-        """Enhanced model copy with intelligent merging of query_params."""
-        if update is None:
-            update = {}
-        else:
-            update = dict(update)
-
-        # Handle merging of query_params
-        if "query_params" in update:
-            new_query_params = self.query_params.copy()
-            new_query_params.update(update.pop("query_params"))
-            update["query_params"] = new_query_params
-
-        return super().model_copy(update=update, deep=deep)
-
-    def to_runtime(self, submitted: Optional[Any] = None) -> "BaseMetadataModel":
+    def to_runtime(self, submitted: Optional[Any] = None) -> "ExecutionHooksBasePlugin":
         """
-        Build and instantiate the runtime metadata implementation.
+            Build and instantiate the runtime metadata implementation.
 
-        The returned object is an instance of :class:`BaseMetadataModel` created
+        The returned object is an instance of :class:`ExecutionHooksBasePlugin` created
         by the metadata registry. The instantiation parameters are constructed
-        by merging, in order:
+            by merging, in order:
 
-        1. Input defaults declared on the CWL task (if ``submitted`` is provided).
-        2. The first set of CWL parameter overrides (``submitted.parameters``),
-           if present.
-        3. The descriptor's ``query_params``.
+            1. Input defaults declared on the CWL task (if ``submitted`` is provided).
+            2. The first set of CWL parameter overrides (``submitted.parameters``),
+               if present.
+            3. The descriptor's ``configuration``.
 
-        During merging, keys are normalised from dash-case to snake_case to
-        align with typical Python argument names used by runtime implementations.
+            During merging, keys are normalised from dash-case to snake_case to
+            align with typical Python argument names used by runtime implementations.
 
-        Parameters
-        ----------
-        submitted : JobSubmissionModel | None
-            Optional submission context used to resolve CWL input defaults
-            and parameter overrides.
+            Parameters
+            ----------
+            submitted : JobSubmissionModel | None
+                Optional submission context used to resolve CWL input defaults
+                and parameter overrides.
 
-        Returns
-        -------
-        BaseMetadataModel
-            Runtime metadata implementation instantiated from the registry.
+            Returns
+            -------
+            ExecutionHooksBasePlugin
+                Runtime plugin implementation instantiated from the registry.
         """
         # Import here to avoid circular imports
         from .registry import get_registry
@@ -297,8 +330,8 @@ class DataManager(BaseModel):
             return s.replace("-", "_")
 
         if submitted is None:
-            descriptor = DataManager(
-                metadata_class=self.metadata_class, **self.query_params
+            descriptor = ExecutionHooksHint(
+                hook_plugin=self.hook_plugin, **self.configuration
             )
             return get_registry().instantiate_plugin(descriptor)
 
@@ -312,93 +345,30 @@ class DataManager(BaseModel):
                 input_value = params_list[0].cwl.get(input_name, input_value)
             inputs[input_name] = input_value
 
-        # Merge with explicit query params
-        if self.query_params:
-            inputs.update(self.query_params)
+        # Merge with explicit configuration
+        if self.configuration:
+            inputs.update(self.configuration)
 
         params = {_dash_to_snake(key): value for key, value in inputs.items()}
 
-        descriptor = DataManager(metadata_class=self.metadata_class, **params)
+        descriptor = ExecutionHooksHint(hook_plugin=self.hook_plugin, **params)
         return get_registry().instantiate_plugin(descriptor)
 
     @classmethod
-    def from_cwl_hints(cls, cwl_object: Any) -> "DataManager":
-        """Extract metadata descriptor from CWL hints.
-
-        Parameters
-        ----------
-        cwl_object : Any
-            A parsed CWL object (CommandLineTool, Workflow, etc.)
-
-        Returns
-        -------
-        DataManager
-            Extracted data manager with defaults for missing fields.
-        """
+    def from_cwl(cls, cwl_object: Any) -> "ExecutionHooksHint":
+        """Extract metadata descriptor from CWL object using Hint interface."""
         descriptor = cls()
-
         hints = getattr(cwl_object, "hints", []) or []
         for hint in hints:
-            if hint.get("class") == "dirac:data-management":
+            if hint.get("class") == "dirac:execution-hooks":
                 hint_data = {k: v for k, v in hint.items() if k != "class"}
-                descriptor = descriptor.model_copy_with_merge(update=hint_data)
-
+                descriptor = descriptor.model_copy(update=hint_data)
         return descriptor
 
-    @classmethod
-    def from_hints(cls, cwl_object: Any) -> "DataManager":
-        """
-        Create a DataManager from CWL hints.
 
-        Alias for from_cwl_hints for backward compatibility.
-
-        Parameters
-        ----------
-        cwl_object : Any
-            A parsed CWL ``CommandLineTool`` or ``Workflow`` object.
-
-        Returns
-        -------
-        DataManager
-            Descriptor populated from CWL hints; unknown hints are ignored.
-        """
-        return cls.from_cwl_hints(cwl_object)
-
-
-class TransformationDataManager(DataManager):
+class TransformationExecutionHooksHint(ExecutionHooksHint):
     """Extended data manager for transformations."""
 
     group_size: Optional[Dict[str, int]] = Field(
         default=None, description="Input grouping configuration for transformation jobs"
     )
-
-
-class JobExecutor(BaseModel):
-    """Descriptor for job execution configuration."""
-
-    model_config = ConfigDict(extra="forbid", validate_assignment=True)
-
-    platform: Optional[str] = Field(
-        default=None, description="Target platform (e.g., 'DIRAC', 'DIRACX')"
-    )
-
-    priority: int = Field(
-        default=10, description="Job priority (higher values = higher priority)"
-    )
-
-    sites: Optional[List[str]] = Field(
-        default=None, description="Candidate execution sites"
-    )
-
-    @classmethod
-    def from_cwl_hints(cls: type[T], cwl_object: Any) -> T:
-        """Extract task descriptor from CWL hints."""
-        descriptor = cls()
-
-        hints = getattr(cwl_object, "hints", []) or []
-        for hint in hints:
-            if hint.get("class") == "dirac:job-execution":
-                hint_data = {k: v for k, v in hint.items() if k != "class"}
-                descriptor = descriptor.model_copy(update=hint_data)
-
-        return descriptor

@@ -12,7 +12,7 @@ import logging
 import pkgutil
 from typing import Any, Dict, List, Optional, Type
 
-from .core import BaseMetadataModel, DataManager
+from .core import ExecutionHooksBasePlugin, ExecutionHooksHint
 
 logger = logging.getLogger(__name__)
 
@@ -21,18 +21,18 @@ class MetadataPluginRegistry:
     """Registry for metadata plugin discovery and management."""
 
     def __init__(self) -> None:
-        self._plugins: Dict[str, Type[BaseMetadataModel]] = {}
-        self._vo_plugins: Dict[str, Dict[str, Type[BaseMetadataModel]]] = {}
+        self._plugins: Dict[str, Type[ExecutionHooksBasePlugin]] = {}
+        self._vo_plugins: Dict[str, Dict[str, Type[ExecutionHooksBasePlugin]]] = {}
         self._plugin_info: Dict[str, Dict[str, Any]] = {}
 
     def register_plugin(
-        self, plugin_class: Type[BaseMetadataModel], override: bool = False
+        self, plugin_class: Type[ExecutionHooksBasePlugin], override: bool = False
     ) -> None:
         """Register a metadata plugin.
 
         Parameters
         ----------
-        plugin_class : Type[BaseMetadataModel]
+        plugin_class : Type[ExecutionHooksBasePlugin]
             The metadata model class to register.
         override : bool, optional
             Whether to override existing registrations, by default False.
@@ -42,12 +42,12 @@ class MetadataPluginRegistry:
         ValueError
             If plugin is already registered and override=False.
         """
-        if not issubclass(plugin_class, BaseMetadataModel):
+        if not issubclass(plugin_class, ExecutionHooksBasePlugin):
             raise ValueError(
-                f"Plugin {plugin_class} must inherit from BaseMetadataModel"
+                f"Plugin {plugin_class} must inherit from ExecutionHooksBasePlugin"
             )
 
-        plugin_key = plugin_class.get_metadata_class()
+        plugin_key = plugin_class.name()
         vo = plugin_class.vo
 
         # Check for conflicts
@@ -76,7 +76,7 @@ class MetadataPluginRegistry:
 
     def get_plugin(
         self, plugin_key: str, vo: Optional[str] = None
-    ) -> Optional[Type[BaseMetadataModel]]:
+    ) -> Optional[Type[ExecutionHooksBasePlugin]]:
         """Get a registered plugin.
 
         Parameters
@@ -88,7 +88,7 @@ class MetadataPluginRegistry:
 
         Returns
         -------
-        Optional[Type[BaseMetadataModel]]
+        Optional[Type[ExecutionHooksBasePlugin]]
             The plugin class or None if not found.
         """
         # Try VO-specific first if specified
@@ -100,20 +100,20 @@ class MetadataPluginRegistry:
         return self._plugins.get(plugin_key)
 
     def instantiate_plugin(
-        self, descriptor: DataManager, **kwargs: Any
-    ) -> BaseMetadataModel:
+        self, descriptor: ExecutionHooksHint, **kwargs: Any
+    ) -> ExecutionHooksBasePlugin:
         """Instantiate a metadata plugin from a descriptor.
 
         Parameters
         ----------
-        descriptor : DataManager
+        descriptor : ExecutionHooksHint
             The data manager containing configuration.
         **kwargs : Any
             Additional parameters to pass to the plugin constructor.
 
         Returns
         -------
-        BaseMetadataModel
+        ExecutionHooksBasePlugin
             Instantiated metadata model.
 
         Raises
@@ -123,19 +123,20 @@ class MetadataPluginRegistry:
         ValueError
             If plugin instantiation fails.
         """
-        plugin_class = self.get_plugin(descriptor.metadata_class, descriptor.vo)
+        plugin_class = self.get_plugin(descriptor.hook_plugin)
 
         if plugin_class is None:
-            available = self.list_plugins(descriptor.vo)
+            available = self.list_plugins()
             raise KeyError(
-                f"Unknown metadata plugin: '{descriptor.metadata_class}'"
-                f"{f' for VO {descriptor.vo}' if descriptor.vo else ''}. "
+                f"Unknown metadata plugin: '{descriptor.hook_plugin}'"
                 f"Available: {available}"
             )
 
         # Extract plugin parameters from descriptor
         plugin_params = descriptor.model_dump(
-            exclude={"metadata_class", "vo", "version"}
+            exclude={
+                "hook_plugin",
+            }
         )
         plugin_params.update(kwargs)
 
@@ -143,7 +144,7 @@ class MetadataPluginRegistry:
             return plugin_class(**plugin_params)
         except Exception as e:
             raise ValueError(
-                f"Failed to instantiate plugin '{descriptor.metadata_class}': {e}"
+                f"Failed to instantiate plugin '{descriptor.hook_plugin}': {e}"
             ) from e
 
     def list_plugins(self, vo: Optional[str] = None) -> List[str]:
@@ -222,8 +223,8 @@ class MetadataPluginRegistry:
                     attr = getattr(module, attr_name)
                     if (
                         isinstance(attr, type)
-                        and issubclass(attr, BaseMetadataModel)
-                        and attr is not BaseMetadataModel
+                        and issubclass(attr, ExecutionHooksBasePlugin)
+                        and attr is not ExecutionHooksBasePlugin
                     ):
                         self.register_plugin(attr)
                         discovered += 1
@@ -233,12 +234,12 @@ class MetadataPluginRegistry:
 
         return discovered
 
-    def validate_descriptor(self, descriptor: DataManager) -> List[str]:
+    def validate_descriptor(self, descriptor: ExecutionHooksHint) -> List[str]:
         """Validate a data manager against registered plugins.
 
         Parameters
         ----------
-        descriptor : DataManager
+        descriptor : ExecutionHooksHint
             The data manager to validate.
 
         Returns
@@ -248,21 +249,19 @@ class MetadataPluginRegistry:
         """
         errors = []
 
-        plugin_class = self.get_plugin(descriptor.metadata_class, descriptor.vo)
+        plugin_class = self.get_plugin(descriptor.hook_plugin)
 
         if plugin_class is None:
-            available = self.list_plugins(descriptor.vo)
+            available = self.list_plugins()
             errors.append(
-                f"Unknown metadata plugin: '{descriptor.metadata_class}'. "
+                f"Unknown metadata plugin: '{descriptor.hook_plugin}'. "
                 f"Available: {available}"
             )
             return errors
 
         # Validate descriptor against plugin schema
         try:
-            plugin_params = descriptor.model_dump(
-                exclude={"metadata_class", "vo", "version"}
-            )
+            plugin_params = descriptor.model_dump(exclude={"hook_plugin"})
             plugin_class.model_validate(plugin_params)
         except Exception as e:
             errors.append(f"Plugin validation failed: {e}")

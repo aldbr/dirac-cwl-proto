@@ -10,6 +10,11 @@ from typer.testing import CliRunner
 from dirac_cwl_proto import app
 
 
+def strip_ansi_codes(text: str) -> str:
+    """Remove ANSI color codes from text."""
+    return re.sub(r"\x1b\[[0-9;]*m", "", text)
+
+
 @pytest.fixture()
 def cli_runner():
     return CliRunner()
@@ -165,9 +170,9 @@ def test_run_job_success(cli_runner, cleanup, cwl_file, inputs):
         command.extend(["--parameter-path", input])
 
     result = cli_runner.invoke(app, command)
-    assert (
-        "CLI: Job(s) done" in result.stdout
-    ), f"Failed to run the job: {result.stdout}"
+    # Remove ANSI color codes for assertion
+    clean_output = strip_ansi_codes(result.stdout)
+    assert "CLI: Job(s) done" in clean_output, f"Failed to run the job: {result.stdout}"
 
 
 @pytest.mark.parametrize(
@@ -220,7 +225,8 @@ def test_run_job_validation_failure(
     for input in inputs:
         command.extend(["--parameter-path", input])
     result = cli_runner.invoke(app, command)
-    assert "Job(s) done" not in result.stdout, "The job did complete successfully."
+    clean_stdout = strip_ansi_codes(result.stdout)
+    assert "Job(s) done" not in clean_stdout, "The job did complete successfully."
 
     # Check all possible output sources
     clean_output = re.sub(r"\s+", "", result.stdout)
@@ -325,8 +331,9 @@ def test_run_nonblocking_transformation_success(
         command.extend(["--metadata-path", metadata])
 
     result = cli_runner.invoke(app, command)
+    clean_output = strip_ansi_codes(result.stdout)
     assert (
-        "Transformation done" in result.stdout
+        "Transformation done" in clean_output
     ), f"Failed to run the transformation: {result.stdout}"
 
 
@@ -428,8 +435,9 @@ def test_run_blocking_transformation_success(
     assert (
         transformation_result is not None
     ), "The transformation result was not captured."
+    clean_transformation_output = strip_ansi_codes(transformation_result.stdout)
     assert (
-        "Transformation done" in transformation_result.stdout
+        "Transformation done" in clean_transformation_output
     ), "The transformation did not complete successfully."
 
 
@@ -475,8 +483,9 @@ def test_run_transformation_validation_failure(
     if metadata:
         command.extend(["--metadata-path", metadata])
     result = cli_runner.invoke(app, command)
+    clean_stdout = strip_ansi_codes(result.stdout)
     assert (
-        "Transformation done" not in result.stdout
+        "Transformation done" not in clean_stdout
     ), "The transformation did complete successfully."
 
     # Check all possible output sources
@@ -570,8 +579,9 @@ def test_run_simple_production_success(cli_runner, cleanup, cwl_file, metadata):
         command.extend(["--steps-metadata-path", metadata])
 
     result = cli_runner.invoke(app, command)
+    clean_output = strip_ansi_codes(result.stdout)
     assert (
-        "Production done" in result.stdout
+        "Production done" in clean_output
     ), f"Failed to run the production: {result.stdout}"
 
 
@@ -636,8 +646,9 @@ def test_run_production_validation_failure(
         command.extend(["--steps-metadata-path", metadata])
     result = cli_runner.invoke(app, command)
 
+    clean_stdout = strip_ansi_codes(result.stdout)
     assert (
-        "Transformation done" not in result.stdout
+        "Transformation done" not in clean_stdout
     ), "The transformation did complete successfully."
 
     # Check all possible output sources

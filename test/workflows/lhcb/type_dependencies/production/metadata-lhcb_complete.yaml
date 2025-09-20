@@ -1,8 +1,14 @@
 simulation:
-  metadata:
-    metadata_class: LHCbSimulation
+  execution-hooks:
+    hook_plugin: LHCbSimulationPlugin
+    configuration:
+      run_id: 123
+      task_id: 456
 reconstruction:
-  metadata:
-    metadata_class: LHCbReconstruction
+  execution-hooks:
+    hook_plugin: LHCbReconstructionPlugin
     group_size:
       files: 1
+    configuration:
+      run_id: 123
+      task_id: 456

@@ -1,5 +1,4 @@
-metadata_class: PiGather
-group_size:
-  input-data: 2
-query_params:
+hook_plugin: PiGather
+configuration:
   num_points: 1000
+  input-data: 2

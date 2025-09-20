@@ -21,11 +21,12 @@ from rich.console import Console
 from ruamel.yaml import YAML
 from schema_salad.exceptions import ValidationException
 
+from dirac_cwl_proto.metadata import (
+    SchedulingHint,
+    TransformationExecutionHooksHint,
+)
 from dirac_cwl_proto.submission_models import (
-    ProductionStepMetadataModel,
     ProductionSubmissionModel,
-    TaskDescriptionModel,
-    TransformationMetadataModel,
     TransformationSubmissionModel,
 )
 from dirac_cwl_proto.transformation import (
@@ -84,18 +85,25 @@ def submit_production_client(
         with open(steps_metadata_path, "r") as file:
             steps_metadata = YAML(typ="safe").load(file)
 
-    production_step_metadata = {}
+    production_step_execution_hooks = {}
+    production_step_scheduling = {}
     for step_name, step_data in steps_metadata.items():
-        production_step_metadata[step_name] = ProductionStepMetadataModel(
-            description=step_data.get("description", {}),
-            metadata=step_data.get("metadata", {}),
+        # Extract metadata and scheduling from step_data
+        metadata_config = step_data.get("execution-hooks", {})
+        scheduling_config = step_data.get("scheduling", {})
+
+        # Create TransformationExecutionHooksHint with the metadata
+        production_step_execution_hooks[step_name] = TransformationExecutionHooksHint(
+            **metadata_config
         )
+        production_step_scheduling[step_name] = SchedulingHint(**scheduling_config)
     console.print("\t[green]:heavy_check_mark:[/green] Metadata")
 
     # Create the production
     transformation = ProductionSubmissionModel(
         task=task,
-        steps_metadata=production_step_metadata,
+        steps_execution_hooks=production_step_execution_hooks,
+        steps_scheduling=production_step_scheduling,
     )
     console.print(
         "[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Production validated."
@@ -166,24 +174,27 @@ def _get_transformations(
         step_task = _create_subworkflow(
             step, str(production.task.cwlVersion), production.task.inputs
         )
-        query_params = _get_query_params(production.task)
+        configuration = _get_configuration(production.task)
 
-        # Get the metadata & description for the step
+        # Get the execution_hooks & description for the step
         step_id = step.id.split("#")[-1]
-        step_data: ProductionStepMetadataModel = production.steps_metadata.get(
-            step_id,
-            ProductionStepMetadataModel(
-                description=TaskDescriptionModel(),
-                metadata=TransformationMetadataModel(),
-            ),
+        step_data: TransformationExecutionHooksHint = (
+            production.steps_execution_hooks.get(
+                step_id,
+                TransformationExecutionHooksHint(),
+            )
         )
-        step_data.metadata.query_params = query_params
+        step_scheduling: SchedulingHint = production.steps_scheduling.get(
+            step_id,
+            SchedulingHint(),
+        )
+        step_data.configuration.update(configuration)
 
         transformations.append(
             TransformationSubmissionModel(
                 task=step_task,
-                metadata=step_data.metadata,
-                description=step_data.description,
+                execution_hooks=step_data,
+                scheduling=step_scheduling,
             )
         )
     return transformations
@@ -254,14 +265,14 @@ def _create_subworkflow(
     return new_workflow
 
 
-def _get_query_params(task: Workflow) -> dict[str, Any]:
+def _get_configuration(task: Workflow) -> dict[str, Any]:
     """Get the external inputs of a step.
 
     :param task: The task to get the query params for
 
     :return: A dictionary of query params
     """
-    query_params = {}
+    configuration = {}
     for input in task.inputs:
-        query_params[input.id.split("#")[-1]] = input.default
-    return query_params
+        configuration[input.id.split("#")[-1]] = input.default
+    return configuration

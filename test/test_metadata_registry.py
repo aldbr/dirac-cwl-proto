@@ -10,14 +10,14 @@ from typing import Any, ClassVar, Optional
 
 import pytest
 
-from dirac_cwl_proto.metadata.core import BaseMetadataModel, DataManager
+from dirac_cwl_proto.metadata.core import ExecutionHooksBasePlugin, ExecutionHooksHint
 from dirac_cwl_proto.metadata.registry import (
     MetadataPluginRegistry,
     get_registry,
 )
 
 
-class TestPluginMetadata(BaseMetadataModel):
+class TestPlugin(ExecutionHooksBasePlugin):
     """Test plugin for registry testing."""
 
     description: ClassVar[str] = "Test plugin for unit tests"
@@ -25,7 +25,7 @@ class TestPluginMetadata(BaseMetadataModel):
     test_param: str = "default"
 
 
-class TestVOPlugin(BaseMetadataModel):
+class TestVOPlugin(ExecutionHooksBasePlugin):
     """Test vo-specific plugin."""
 
     description: ClassVar[str] = "Test VO plugin"
@@ -34,7 +34,7 @@ class TestVOPlugin(BaseMetadataModel):
     exp_param: int = 42
 
 
-class TestSecondVOPlugin(BaseMetadataModel):
+class TestSecondVOPlugin(ExecutionHooksBasePlugin):
     """Test plugin for second vo."""
 
     description: ClassVar[str] = "Test plugin for second VO"
@@ -56,7 +56,7 @@ class TestMetadataPluginRegistry:
         """Test plugin registration."""
         registry = MetadataPluginRegistry()
 
-        registry.register_plugin(TestPluginMetadata)
+        registry.register_plugin(TestPlugin)
 
         plugins = registry.list_plugins()
         assert "TestPlugin" in plugins
@@ -81,18 +81,18 @@ class TestMetadataPluginRegistry:
         """Test that duplicate registration raises error."""
         registry = MetadataPluginRegistry()
 
-        registry.register_plugin(TestPluginMetadata)
+        registry.register_plugin(TestPlugin)
 
         # Should raise error without override
         with pytest.raises(ValueError, match="already registered"):
-            registry.register_plugin(TestPluginMetadata)
+            registry.register_plugin(TestPlugin)
 
     def test_register_duplicate_plugin_with_override(self):
         """Test that duplicate registration works with override."""
         registry = MetadataPluginRegistry()
 
-        registry.register_plugin(TestPluginMetadata)
-        registry.register_plugin(TestPluginMetadata, override=True)
+        registry.register_plugin(TestPlugin)
+        registry.register_plugin(TestPlugin, override=True)
 
         # Should not raise error with override=True
         plugins = registry.list_plugins()
@@ -102,10 +102,10 @@ class TestMetadataPluginRegistry:
         """Test getting registered plugin."""
         registry = MetadataPluginRegistry()
 
-        registry.register_plugin(TestPluginMetadata)
+        registry.register_plugin(TestPlugin)
 
         plugin_class = registry.get_plugin("TestPlugin")
-        assert plugin_class is TestPluginMetadata
+        assert plugin_class is TestPlugin
 
     def test_get_nonexistent_plugin(self):
         """Test getting non-existent plugin."""
@@ -127,12 +127,12 @@ class TestMetadataPluginRegistry:
         """Test plugin instantiation."""
         registry = MetadataPluginRegistry()
 
-        registry.register_plugin(TestPluginMetadata)
+        registry.register_plugin(TestPlugin)
 
-        descriptor = DataManager(metadata_class="TestPlugin", test_param="custom")
+        descriptor = ExecutionHooksHint(hook_plugin="TestPlugin", test_param="custom")
         instance = registry.instantiate_plugin(descriptor)
 
-        assert isinstance(instance, TestPluginMetadata)
+        assert isinstance(instance, TestPlugin)
         assert instance.test_param == "custom"
 
     def test_instantiate_plugin_with_vo(self):
@@ -141,8 +141,8 @@ class TestMetadataPluginRegistry:
 
         registry.register_plugin(TestVOPlugin)
 
-        descriptor = DataManager(
-            metadata_class="TestVOPlugin", vo="test_exp", exp_param=99
+        descriptor = ExecutionHooksHint(
+            hook_plugin="TestVOPlugin", vo="test_exp", exp_param=99
         )
         instance = registry.instantiate_plugin(descriptor)
 
@@ -153,7 +153,7 @@ class TestMetadataPluginRegistry:
         """Test instantiation of non-existent plugin."""
         registry = MetadataPluginRegistry()
 
-        descriptor = DataManager(metadata_class="NonExistent")
+        descriptor = ExecutionHooksHint(hook_plugin="NonExistent")
 
         with pytest.raises(KeyError, match="Unknown metadata plugin"):
             registry.instantiate_plugin(descriptor)
@@ -188,7 +188,7 @@ class TestMetadataPluginRegistry:
         """Test listing plugins by vo."""
         registry = MetadataPluginRegistry()
 
-        registry.register_plugin(TestPluginMetadata)  # No vo
+        registry.register_plugin(TestPlugin)  # No vo
         registry.register_plugin(TestVOPlugin)  # test_exp vo
 
         # All plugins
@@ -220,9 +220,9 @@ class TestPluginSystem:
 
     def test_direct_plugin_usage(self):
         """Test using plugins directly without legacy wrapper."""
-        from dirac_cwl_proto.metadata.core import BaseMetadataModel
+        from dirac_cwl_proto.metadata.core import ExecutionHooksBasePlugin
 
-        class DirectPlugin(BaseMetadataModel):
+        class DirectPlugin(ExecutionHooksBasePlugin):
             test_param: str = "default"
 
             def get_input_query(self, input_name: str, **kwargs: Any) -> Optional[Path]:
@@ -233,7 +233,7 @@ class TestPluginSystem:
         registry.register_plugin(DirectPlugin)
 
         # Should be able to instantiate
-        descriptor = DataManager(metadata_class="DirectPlugin", test_param="custom")
+        descriptor = ExecutionHooksHint(hook_plugin="DirectPlugin", test_param="custom")
         instance = registry.instantiate_plugin(descriptor)
 
         # Should work with new interface
@@ -242,9 +242,9 @@ class TestPluginSystem:
 
     def test_plugin_parameter_handling(self):
         """Test that parameters are passed correctly to plugins."""
-        from dirac_cwl_proto.metadata.core import BaseMetadataModel
+        from dirac_cwl_proto.metadata.core import ExecutionHooksBasePlugin
 
-        class ParameterTestPlugin(BaseMetadataModel):
+        class ParameterTestPlugin(ExecutionHooksBasePlugin):
             test_param: str = "default"
             another_param: str = "default"
 
@@ -252,8 +252,8 @@ class TestPluginSystem:
         registry.register_plugin(ParameterTestPlugin)
 
         # Test with snake_case parameters (should work)
-        descriptor = DataManager(
-            metadata_class="ParameterTestPlugin",
+        descriptor = ExecutionHooksHint(
+            hook_plugin="ParameterTestPlugin",
             test_param="value1",
             another_param="value2",
         )

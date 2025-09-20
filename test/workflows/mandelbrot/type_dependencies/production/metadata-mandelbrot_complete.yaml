@@ -1,8 +1,8 @@
 image-prod:
-  metadata:
-    metadata_class: MandelBrotGeneration
+  execution-hooks:
+    hook_plugin: MandelBrotGenerationPlugin
 image-merge:
-  metadata:
-    metadata_class: MandelBrotMerging
+  execution-hooks:
+    hook_plugin: MandelBrotMergingPlugin
     group_size:
       data: 1

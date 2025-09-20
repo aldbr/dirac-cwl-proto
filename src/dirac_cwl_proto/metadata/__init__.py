@@ -8,15 +8,13 @@ providing enhanced functionality through the new plugin system.
 """
 
 from .core import (
-    BaseMetadataModel,
     DataCatalogInterface,
-    DataManager,
-    JobExecutor,
-    MetadataProcessor,
-    TransformationDataManager,
+    ExecutionHooksBasePlugin,
+    ExecutionHooksHint,
+    SchedulingHint,
+    TransformationExecutionHooksHint,
 )
 from .registry import (
-    MetadataPluginRegistry,
     discover_plugins,
     get_registry,
 )
@@ -32,15 +30,12 @@ except Exception:
     pass
 
 __all__ = [
-    # Core classes
-    "BaseMetadataModel",
+    # Core metadata and plugins
+    "ExecutionHooksHint",
+    "TransformationExecutionHooksHint",
+    "ExecutionHooksBasePlugin",
+    "SchedulingHint",
     "DataCatalogInterface",
-    "DataManager",
-    "MetadataProcessor",
-    "JobExecutor",
-    "TransformationDataManager",
-    # Registry functions
-    "MetadataPluginRegistry",
-    "discover_plugins",
+    "MetadataRegistry",
     "get_registry",
 ]
