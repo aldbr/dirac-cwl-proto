@@ -181,7 +181,10 @@ def upload_local_input_files(input_data: dict[str, Any]) -> str | None:
             # TODO: path is not the only attribute to consider, but so far it is the only one used
             if not file.path:
                 raise NotImplementedError("File path is not defined.")
-
+            # Skip files from the File Catalog
+            if file.path.startswith("LFN://"):
+                continue
+            
             file_path = Path(file.path.replace("file://", ""))
             console.print(
                 f"\t\t[blue]:information_source:[/blue] Found {file_path} locally, uploading it to the sandbox store..."
@@ -196,8 +199,9 @@ def upload_local_input_files(input_data: dict[str, Any]) -> str | None:
         # TODO: path is not the only attribute to consider, but so far it is the only one used
         if not file.path:
             raise NotImplementedError("File path is not defined.")
-
-        file.path = str(Path(".") / file.path.split("/")[-1])
+        
+        if not file.path.startswith("LFN://"):
+            file.path = str(Path(".") / file.path.split("/")[-1])
 
     sandbox_id = sandbox_path.name.replace(".tar.gz", "")
     return sandbox_id
@@ -302,8 +306,8 @@ def _pre_process(
                 if not item.path:
                     raise NotImplementedError("File path is not defined.")
 
-                input_path = Path(item.path)
-                if "filecatalog" in input_path.parts:
+                if item.path.startswith("LFN://"):
+                    item.path = item.path.removeprefix("LFN://")
                     input_data.append(item)
 
         for file in input_data:
