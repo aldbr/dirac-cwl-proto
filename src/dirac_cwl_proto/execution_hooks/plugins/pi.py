@@ -112,7 +112,7 @@ class PiSimulatePlugin(ExecutionHooksBasePlugin):
         super().__init__(**kwargs)
         self.data_catalog = PiDataCatalogInterface(self.num_points)
 
-    def post_process(self, job_path: Path, **kwargs: Any) -> bool:
+    def post_process(self, job_path: Path, stdout: Optional[str] = None, **kwargs: Any) -> bool:
         """Post process the simulation outputs."""
         outputs = glob.glob(str(job_path / "*.sim"))
         if outputs:
@@ -150,7 +150,7 @@ class PiSimulateV2Plugin(ExecutionHooksBasePlugin):
             is_simulate_v2_workflow=True,
         )
 
-    def post_process(self, job_path: Path, **kwargs: Any) -> bool:
+    def post_process(self, job_path: Path, stdout: Optional[str] = None, **kwargs: Any) -> bool:
         """Post process the simulation outputs."""
         outputs = job_path / self.output_path
         if outputs.exists():
@@ -187,7 +187,7 @@ class PiGatherPlugin(ExecutionHooksBasePlugin):
             self.num_points, input_data=self.input_data, is_gather_workflow=True
         )
 
-    def post_process(self, job_path: Path, **kwargs: Any) -> bool:
+    def post_process(self, job_path: Path, stdout: Optional[str] = None, **kwargs: Any) -> bool:
         """Post process the gathered results."""
         outputs = glob.glob(str(job_path / "*.sim"))
         if outputs:

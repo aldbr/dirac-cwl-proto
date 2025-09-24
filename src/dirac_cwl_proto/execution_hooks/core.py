@@ -13,7 +13,7 @@ import tarfile
 from abc import ABC, abstractmethod
 from enum import Enum
 from pathlib import Path
-from typing import Any, ClassVar, Dict, List, Mapping, Optional, TypeVar, Union
+from typing import Any, ClassVar, Dict, List, Mapping, Optional, Sequence, TypeVar, Union
 
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
 
@@ -44,7 +44,7 @@ class SandboxInterface(BaseModel):
         """
         return Path("sandboxstore") / f"output_sandbox_{id}.tar.gz"
     
-    def store_output(self, outputs: List[str] | List[Path], **kwargs: Any) -> Optional[Path]:
+    def store_output(self, outputs:Sequence[str | Path], **kwargs: Any) -> Optional[Path]:
         """Store output in a sandbox.
 
         Parameters
@@ -60,7 +60,9 @@ class SandboxInterface(BaseModel):
         if len(outputs) == 0:
             return None
         sandbox_id = random.randint(1000, 9999)
-        sandbox_path = self.get_output_query(sandbox_id)
+        sandbox_path = self.get_output_query(str(sandbox_id))
+        if not sandbox_path:
+            raise RuntimeError(f"No output sanbox path defined for {outputs}")
         sandbox_path.parent.mkdir(exist_ok=True, parents=True)
         if sandbox_path:
             with tarfile.open(sandbox_path, "w:gz") as tar:
@@ -111,7 +113,7 @@ class DataCatalogInterface(ABC):
         """
         ...
 
-    def store_output(self, output_name: str, src_path: str, **kwargs: Any) -> None:
+    def store_output(self, output_name: str, src_path: str | Path, **kwargs: Any) -> None:
         """Store output in the data catalog.
 
         Parameters
@@ -244,7 +246,10 @@ class ExecutionHooksBasePlugin(BaseModel):
                 if files:
                     if not isinstance(files, List):
                         files = [files]
-                    file_paths = [(file["path"] if file is not None else None) for file in files]
+                    file_paths = []
+                    for file in files:
+                        if file:
+                            file_paths.append(str(file["path"]))
                     self.store_output(output, file_paths)
         return True
 
@@ -258,9 +263,9 @@ class ExecutionHooksBasePlugin(BaseModel):
         """Delegate to data catalog interface."""
         return self.data_catalog.get_output_query(output_name, **kwargs)
 
-    def store_output(self, output_name: str, src_path: str | List[str] | Path | List[Path], **kwargs: Any) -> None:
+    def store_output(self, output_name: str, src_path: str | Path | Sequence[str | Path], **kwargs: Any) -> None:
         """Delegate to the correct interface."""
-        if isinstance(src_path, List):
+        if isinstance(src_path, Sequence) and not isinstance(src_path, str):
             sb = []
             for path in src_path:
                 if self.get_output_type(output_name, path) == OutputType.Sandbox:

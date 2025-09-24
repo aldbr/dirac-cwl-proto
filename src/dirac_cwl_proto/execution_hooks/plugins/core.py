@@ -117,7 +117,7 @@ class AdminPlugin(ExecutionHooksBasePlugin):
             command.extend(["--log-level", self.log_level])
         return command
 
-    def post_process(self, job_path: Path, **kwargs: Any) -> bool:
+    def post_process(self, job_path: Path, stdout: Optional[str] = None, **kwargs: Any) -> bool:
         """Enhanced post-processing with monitoring."""
         if self.enable_monitoring:
             # Could send metrics to monitoring system
