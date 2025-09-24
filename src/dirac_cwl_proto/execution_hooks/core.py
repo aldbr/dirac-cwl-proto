@@ -6,8 +6,12 @@ metadata plugin system in DIRAC/DIRACX.
 
 from __future__ import annotations
 
+import json
 import logging
+import random
+import tarfile
 from abc import ABC, abstractmethod
+from enum import Enum
 from pathlib import Path
 from typing import Any, ClassVar, Dict, List, Mapping, Optional, TypeVar, Union
 
@@ -18,6 +22,55 @@ logger = logging.getLogger(__name__)
 # TypeVar for generic class methods
 T = TypeVar("T", bound="SchedulingHint")
 
+class OutputType(Enum):
+    """SandBox | Data_Catalog"""
+    Sandbox = 1
+    Data_Catalog = 2
+
+class SandboxInterface(BaseModel):
+    """Interface for Sandbox interaction"""
+    def get_output_query(self, id: str, **kwargs: Any) -> Optional[Path]:
+        """Generate output sandbox path.
+
+        Parameters
+        ----------
+        id : str
+            Id of the output sandbox.
+
+        Returns
+        -------
+        Optional[Path]
+            Path where output should be stored or None.
+        """
+        return Path("sandboxstore") / f"output_sandbox_{id}.tar.gz"
+    
+    def store_output(self, outputs: List[str] | List[Path], **kwargs: Any) -> Optional[Path]:
+        """Store output in a sandbox.
+
+        Parameters
+        ----------
+        outputs : List[Path]
+            Files to be stored.
+
+        Returns
+        -------
+        Optional[Path]
+            The path of the new sandbox.
+        """
+        if len(outputs) == 0:
+            return None
+        sandbox_id = random.randint(1000, 9999)
+        sandbox_path = self.get_output_query(sandbox_id)
+        sandbox_path.parent.mkdir(exist_ok=True, parents=True)
+        if sandbox_path:
+            with tarfile.open(sandbox_path, "w:gz") as tar:
+                for file in outputs:
+                    if not file:
+                        break
+                    if isinstance(file, str):
+                        file = Path(file)
+                    tar.add(file, arcname=file.name)
+        return sandbox_path
 
 class DataCatalogInterface(ABC):
     """Abstract interface for data catalog operations."""
@@ -122,6 +175,11 @@ class ExecutionHooksBasePlugin(BaseModel):
     _data_catalog: DataCatalogInterface = PrivateAttr(
         default_factory=DummyDataCatalogInterface
     )
+    
+    # Private attribute for sandbox interface - not part of Pydantic model validation
+    _sandbox_interface: SandboxInterface = PrivateAttr(
+        default_factory=SandboxInterface
+    )
 
     @property
     def data_catalog(self) -> DataCatalogInterface:
@@ -132,6 +190,16 @@ class ExecutionHooksBasePlugin(BaseModel):
     def data_catalog(self, value: DataCatalogInterface) -> None:
         """Set the data catalog interface."""
         self._data_catalog = value
+        
+    @property
+    def sandbox_interface(self) -> SandboxInterface:
+        """Get the sandbox interface."""
+        return self._sandbox_interface
+
+    @sandbox_interface.setter
+    def sandbox_interface(self, value: SandboxInterface) -> None:
+        """Set the sandbox interface."""
+        self._sandbox_interface = value
 
     def __init__(self, **data):
         """Initialize with data catalog interface."""
@@ -162,7 +230,7 @@ class ExecutionHooksBasePlugin(BaseModel):
         """
         return command
 
-    def post_process(self, job_path: Path, **kwargs: Any) -> bool:
+    def post_process(self, job_path: Path, stdout: Optional[str] = None, **kwargs: Any) -> bool:
         """Post-process job outputs.
 
         Parameters
@@ -170,6 +238,14 @@ class ExecutionHooksBasePlugin(BaseModel):
         job_path : Path
             Path to the job working directory.
         """
+        if stdout:
+            outputs = json.loads(stdout)
+            for output, files in outputs.items():
+                if files:
+                    if not isinstance(files, List):
+                        files = [files]
+                    file_paths = [(file["path"] if file is not None else None) for file in files]
+                    self.store_output(output, file_paths)
         return True
 
     def get_input_query(
@@ -182,9 +258,29 @@ class ExecutionHooksBasePlugin(BaseModel):
         """Delegate to data catalog interface."""
         return self.data_catalog.get_output_query(output_name, **kwargs)
 
-    def store_output(self, output_name: str, src_path: str, **kwargs: Any) -> None:
-        """Delegate to data catalog interface."""
-        self.data_catalog.store_output(output_name, src_path, **kwargs)
+    def store_output(self, output_name: str, src_path: str | List[str] | Path | List[Path], **kwargs: Any) -> None:
+        """Delegate to the correct interface."""
+        if isinstance(src_path, List):
+            sb = []
+            for path in src_path:
+                if self.get_output_type(output_name, path) == OutputType.Sandbox:
+                    sb.append(path)
+                else:
+                    self.data_catalog.store_output(output_name, path, **kwargs)
+            if len(sb) > 0:
+                self.sandbox_interface.store_output(outputs=sb)    
+        elif self.get_output_type(output_name, src_path) == OutputType.Sandbox:
+            self.sandbox_interface.store_output(outputs=[src_path])
+        else:
+            self.data_catalog.store_output(output_name, src_path, **kwargs)
+
+    def get_output_type(self, output_name: str, src_path: str | Path, **kwargs: Any) -> OutputType:
+        """Whether the output must be stored in a Sandbox or the Data Catalog."""
+        if self.get_output_query(output_name, **kwargs):
+            return OutputType.Data_Catalog
+        else:
+            return OutputType.Sandbox
+        
 
     @classmethod
     def get_schema_info(cls) -> Dict[str, Any]:

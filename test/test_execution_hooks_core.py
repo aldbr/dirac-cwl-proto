@@ -140,7 +140,7 @@ class TestExecutionHookExtended:
 
         # Test store_output raises RuntimeError when no output path is defined
         with pytest.raises(RuntimeError, match="No output path defined"):
-            model.store_output("test", "/tmp/file.txt")
+            model.data_catalog.store_output("test", "/tmp/file.txt")
 
     def test_model_serialization(self):
         """Test that model serialization works correctly."""

@@ -11,6 +11,7 @@ from .core import (
     DataCatalogInterface,
     ExecutionHooksBasePlugin,
     ExecutionHooksHint,
+    SandboxInterface,
     SchedulingHint,
     TransformationExecutionHooksHint,
 )
@@ -38,5 +39,6 @@ __all__ = [
     "SchedulingHint",
     "DataCatalogInterface",
     "ExecutionHooksPluginRegistry",
+    "SandboxInterface",
     "get_registry",
 ]
