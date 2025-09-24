@@ -1,0 +1,13 @@
+run-id: 123
+task-id: 456
+pool-xml-catalog:
+  class: File
+  path: pool_xml_catalog.xml
+
+files:
+  - class: File
+    path: LFN://filecatalog/lhcb/456/123/simulation/Gauss_123_456_1.sim
+  - class: File
+    path: LFN://filecatalog/lhcb/456/123/simulation/Gauss_456_456_1.sim
+  - class: File
+    path: LFN://filecatalog/lhcb/456/123/simulation/Gauss_789_456_1.sim
