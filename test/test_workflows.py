@@ -269,6 +269,60 @@ def test_run_job_validation_failure(
         )
 
 
+@pytest.mark.parametrize(
+    "cwl_file, inputs, destination_source_input_data",
+    [
+        # --- Pi example ---
+        (
+            "test/workflows/pi/pigather.cwl",
+            ["test/workflows/pi/type_dependencies/job/inputs-pi_gather_catalog.yaml"],
+            {
+                "filecatalog/pi/100": [
+                    "test/workflows/pi/type_dependencies/job/result_1.sim",
+                    "test/workflows/pi/type_dependencies/job/result_2.sim",
+                    "test/workflows/pi/type_dependencies/job/result_3.sim",
+                    "test/workflows/pi/type_dependencies/job/result_4.sim",
+                    "test/workflows/pi/type_dependencies/job/result_5.sim",
+                ]
+            },
+        ),
+        # --- LHCb example ---
+        (
+            "test/workflows/lhcb/lhcbreconstruct.cwl",
+            ["test/workflows/lhcb/type_dependencies/job/inputs-lhcb_reconstruct_catalog.yaml"],
+            {
+                "filecatalog/lhcb/456/123/simulation": [
+                    "test/workflows/lhcb/type_dependencies/job/Gauss_123_456_1.sim",
+                    "test/workflows/lhcb/type_dependencies/job/Gauss_456_456_1.sim",
+                    "test/workflows/lhcb/type_dependencies/job/Gauss_789_456_1.sim",
+                ]
+            },
+        )
+    ],
+)
+def test_run_job_with_input_data(cli_runner, cleanup, cwl_file, inputs, destination_source_input_data):
+    
+    
+    for destination, inputs_data in destination_source_input_data.items():
+        # Copy the input data to the destination
+        destination = Path(destination)
+        destination.mkdir(parents=True, exist_ok=True)
+        for input in inputs_data:
+            shutil.copy(input, destination)
+            
+    # CWL file is the first argument
+    command = ["job", "submit", cwl_file]
+
+    # Add the input file(s)
+    for input in inputs:
+        command.extend(["--parameter-path", input])
+
+    result = cli_runner.invoke(app, command)
+    # Remove ANSI color codes for assertion
+    clean_output = strip_ansi_codes(result.stdout)
+    assert "CLI: Job(s) done" in clean_output, f"Failed to run the job: {result.stdout}"
+
+
 # -----------------------------------------------------------------------------
 # Transformation tests
 # -----------------------------------------------------------------------------
