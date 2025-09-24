@@ -226,7 +226,7 @@ def _generate_job_model_parameter(
         cwl_inputs = {}
         for input_name, input_data in group.items():
             cwl_inputs[input_name] = [
-                File(path=str(Path(path).resolve())) for path in input_data
+                File(path="LFN://" + str(Path(path).resolve())) for path in input_data
             ]
 
         job_model_params.append(JobInputModel(sandbox=None, cwl=cwl_inputs))

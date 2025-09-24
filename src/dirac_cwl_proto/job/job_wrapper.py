@@ -70,8 +70,8 @@ class JobWrapper:
                 if not item.path:
                     raise NotImplementedError("File path is not defined.")
 
-                input_path = Path(item.path)
-                if "filecatalog" in input_path.parts:
+                if item.path.startswith("LFN://"):
+                    item.path = item.path.removeprefix("LFN://")
                     input_data.append(item)
 
         for file in input_data:
