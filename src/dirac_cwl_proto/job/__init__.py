@@ -42,11 +42,11 @@ console = Console()
 @app.async_command("submit")
 async def submit_job_client(
     task_path: str = typer.Argument(..., help="Path to the CWL file"),
-    parameter_path: list[str] | None = typer.Option(
-        None, help="Path to the files containing the metadata"
-    ),
+    parameter_path: list[str]
+    | None = typer.Option(None, help="Path to the files containing the metadata"),
     # Specific parameter for the purpose of the prototype
-    local: bool | None = typer.Option(
+    local: bool
+    | None = typer.Option(
         True, help="Run the job locally instead of submitting it to the router"
     ),
 ):
@@ -213,8 +213,11 @@ def get_lfns(input_data: dict[str, Any]) -> dict[str, Path | list[Path]]:
             val = []
             for item in input_value:
                 if isinstance(item, File):
-                    if not item.location:
+                    if not item.location and not item.path:
                         raise NotImplementedError("File location is not defined.")
+
+                    if not item.location:
+                        continue
                     # Skip files from the File Catalog
                     if item.location.startswith("lfn:"):
                         val.append(Path(item.location))
