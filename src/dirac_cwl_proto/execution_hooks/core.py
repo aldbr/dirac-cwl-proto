@@ -22,6 +22,7 @@ from typing import (
     Mapping,
     Optional,
     Self,
+    Sequence,
     TypeVar,
     Union,
     cast,
@@ -73,7 +74,7 @@ class SandboxInterface(BaseModel):
         return Path("sandboxstore") / f"output_sandbox_{id}.tar.gz"
 
     def store_output(
-        self, outputs: List[str] | List[Path], **kwargs: Any
+        self, outputs: Sequence[str | Path], **kwargs: Any
     ) -> Optional[Path]:
         """Store output in a sandbox.
 
@@ -90,7 +91,9 @@ class SandboxInterface(BaseModel):
         if len(outputs) == 0:
             return None
         sandbox_id = random.randint(1000, 9999)
-        sandbox_path = self.get_output_query(sandbox_id)
+        sandbox_path = self.get_output_query(str(sandbox_id))
+        if not sandbox_path:
+            raise RuntimeError(f"No output sanbox path defined for {outputs}")
         sandbox_path.parent.mkdir(exist_ok=True, parents=True)
         if sandbox_path:
             with tarfile.open(sandbox_path, "w:gz") as tar:
@@ -557,9 +560,10 @@ class ExecutionHooksBasePlugin(BaseModel):
                 if files:
                     if not isinstance(files, List):
                         files = [files]
-                    file_paths = [
-                        (file["path"] if file is not None else None) for file in files
-                    ]
+                    file_paths = []
+                    for file in files:
+                        if file:
+                            file_paths.append(str(file["path"]))
                     self.store_output(output, file_paths)
         return True
 
@@ -580,7 +584,7 @@ class ExecutionHooksBasePlugin(BaseModel):
     def store_output(
         self,
         output_name: str,
-        src_path: str | List[str] | Path | List[Path],
+        src_path: str | Path | Sequence[str | Path],
         **kwargs: Any,
     ) -> None:
         """Delegate to the correct interface."""
@@ -589,13 +593,14 @@ class ExecutionHooksBasePlugin(BaseModel):
                 f"No data catalog available, cannot store output {output_name}"
             )
             return
-        if isinstance(src_path, List):
+
+        if isinstance(src_path, Sequence) and not isinstance(src_path, str):
             sb = []
             for path in src_path:
                 if self.get_output_type(output_name, path) == OutputType.Sandbox:
                     sb.append(path)
                 else:
-                    self.data_catalog.store_output(output_name, path, **kwargs)
+                    self.data_catalog.store_output(output_name, src_path=path, **kwargs)
             if len(sb) > 0:
                 self.sandbox_interface.store_output(outputs=sb)
         elif self.get_output_type(output_name, src_path) == OutputType.Sandbox:
