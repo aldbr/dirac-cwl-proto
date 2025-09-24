@@ -2,6 +2,7 @@
 CLI interface to run a workflow as a job.
 """
 
+import json
 import logging
 import random
 import shutil
@@ -348,10 +349,47 @@ def _post_process(
     logger.info(stdout)
     logger.info(stderr)
 
+    outputs = json.loads(stdout)
+    sandboxes = upload_workernode_output_files(outputs)
+    
+    console.print(
+            f"\t[blue]:information_source:[/blue] {len(sandboxes)} Sandbox(es) will be available through: \n\t\t- {
+                "\n\t\t- ".join(str(sb) for sb in sandboxes)
+                }"
+        )
+
     if runtime_metadata:
         return runtime_metadata.post_process(job_path)
 
     return True
+
+def upload_workernode_output_files(outputs: dict[str, Any]) -> list[Path]:
+    
+    Path("sandboxstore").mkdir(exist_ok=True)
+    
+    sandbox_id = random.randint(1000, 9999)
+    sandboxes = []
+    
+    for output, files in outputs.items():
+        sandbox_path = Path("sandboxstore") / f"output_sandbox_{sandbox_id}_{output}.tar.gz"
+        sandboxes.append(sandbox_path)
+        if not isinstance(files, list):
+            files = [files]
+        with tarfile.open(sandbox_path, "w:gz") as tar:
+            for file in files:
+                if not file:
+                    break
+                
+                file_path = Path(file["path"].replace("file://", ""))
+                console.print(
+                    f"\t\t[blue]:information_source:[/blue] Found {file_path} on the worker node, uploading it to the sandbox store..."
+                )
+                tar.add(file_path, arcname=file_path.name)
+        console.print(
+            f"\t\t[blue]:information_source:[/blue] File(s) will be available through {sandbox_path}"
+        )
+        
+    return sandboxes
 
 
 def run_job(job: JobSubmissionModel) -> bool:
