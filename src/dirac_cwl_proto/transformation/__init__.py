@@ -191,7 +191,9 @@ def submit_transformation_router(transformation: TransformationSubmissionModel) 
 
     elif transformation.execution_hooks.configuration:
         job_model_params.append(
-            JobInputModel(sandbox=None, cwl=transformation.execution_hooks.configuration)
+            JobInputModel(
+                sandbox=None, cwl=transformation.execution_hooks.configuration
+            )
         )
 
     logger.info("Building the jobs...")
