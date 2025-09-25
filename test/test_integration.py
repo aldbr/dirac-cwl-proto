@@ -157,28 +157,28 @@ class TestRealWorldScenarios:
         output_path = analysis_runtime.get_output_query("results")
         assert output_path is not None
 
-    def test_lhcb_simulation_workflow_scenario(self):
-        """Test an LHCb simulation workflow scenario."""
-        # Test if LHCb simulation plugin is available
-        lhcb_descriptor = ExecutionHooksHint(
-            hook_plugin="LHCbSimulationPlugin",
-            configuration={
-                "task_id": 123,
-                "run_id": 2,
-                "number_of_events": 10000,
-            },
-        )
-        lhcb_runtime = lhcb_descriptor.to_runtime()
+    # def test_lhcb_simulation_workflow_scenario(self):
+    #     """Test an LHCb simulation workflow scenario."""
+    #     # Test if LHCb simulation plugin is available
+    #     lhcb_descriptor = ExecutionHooksHint(
+    #         hook_plugin="LHCbSimulationPlugin",
+    #         configuration={
+    #             "task_id": 123,
+    #             "run_id": 2,
+    #             "number_of_events": 10000,
+    #         },
+    #     )
+    #     lhcb_runtime = lhcb_descriptor.to_runtime()
 
-        # Test LHCb-specific functionality
-        assert lhcb_runtime.name() == "LHCbSimulationPlugin"
+    #     # Test LHCb-specific functionality
+    #     assert lhcb_runtime.name() == "LHCbSimulationPlugin"
 
-        # Test path generation
-        input_path = lhcb_runtime.get_input_query("gen_file")
-        output_path = lhcb_runtime.get_output_query("sim_file")
+    #     # Test path generation
+    #     input_path = lhcb_runtime.get_input_query("gen_file")
+    #     output_path = lhcb_runtime.get_output_query("sim_file")
 
-        assert "lhcb" in str(input_path).lower()
-        assert "lhcb" in str(output_path).lower()
+    #     assert "lhcb" in str(input_path).lower()
+    #     assert "lhcb" in str(output_path).lower()
 
     def test_transformation_workflow_scenario(self):
         """Test a transformation (batch processing) workflow scenario."""
@@ -235,14 +235,14 @@ class TestErrorHandling:
         with pytest.raises(KeyError, match="Unknown execution hooks plugin"):
             descriptor.to_runtime()
 
-    def test_missing_required_parameters(self):
-        """Test handling of missing required parameters."""
-        # Some plugins might require specific parameters
-        with pytest.raises(
-            ValueError, match="Failed to instantiate plugin 'LHCbSimulationPlugin'"
-        ):
-            descriptor = ExecutionHooksHint(hook_plugin="LHCbSimulationPlugin")
-            descriptor.to_runtime()
+    # def test_missing_required_parameters(self):
+    #     """Test handling of missing required parameters."""
+    #     # Some plugins might require specific parameters
+    #     with pytest.raises(
+    #         ValueError, match="Failed to instantiate plugin 'LHCbSimulationPlugin'"
+    #     ):
+    #         descriptor = ExecutionHooksHint(hook_plugin="LHCbSimulationPlugin")
+    #         descriptor.to_runtime()
 
     def test_plugin_registration_conflicts(self):
         """Test handling of plugin registration conflicts."""

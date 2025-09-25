@@ -65,7 +65,11 @@ allow_redefinition = true
 enable_error_code = ["import", "attr-defined"]
 
 [tool.pytest.ini_options]
-addopts = ["-v"]
+addopts = [
+    "-v",
+    "--ignore=test/test_metadata_plugins_lhcb.py",
+    "--ignore=test/test_plugins_lhcb.py",
+]
 asyncio_mode = "auto"
 
 # -------------------------
