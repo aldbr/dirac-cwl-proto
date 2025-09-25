@@ -7,7 +7,7 @@ metadata system with additional functionality for CWL integration.
 
 import pytest
 
-from dirac_cwl_proto.metadata.core import ExecutionHooksHint, SchedulingHint
+from dirac_cwl_proto.execution_hooks.core import ExecutionHooksHint, SchedulingHint
 
 
 class TestExecutionHooksHint:

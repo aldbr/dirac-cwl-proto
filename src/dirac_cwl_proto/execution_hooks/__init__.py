@@ -15,6 +15,7 @@ from .core import (
     TransformationExecutionHooksHint,
 )
 from .registry import (
+    ExecutionHooksPluginRegistry,
     discover_plugins,
     get_registry,
 )
@@ -36,6 +37,6 @@ __all__ = [
     "ExecutionHooksBasePlugin",
     "SchedulingHint",
     "DataCatalogInterface",
-    "MetadataRegistry",
+    "ExecutionHooksPluginRegistry",
     "get_registry",
 ]

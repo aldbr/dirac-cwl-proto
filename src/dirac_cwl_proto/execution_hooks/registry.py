@@ -17,8 +17,14 @@ from .core import ExecutionHooksBasePlugin, ExecutionHooksHint
 logger = logging.getLogger(__name__)
 
 
-class MetadataPluginRegistry:
-    """Registry for metadata plugin discovery and management."""
+class ExecutionHooksPluginRegistry:
+    """
+    Registry for execution hooks plugins.
+
+    This class manages the registration and retrieval of execution hooks plugins
+    for different steps in CWL workflows. Plugins are registered using
+    entry points and can be retrieved by name.
+    """
 
     def __init__(self) -> None:
         self._plugins: Dict[str, Type[ExecutionHooksBasePlugin]] = {}
@@ -270,12 +276,12 @@ class MetadataPluginRegistry:
 
 
 # Global registry instance
-_registry = MetadataPluginRegistry()
+_registry = ExecutionHooksPluginRegistry()
 
 
 # Public API
-def get_registry() -> MetadataPluginRegistry:
-    """Get the global metadata plugin registry."""
+def get_registry() -> ExecutionHooksPluginRegistry:
+    """Get the global execution hooks plugin registry."""
     return _registry
 
 

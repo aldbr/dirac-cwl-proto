@@ -10,10 +10,10 @@ from pathlib import Path
 
 import pytest
 
-from dirac_cwl_proto.metadata import (
+from dirac_cwl_proto.execution_hooks import (
     get_registry,
 )
-from dirac_cwl_proto.metadata.core import (
+from dirac_cwl_proto.execution_hooks.core import (
     ExecutionHooksBasePlugin,
     ExecutionHooksHint,
     SchedulingHint,
