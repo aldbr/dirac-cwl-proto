@@ -193,8 +193,7 @@ class ExecutionHooksPluginRegistry:
         """
         if package_names is None:
             package_names = [
-                "dirac_cwl_proto.metadata.plugins",
-                "diracx_metadata_plugins",  # Future extension package
+                "dirac_cwl_proto.execution_hooks.plugins",
             ]
 
         discovered = 0

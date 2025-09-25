@@ -233,7 +233,7 @@ class TestPluginSystem:
 
         # Register plugin directly
         registry = get_registry()
-        registry.register_plugin(DirectPlugin)
+        registry.register_plugin(DirectPlugin, override=True)
 
         # Should be able to instantiate
         descriptor = ExecutionHooksHint(hook_plugin="DirectPlugin", test_param="custom")
@@ -252,7 +252,7 @@ class TestPluginSystem:
             another_param: str = "default"
 
         registry = get_registry()
-        registry.register_plugin(ParameterTestPlugin)
+        registry.register_plugin(ParameterTestPlugin, override=True)
 
         # Test with snake_case parameters (should work)
         descriptor = ExecutionHooksHint(
