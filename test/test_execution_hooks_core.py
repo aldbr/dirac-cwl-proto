@@ -210,7 +210,7 @@ class TestExecutionHooksHint:
 
     def test_model_copy_merges_dict_fields(self):
         """Test model_copy merges dict fields and updates values."""
-        descriptor = ExecutionHooksHint(hook_plugin="LHCbSimulationPlugin")
+        descriptor = ExecutionHooksHint(hook_plugin="AdminPlugin")
 
         updated = descriptor.model_copy(
             update={"hook_plugin": "NewClass", "new_field": "value"}
@@ -292,13 +292,13 @@ class TestTransformationExecutionHooksHint:
     def test_inheritance(self):
         """Test that it inherits from ExecutionHooksHint."""
         descriptor = TransformationExecutionHooksHint(
-            hook_plugin="LHCbSimulationPlugin",
+            hook_plugin="AdminPlugin",
             group_size={"sim_data": 50},
             n_events=1000,
         )
 
         # Test that it has the fields from both classes
-        assert descriptor.hook_plugin == "LHCbSimulationPlugin"
+        assert descriptor.hook_plugin == "AdminPlugin"
         assert descriptor.group_size == {"sim_data": 50}
         assert getattr(descriptor, "n_events", None) == 1000
 
