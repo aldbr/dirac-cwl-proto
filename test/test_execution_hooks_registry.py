@@ -1,8 +1,8 @@
 """
-Tests for the metadata plugin registry system.
+Tests for the execution hooks plugin registry system.
 
 This module tests the plugin registration, discovery, and instantiation
-functionality of the metadata registry.
+functionality of the execution hooks registry.
 """
 
 from pathlib import Path

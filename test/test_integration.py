@@ -1,7 +1,7 @@
 """
-Integration tests for the complete metadata plugin system.
+Integration tests for the complete execution hooks plugin system.
 
-This module tests the end-to-end functionality of the metadata plugin system,
+This module tests the end-to-end functionality of the execution hooks plugin system,
 including plugin discovery, registration, CWL integration, and real-world
 usage scenarios.
 """
@@ -73,15 +73,15 @@ class TestSystemIntegration:
     def test_cwl_integration_workflow(self):
         """Test complete CWL integration workflow."""
         # Create an enhanced descriptor directly to test CWL integration
-        metadata_descriptor = ExecutionHooksHint(
+        execution_hook = ExecutionHooksHint(
             hook_plugin="QueryBasedPlugin",
             configuration={"campaign": "Run3", "data_type": "AOD", "site": "CERN"},
         )
 
         # Convert to runtime
-        runtime_metadata = metadata_descriptor.to_runtime()
+        runtime_plugin = execution_hook.to_runtime()
         assert (
-            runtime_metadata.name() == "QueryBasedPlugin"
+            runtime_plugin.name() == "QueryBasedPlugin"
         )  # Test that CWL parameters are available
         # (Note: exact parameter extraction depends on implementation)
 
@@ -91,7 +91,7 @@ class TestRealWorldScenarios:
 
     def test_user_workflow_scenario(self):
         """Test a typical user workflow scenario."""
-        # User creates a basic job with user metadata
+        # User creates a basic job with user plugin
         user_descriptor = ExecutionHooksHint(hook_plugin="UserPlugin")
         user_runtime = user_descriptor.to_runtime()
 
@@ -101,7 +101,7 @@ class TestRealWorldScenarios:
 
         # Pre-process
         processed_command = user_runtime.pre_process(job_path, command)
-        assert processed_command == command  # User metadata doesn't modify command
+        assert processed_command == command  # User plugin doesn't modify command
 
         # Post-process
         result = user_runtime.post_process(job_path)
@@ -232,7 +232,7 @@ class TestErrorHandling:
         """Test handling of invalid plugin types."""
         # Invalid types should raise error during runtime instantiation
         descriptor = ExecutionHooksHint(hook_plugin="NonExistentPlugin")
-        with pytest.raises(KeyError, match="Unknown metadata plugin"):
+        with pytest.raises(KeyError, match="Unknown execution hooks plugin"):
             descriptor.to_runtime()
 
     def test_missing_required_parameters(self):

@@ -1,7 +1,7 @@
 """
-Tests for the core metadata plugins.
+Tests for the core execution hooks plugins.
 
-This module tests the built-in metadata plugins including User, Admin,
+This module tests the built-in execution hooks plugins including User, Admin,
 and QueryBased plugin implementations.
 """
 

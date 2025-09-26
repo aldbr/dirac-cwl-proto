@@ -1,8 +1,8 @@
 """
-Tests for the LHCb experiment metadata plugins.
+Tests for the LHCb experiment execution hooks plugins.
 
-This module tests the LHCb-specific metadata plugins including simulation,
-reconstruction, and analysis metadata implementations.
+This module tests the LHCb-specific execution hooks plugins including simulation,
+reconstruction, and analysis execution hooks implementations.
 """
 
 from pathlib import Path

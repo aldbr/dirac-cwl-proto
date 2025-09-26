@@ -134,7 +134,7 @@ class ExecutionHooksPluginRegistry:
         if plugin_class is None:
             available = self.list_plugins()
             raise KeyError(
-                f"Unknown metadata plugin: '{descriptor.hook_plugin}'"
+                f"Unknown execution hooks plugin: '{descriptor.hook_plugin}'"
                 f"Available: {available}"
             )
 
