@@ -27,7 +27,7 @@ from rich.text import Text
 from ruamel.yaml import YAML
 from schema_salad.exceptions import ValidationException
 
-from dirac_cwl_proto.metadata.core import ExecutionHooksBasePlugin
+from dirac_cwl_proto.execution_hooks.core import ExecutionHooksBasePlugin
 from dirac_cwl_proto.submission_models import (
     JobInputModel,
     JobSubmissionModel,

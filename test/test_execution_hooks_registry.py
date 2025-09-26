@@ -1,8 +1,8 @@
 """
-Tests for the metadata plugin registry system.
+Tests for the execution hooks plugin registry system.
 
 This module tests the plugin registration, discovery, and instantiation
-functionality of the metadata registry.
+functionality of the execution hooks registry.
 """
 
 from pathlib import Path
@@ -10,9 +10,12 @@ from typing import Any, ClassVar, Optional
 
 import pytest
 
-from dirac_cwl_proto.metadata.core import ExecutionHooksBasePlugin, ExecutionHooksHint
-from dirac_cwl_proto.metadata.registry import (
-    MetadataPluginRegistry,
+from dirac_cwl_proto.execution_hooks.core import (
+    ExecutionHooksBasePlugin,
+    ExecutionHooksHint,
+)
+from dirac_cwl_proto.execution_hooks.registry import (
+    ExecutionHooksPluginRegistry,
     get_registry,
 )
 
@@ -43,18 +46,18 @@ class TestSecondVOPlugin(ExecutionHooksBasePlugin):
     param2: str = "test"
 
 
-class TestMetadataPluginRegistry:
-    """Test the MetadataPluginRegistry class."""
+class TestExecutionHooksPluginRegistry:
+    """Test the ExecutionHooksPluginRegistry class."""
 
     def test_creation(self):
         """Test registry creation."""
-        registry = MetadataPluginRegistry()
+        registry = ExecutionHooksPluginRegistry()
         assert len(registry.list_plugins()) == 0
         assert len(registry.list_virtual_organizations()) == 0
 
     def test_register_plugin(self):
         """Test plugin registration."""
-        registry = MetadataPluginRegistry()
+        registry = ExecutionHooksPluginRegistry()
 
         registry.register_plugin(TestPlugin)
 
@@ -64,7 +67,7 @@ class TestMetadataPluginRegistry:
 
     def test_register_plugin_with_vo(self):
         """Test vo-specific plugin registration."""
-        registry = MetadataPluginRegistry()
+        registry = ExecutionHooksPluginRegistry()
 
         registry.register_plugin(TestVOPlugin)
 
@@ -79,7 +82,7 @@ class TestMetadataPluginRegistry:
 
     def test_register_duplicate_plugin(self):
         """Test that duplicate registration raises error."""
-        registry = MetadataPluginRegistry()
+        registry = ExecutionHooksPluginRegistry()
 
         registry.register_plugin(TestPlugin)
 
@@ -89,7 +92,7 @@ class TestMetadataPluginRegistry:
 
     def test_register_duplicate_plugin_with_override(self):
         """Test that duplicate registration works with override."""
-        registry = MetadataPluginRegistry()
+        registry = ExecutionHooksPluginRegistry()
 
         registry.register_plugin(TestPlugin)
         registry.register_plugin(TestPlugin, override=True)
@@ -100,7 +103,7 @@ class TestMetadataPluginRegistry:
 
     def test_get_plugin(self):
         """Test getting registered plugin."""
-        registry = MetadataPluginRegistry()
+        registry = ExecutionHooksPluginRegistry()
 
         registry.register_plugin(TestPlugin)
 
@@ -109,14 +112,14 @@ class TestMetadataPluginRegistry:
 
     def test_get_nonexistent_plugin(self):
         """Test getting non-existent plugin."""
-        registry = MetadataPluginRegistry()
+        registry = ExecutionHooksPluginRegistry()
 
         plugin = registry.get_plugin("NonExistent")
         assert plugin is None
 
     def test_get_plugin_with_vo(self):
         """Test getting vo-specific plugin."""
-        registry = MetadataPluginRegistry()
+        registry = ExecutionHooksPluginRegistry()
 
         registry.register_plugin(TestVOPlugin)
 
@@ -125,7 +128,7 @@ class TestMetadataPluginRegistry:
 
     def test_instantiate_plugin(self):
         """Test plugin instantiation."""
-        registry = MetadataPluginRegistry()
+        registry = ExecutionHooksPluginRegistry()
 
         registry.register_plugin(TestPlugin)
 
@@ -137,7 +140,7 @@ class TestMetadataPluginRegistry:
 
     def test_instantiate_plugin_with_vo(self):
         """Test vo plugin instantiation."""
-        registry = MetadataPluginRegistry()
+        registry = ExecutionHooksPluginRegistry()
 
         registry.register_plugin(TestVOPlugin)
 
@@ -151,16 +154,16 @@ class TestMetadataPluginRegistry:
 
     def test_instantiate_nonexistent_plugin(self):
         """Test instantiation of non-existent plugin."""
-        registry = MetadataPluginRegistry()
+        registry = ExecutionHooksPluginRegistry()
 
         descriptor = ExecutionHooksHint(hook_plugin="NonExistent")
 
-        with pytest.raises(KeyError, match="Unknown metadata plugin"):
+        with pytest.raises(KeyError, match="Unknown execution hooks plugin"):
             registry.instantiate_plugin(descriptor)
 
     def test_discover_plugins(self):
         """Test automatic plugin discovery."""
-        registry = MetadataPluginRegistry()
+        registry = ExecutionHooksPluginRegistry()
 
         # Test discovery from a package that doesn't exist - should return 0
         discovered = registry.discover_plugins(["nonexistent.package"])
@@ -172,7 +175,7 @@ class TestMetadataPluginRegistry:
 
     def test_list_virtual_organizations(self):
         """Test listing vos."""
-        registry = MetadataPluginRegistry()
+        registry = ExecutionHooksPluginRegistry()
 
         assert len(registry.list_virtual_organizations()) == 0
 
@@ -186,7 +189,7 @@ class TestMetadataPluginRegistry:
 
     def test_list_plugins_by_vo(self):
         """Test listing plugins by vo."""
-        registry = MetadataPluginRegistry()
+        registry = ExecutionHooksPluginRegistry()
 
         registry.register_plugin(TestPlugin)  # No vo
         registry.register_plugin(TestVOPlugin)  # test_exp vo
@@ -208,7 +211,7 @@ class TestGlobalRegistryFunctions:
     def test_get_registry(self):
         """Test getting the global registry."""
         registry = get_registry()
-        assert isinstance(registry, MetadataPluginRegistry)
+        assert isinstance(registry, ExecutionHooksPluginRegistry)
 
         # Should return the same instance
         registry2 = get_registry()
@@ -220,7 +223,7 @@ class TestPluginSystem:
 
     def test_direct_plugin_usage(self):
         """Test using plugins directly without legacy wrapper."""
-        from dirac_cwl_proto.metadata.core import ExecutionHooksBasePlugin
+        from dirac_cwl_proto.execution_hooks.core import ExecutionHooksBasePlugin
 
         class DirectPlugin(ExecutionHooksBasePlugin):
             test_param: str = "default"
@@ -242,7 +245,7 @@ class TestPluginSystem:
 
     def test_plugin_parameter_handling(self):
         """Test that parameters are passed correctly to plugins."""
-        from dirac_cwl_proto.metadata.core import ExecutionHooksBasePlugin
+        from dirac_cwl_proto.execution_hooks.core import ExecutionHooksBasePlugin
 
         class ParameterTestPlugin(ExecutionHooksBasePlugin):
             test_param: str = "default"

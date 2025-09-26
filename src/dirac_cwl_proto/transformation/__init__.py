@@ -17,8 +17,11 @@ from rich.console import Console
 from ruamel.yaml import YAML
 from schema_salad.exceptions import ValidationException
 
+from dirac_cwl_proto.execution_hooks import (
+    SchedulingHint,
+    TransformationExecutionHooksHint,
+)
 from dirac_cwl_proto.job import submit_job_router
-from dirac_cwl_proto.metadata import SchedulingHint, TransformationExecutionHooksHint
 from dirac_cwl_proto.submission_models import (
     JobInputModel,
     JobSubmissionModel,

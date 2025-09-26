@@ -37,7 +37,7 @@ def collect_pydantic_models() -> Dict[str, Any]:
 
     # Import core models
     try:
-        from dirac_cwl_proto.metadata.core import (
+        from dirac_cwl_proto.execution_hooks.core import (
             ExecutionHooksBasePlugin,
             ExecutionHooksHint,
             SchedulingHint,
@@ -79,7 +79,7 @@ def collect_pydantic_models() -> Dict[str, Any]:
 
     # Collect all registered metadata plugins
     try:
-        from dirac_cwl_proto.metadata import get_registry
+        from dirac_cwl_proto.execution_hooks import get_registry
 
         registry = get_registry()
         registry.discover_plugins()

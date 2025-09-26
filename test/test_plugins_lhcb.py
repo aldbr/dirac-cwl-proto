@@ -1,13 +1,13 @@
 """
-Tests for the LHCb experiment metadata plugins.
+Tests for the LHCb experiment execution hooks plugins.
 
-This module tests the LHCb-specific metadata plugins including simulation,
-reconstruction, and analysis metadata implementations.
+This module tests the LHCb-specific execution hooks plugins including simulation,
+reconstruction, and analysis execution hooks implementations.
 """
 
 from pathlib import Path
 
-from dirac_cwl_proto.metadata.plugins.lhcb import (
+from dirac_cwl_proto.execution_hooks.plugins.lhcb import (
     LHCbAnalysisPlugin,
     LHCbBasePlugin,
     LHCbReconstructionPlugin,
@@ -26,7 +26,9 @@ class TestLHCbBasePlugin:
         assert plugin.vo == "lhcb"
 
         # Test LHCb-specific path generation through data catalog interface
-        from dirac_cwl_proto.metadata.plugins.lhcb import LHCbDataCatalogInterface
+        from dirac_cwl_proto.execution_hooks.plugins.lhcb import (
+            LHCbDataCatalogInterface,
+        )
 
         data_catalog = LHCbDataCatalogInterface()
         path = data_catalog.get_lhcb_base_path(task_id=12345, run_id=1)
@@ -91,10 +93,10 @@ class TestLHCbSimulationPlugin:
 
         # Mock parameter file loading
         mock_load_inputfile = mocker.patch(
-            "dirac_cwl_proto.metadata.plugins.lhcb.load_inputfile"
+            "dirac_cwl_proto.execution_hooks.plugins.lhcb.load_inputfile"
         )
         mock_open = mocker.patch("builtins.open")
-        mock_yaml = mocker.patch("dirac_cwl_proto.metadata.plugins.lhcb.YAML")
+        mock_yaml = mocker.patch("dirac_cwl_proto.execution_hooks.plugins.lhcb.YAML")
         mock_load_inputfile.return_value = {"n_events": 1500, "generator": "Pythia8"}
 
         job_path = Path("/tmp/job")
@@ -115,10 +117,10 @@ class TestLHCbSimulationPlugin:
 
         # Mock file loading error
         mock_load_inputfile = mocker.patch(
-            "dirac_cwl_proto.metadata.plugins.lhcb.load_inputfile"
+            "dirac_cwl_proto.execution_hooks.plugins.lhcb.load_inputfile"
         )
         mock_open = mocker.patch("builtins.open")
-        mock_yaml = mocker.patch("dirac_cwl_proto.metadata.plugins.lhcb.YAML")
+        mock_yaml = mocker.patch("dirac_cwl_proto.execution_hooks.plugins.lhcb.YAML")
         mock_load_inputfile.side_effect = Exception("File not found")
 
         job_path = Path("/tmp/job")
@@ -154,7 +156,9 @@ class TestLHCbSimulationPlugin:
         job_path = Path("/tmp/job")
 
         # Mock glob to find simulation files
-        mock_glob = mocker.patch("dirac_cwl_proto.metadata.plugins.lhcb.glob.glob")
+        mock_glob = mocker.patch(
+            "dirac_cwl_proto.execution_hooks.plugins.lhcb.glob.glob"
+        )
         # Mock the store_output method on the data_catalog instance
         mock_store = mocker.patch.object(plugin.data_catalog, "store_output")
         mock_glob.side_effect = [
@@ -302,7 +306,9 @@ class TestLHCbAnalysisPlugin:
         job_path = Path("/tmp/job")
 
         # Mock glob to find ROOT files and plot files
-        mock_glob = mocker.patch("dirac_cwl_proto.metadata.plugins.lhcb.glob.glob")
+        mock_glob = mocker.patch(
+            "dirac_cwl_proto.execution_hooks.plugins.lhcb.glob.glob"
+        )
         # Mock the store_output method on the data_catalog instance
         mock_store = mocker.patch.object(plugin.data_catalog, "store_output")
         mock_glob.side_effect = [

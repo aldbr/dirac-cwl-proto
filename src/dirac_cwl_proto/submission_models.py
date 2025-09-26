@@ -17,7 +17,7 @@ from cwl_utils.parser.cwl_v1_2 import (
 )
 from pydantic import BaseModel, ConfigDict, field_serializer, model_validator
 
-from dirac_cwl_proto.metadata import (
+from dirac_cwl_proto.execution_hooks import (
     ExecutionHooksHint,
     SchedulingHint,
     TransformationExecutionHooksHint,
