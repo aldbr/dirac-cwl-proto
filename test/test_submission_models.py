@@ -37,7 +37,7 @@ class TestExecutionHooksHint:
 
         # Invalid type should raise error during runtime instantiation
         descriptor_with_invalid_type = ExecutionHooksHint(hook_plugin="NonExistentType")
-        with pytest.raises(KeyError, match="Unknown metadata plugin"):
+        with pytest.raises(KeyError, match="Unknown execution hooks plugin"):
             descriptor_with_invalid_type.to_runtime()
 
     def test_model_copy_operations(self):

@@ -158,7 +158,7 @@ class TestExecutionHooksPluginRegistry:
 
         descriptor = ExecutionHooksHint(hook_plugin="NonExistent")
 
-        with pytest.raises(KeyError, match="Unknown metadata plugin"):
+        with pytest.raises(KeyError, match="Unknown execution hooks plugin"):
             registry.instantiate_plugin(descriptor)
 
     def test_discover_plugins(self):
