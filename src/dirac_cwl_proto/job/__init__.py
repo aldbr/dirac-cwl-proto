@@ -405,6 +405,7 @@ def run_job(job: JobSubmissionModel) -> bool:
         ):
             logger.info("Task post-processed successfully!")
             return True
+        logger.error("Failed to post-process Task")
         return False
 
     except Exception:
