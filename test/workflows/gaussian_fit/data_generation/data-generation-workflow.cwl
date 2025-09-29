@@ -7,10 +7,10 @@ doc: >
 inputs:
   output_file_name_1:
     type: string
-    default: "data1.txt"
+    default: "data-gen1.txt"
   output_file_name_2:
     type: string
-    default: "data2.txt"
+    default: "data-gen2.txt"
 
 outputs:
   data1:

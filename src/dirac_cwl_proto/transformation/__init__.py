@@ -189,13 +189,6 @@ def submit_transformation_router(transformation: TransformationSubmissionModel) 
         job_model_params = _generate_job_model_parameter(input_data_dict)
         logger.info("Input data for the transformation retrieved!")
 
-    elif transformation.execution_hooks.configuration:
-        job_model_params.append(
-            JobInputModel(
-                sandbox=None, cwl=transformation.execution_hooks.configuration
-            )
-        )
-
     logger.info("Building the jobs...")
     jobs = JobSubmissionModel(
         task=transformation.task,
