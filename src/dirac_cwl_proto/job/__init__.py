@@ -189,7 +189,7 @@ def prepare_input_sandbox(input_data: dict[str, Any]) -> list[Path]:
         if not file.path:
             raise NotImplementedError("File path is not defined.")
         # Skip files from the File Catalog
-        if file.path.startswith("LFN://"):
+        if file.path.startswith("lfn:"):
             continue
 
         file_path = Path(file.path.replace("file://", ""))

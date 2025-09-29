@@ -6,8 +6,8 @@ pool-xml-catalog:
 
 files:
   - class: File
-    path: LFN://filecatalog/lhcb/456/123/simulation/Gauss_123_456_1.sim
+    path: lfn:filecatalog/lhcb/456/123/simulation/Gauss_123_456_1.sim
   - class: File
-    path: LFN://filecatalog/lhcb/456/123/simulation/Gauss_456_456_1.sim
+    path: lfn:filecatalog/lhcb/456/123/simulation/Gauss_456_456_1.sim
   - class: File
-    path: LFN://filecatalog/lhcb/456/123/simulation/Gauss_789_456_1.sim
+    path: lfn:filecatalog/lhcb/456/123/simulation/Gauss_789_456_1.sim
