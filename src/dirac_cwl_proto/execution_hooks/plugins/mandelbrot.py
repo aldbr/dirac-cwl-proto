@@ -144,7 +144,9 @@ class MandelBrotGenerationPlugin(ExecutionHooksBasePlugin):
         super().__init__(**kwargs)
         self.data_catalog = MandelbrotDataCatalogInterface(self.width, self.height)
 
-    def post_process(self, job_path: Path, stdout: Optional[str] = None, **kwargs: Any) -> bool:
+    def post_process(
+        self, job_path: Path, stdout: Optional[str] = None, **kwargs: Any
+    ) -> bool:
         """Post process the generated data files."""
         outputs = glob.glob(str(job_path / "data*.txt"))
         if outputs:
@@ -205,7 +207,9 @@ class MandelBrotMergingPlugin(ExecutionHooksBasePlugin):
             self.width, self.height, data=self.data, is_merging_workflow=True
         )
 
-    def post_process(self, job_path: Path, stdout: Optional[str] = None, **kwargs: Any) -> bool:
+    def post_process(
+        self, job_path: Path, stdout: Optional[str] = None, **kwargs: Any
+    ) -> bool:
         """Post process the merged image files."""
         outputs = glob.glob(str(job_path / "mandelbrot_image*bmp"))
         if outputs:

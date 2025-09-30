@@ -319,7 +319,9 @@ class LHCbSimulationPlugin(LHCbBasePlugin):
             **kwargs,
         )
 
-    def post_process(self, job_path: Path, stdout: Optional[str] = None, **kwargs: Any) -> bool:
+    def post_process(
+        self, job_path: Path, stdout: Optional[str] = None, **kwargs: Any
+    ) -> bool:
         """Post-process LHCb simulation outputs."""
         success = True
 
@@ -425,7 +427,9 @@ class LHCbReconstructionPlugin(LHCbBasePlugin):
 
         return command
 
-    def post_process(self, job_path: Path, stdout: Optional[str] = None, **kwargs: Any) -> bool:
+    def post_process(
+        self, job_path: Path, stdout: Optional[str] = None, **kwargs: Any
+    ) -> bool:
         """Post-process LHCb reconstruction outputs."""
         success = True
 
@@ -535,7 +539,9 @@ class LHCbAnalysisPlugin(LHCbBasePlugin):
 
         return command
 
-    def post_process(self, job_path: Path, stdout: Optional[str] = None, **kwargs: Any) -> bool:
+    def post_process(
+        self, job_path: Path, stdout: Optional[str] = None, **kwargs: Any
+    ) -> bool:
         """Post-process LHCb analysis outputs."""
         success = True
 
