@@ -8,7 +8,7 @@ import shutil
 import subprocess
 import tarfile
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 import typer
 from cwl_utils.pack import pack
@@ -17,7 +17,6 @@ from cwl_utils.parser.cwl_v1_2 import (
     CommandLineTool,
     ExpressionTool,
     File,
-    Saveable,
     Workflow,
 )
 from cwl_utils.parser.cwl_v1_2_utils import load_inputfile
@@ -115,11 +114,13 @@ def submit_job_client(
 
             # Upload the local files to the sandbox store
             sandbox_id = upload_local_input_files(parameter)
+            lfns = get_lfns(parameter)
 
             parameters.append(
                 JobInputModel(
                     sandbox=[sandbox_id] if sandbox_id else None,
                     cwl=parameter,
+                    lfns_input=lfns,
                 )
             )
             console.print(
@@ -207,6 +208,32 @@ def upload_local_input_files(input_data: dict[str, Any]) -> str | None:
     return sandbox_id
 
 
+def get_lfns(input_data: dict[str, Any]) -> dict[str, Path]:
+    """
+    Get the list au LFNs in the inputs from the parameters
+
+    :param input_data: The parameters of the job
+    :return: The list of LFN paths
+    """
+    # Get the files from the input data
+    files = {}
+    for input_name, input_value in input_data.items():
+        if isinstance(input_value, list):
+            for item in input_value:
+                if isinstance(item, File):
+                    if not item.path:
+                        raise NotImplementedError("File path is not defined.")
+                    # Skip files from the File Catalog
+                    if item.path.startswith("lfn:"):
+                        files[input_name] = Path(item.path)
+        elif isinstance(input_value, File):
+            if not input_value.path:
+                raise NotImplementedError("File path is not defined.")
+            if input_value.path.startswith("lfn:"):
+                files[input_name] = Path(input_value.path)
+    return files
+
+
 # -----------------------------------------------------------------------------
 # dirac-router commands
 # -----------------------------------------------------------------------------
@@ -290,45 +317,8 @@ def _pre_process(
                     tar.extractall(job_path, filter="data")
             logger.info("Files downloaded successfully!")
 
-        # Download input data from the file catalog
-        logger.info("Downloading input data from the file catalog...")
-        input_data = []
-        for _, input_value in arguments.cwl.items():
-            input = input_value
-            if not isinstance(input_value, list):
-                input = [input_value]
-
-            for item in input:
-                if not isinstance(item, File):
-                    continue
-
-                # TODO: path is not the only attribute to consider, but so far it is the only one used
-                if not item.path:
-                    raise NotImplementedError("File path is not defined.")
-
-                if item.path.startswith("lfn:"):
-                    item.path = item.path.removeprefix("lfn:")
-                    input_data.append(item)
-
-        for file in input_data:
-            # TODO: path is not the only attribute to consider, but so far it is the only one used
-            if not file.path:
-                raise NotImplementedError("File path is not defined.")
-
-            input_path = Path(file.path)
-            shutil.copy(input_path, job_path / input_path.name)
-            file.path = file.path.split("/")[-1]
-        logger.info("Input data downloaded successfully!")
-
-        # Prepare the parameters for cwltool
-        logger.info("Preparing the parameters for cwltool...")
-        parameter_dict = save(cast(Saveable, arguments.cwl))
-        parameter_path = job_path / "parameter.cwl"
-        with open(parameter_path, "w") as parameter_file:
-            YAML().dump(parameter_dict, parameter_file)
-        command.append(str(parameter_path.name))
     if runtime_metadata:
-        return runtime_metadata.pre_process(job_path, command)
+        return runtime_metadata.pre_process(executable, arguments, job_path, command)
 
     return command
 
