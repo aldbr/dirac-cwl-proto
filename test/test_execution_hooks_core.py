@@ -41,7 +41,12 @@ class TestExecutionHook:
 
         class ConcreteHook(ExecutionHooksBasePlugin):
             def pre_process(
-                self, job_path: Path, command: List[str], **kwargs: Any
+                self,
+                executable,
+                arguments,
+                job_path: Path,
+                command: List[str],
+                **kwargs: Any,
             ) -> List[str]:
                 return command + ["--processed"]
 

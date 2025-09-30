@@ -307,7 +307,6 @@ def test_run_job_parallely():
 def test_run_job_with_input_data(
     cli_runner, cleanup, cwl_file, inputs, destination_source_input_data
 ):
-
     for destination, inputs_data in destination_source_input_data.items():
         # Copy the input data to the destination
         destination = Path(destination)

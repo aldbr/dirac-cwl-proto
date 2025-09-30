@@ -125,7 +125,9 @@ class JobWrapper:
                 YAML().dump(parameter_dict, parameter_file)
             command.append(str(parameter_path.name))
         if self.runtime_metadata:
-            return self.runtime_metadata.pre_process(self.job_path, command)
+            return self.runtime_metadata.pre_process(
+                executable, arguments, self.job_path, command
+            )
 
         return command
 

@@ -7,11 +7,31 @@ metadata plugin system in DIRAC/DIRACX.
 from __future__ import annotations
 
 import logging
+import shutil
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, ClassVar, Dict, List, Mapping, Optional, Self, TypeVar, Union
+from typing import (
+    Any,
+    ClassVar,
+    Dict,
+    List,
+    Mapping,
+    Optional,
+    Self,
+    TypeVar,
+    Union,
+    cast,
+)
 
+from cwl_utils.parser import save
+from cwl_utils.parser.cwl_v1_2 import (
+    CommandLineTool,
+    ExpressionTool,
+    Saveable,
+    Workflow,
+)
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
+from ruamel.yaml import YAML
 
 from dirac_cwl_proto.commands import PostProcessCommand, PreProcessCommand
 from dirac_cwl_proto.core.exceptions import WorkflowProcessingException
@@ -288,8 +308,30 @@ class ExecutionHooksBasePlugin(BaseModel):
         """Auto-derive hook plugin identifier from class name."""
         return cls.__name__
 
+    def download_lfns(self, inputs: Any, job_path: Path) -> dict[str, Path]:
+        new_paths: dict[str, Path] = {}
+        if inputs.lfns_input:
+            for input_name, lfn in inputs.lfns_input.items():
+                # TODO: use data catalog interface
+                if isinstance(lfn, Path):
+                    input_path = lfn
+                else:
+                    input_path = Path(lfn)
+                shutil.copy(input_path, job_path / input_path.name)
+                new_paths[input_name] = Path(input_path.name)
+        return new_paths
+
+    def update_inputs(self, inputs: Any, updates: dict[str, Path]):
+        for input_name, path in updates.items():
+            inputs.cwl[input_name] = path
+
     def pre_process(
-        self, job_path: Path, command: List[str], **kwargs: Any
+        self,
+        executable: CommandLineTool | Workflow | ExpressionTool,
+        arguments: Any | None,
+        job_path: Path,
+        command: List[str],
+        **kwargs: Any,
     ) -> List[str]:
         """Pre-process job inputs and command.
 
@@ -318,6 +360,15 @@ class ExecutionHooksBasePlugin(BaseModel):
                 logger.exception(msg)
                 raise WorkflowProcessingException(msg) from e
 
+        if arguments:
+            updates = self.download_lfns(arguments, job_path)
+            self.update_inputs(arguments, updates)
+
+            parameter_dict = save(cast(Saveable, arguments.cwl))
+            parameter_path = job_path / "parameter.cwl"
+            with open(parameter_path, "w") as parameter_file:
+                YAML().dump(parameter_dict, parameter_file)
+            command.append(str(parameter_path.name))
         return command
 
     def post_process(self, job_path: Path, **kwargs: Any) -> bool:
@@ -494,7 +545,7 @@ class ExecutionHooksHint(BaseModel, Hint):
                if present.
             3. The descriptor's ``configuration``.
 
-            During merging, keys are normalised from dash-case to snake_case to
+            During merging, keys are normalized from dash-case to snake_case to
             align with typical Python argument names used by runtime implementations.
 
             Parameters

@@ -1,5 +1,5 @@
 """
-CLI interface to run a workflow as a job.
+CLI interface to run a  as a job.
 """
 
 import logging
@@ -42,11 +42,11 @@ console = Console()
 @app.async_command("submit")
 async def submit_job_client(
     task_path: str = typer.Argument(..., help="Path to the CWL file"),
-    parameter_path: list[str] | None = typer.Option(
-        None, help="Path to the files containing the metadata"
-    ),
+    parameter_path: list[str]
+    | None = typer.Option(None, help="Path to the files containing the metadata"),
     # Specific parameter for the purpose of the prototype
-    local: bool | None = typer.Option(
+    local: bool
+    | None = typer.Option(
         True, help="Run the job locally instead of submitting it to the router"
     ),
 ):
@@ -100,10 +100,13 @@ async def submit_job_client(
             # Upload parameter sandbox
             sandbox_id = await submission_client.upload_sandbox(isb_file_paths)
 
+            lfns = get_lfns(parameter)
+
             parameters.append(
                 JobInputModel(
                     sandbox=[sandbox_id] if sandbox_id else None,
                     cwl=parameter,
+                    lfns_input=lfns,
                 )
             )
             console.print(
@@ -196,6 +199,32 @@ def prepare_input_sandbox(input_data: dict[str, Any]) -> list[Path]:
         files_path.append(file_path)
 
     return files_path
+
+
+def get_lfns(input_data: dict[str, Any]) -> dict[str, Path]:
+    """
+    Get the list au LFNs in the inputs from the parameters
+
+    :param input_data: The parameters of the job
+    :return: The list of LFN paths
+    """
+    # Get the files from the input data
+    files = {}
+    for input_name, input_value in input_data.items():
+        if isinstance(input_value, list):
+            for item in input_value:
+                if isinstance(item, File):
+                    if not item.path:
+                        raise NotImplementedError("File path is not defined.")
+                    # Skip files from the File Catalog
+                    if item.path.startswith("lfn:"):
+                        files[input_name] = Path(item.path)
+        elif isinstance(input_value, File):
+            if not input_value.path:
+                raise NotImplementedError("File path is not defined.")
+            if input_value.path.startswith("lfn:"):
+                files[input_name] = Path(input_value.path)
+    return files
 
 
 # -----------------------------------------------------------------------------
