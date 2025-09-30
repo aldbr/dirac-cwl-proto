@@ -504,17 +504,36 @@ class ExecutionHooksBasePlugin(BaseModel):
             Path to the job working directory.
         """
         if stdout:
-            outputs = json.loads(stdout)
-            for output, files in outputs.items():
-                if files:
-                    if not isinstance(files, List):
-                        files = [files]
-                    file_paths = []
-                    for file in files:
-                        if file:
-                            file_paths.append(str(file["path"]))
-                    self.store_output(output, file_paths)
+            outputs = self.get_job_outputted_files(stdout)
+            for output, file_paths in outputs.items():
+                self.store_output(output, file_paths)
         return True
+
+    def get_job_outputted_files(self, stdout: str) -> dict[str, list[str]]:
+        """Get the outputted filepaths per output.
+
+        Parameters
+        ----------
+        stdout : str
+            The console output of the the job
+
+        Returns
+        ----------
+        dict[str, list[str]]
+            The dict of the list of filepaths for each output
+        """
+        outputted_files: dict[str, list[str]] = {}
+        outputs = json.loads(stdout)
+        for output, files in outputs.items():
+            if files:
+                if not isinstance(files, List):
+                    files = [files]
+                file_paths = []
+                for file in files:
+                    if file:
+                        file_paths.append(str(file["path"]))
+                outputted_files[output] = file_paths
+        return outputted_files
 
     def get_input_query(
         self, input_name: str, **kwargs: Any
