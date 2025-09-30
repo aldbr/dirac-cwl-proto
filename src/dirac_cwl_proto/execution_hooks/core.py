@@ -13,7 +13,17 @@ import tarfile
 from abc import ABC, abstractmethod
 from enum import Enum
 from pathlib import Path
-from typing import Any, ClassVar, Dict, List, Mapping, Optional, Sequence, TypeVar, Union
+from typing import (
+    Any,
+    ClassVar,
+    Dict,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    TypeVar,
+    Union,
+)
 
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
 
@@ -22,13 +32,17 @@ logger = logging.getLogger(__name__)
 # TypeVar for generic class methods
 T = TypeVar("T", bound="SchedulingHint")
 
+
 class OutputType(Enum):
     """SandBox | Data_Catalog"""
+
     Sandbox = 1
     Data_Catalog = 2
 
+
 class SandboxInterface(BaseModel):
     """Interface for Sandbox interaction"""
+
     def get_output_query(self, id: str, **kwargs: Any) -> Optional[Path]:
         """Generate output sandbox path.
 
@@ -43,8 +57,10 @@ class SandboxInterface(BaseModel):
             Path where output should be stored or None.
         """
         return Path("sandboxstore") / f"output_sandbox_{id}.tar.gz"
-    
-    def store_output(self, outputs:Sequence[str | Path], **kwargs: Any) -> Optional[Path]:
+
+    def store_output(
+        self, outputs: Sequence[str | Path], **kwargs: Any
+    ) -> Optional[Path]:
         """Store output in a sandbox.
 
         Parameters
@@ -73,6 +89,7 @@ class SandboxInterface(BaseModel):
                         file = Path(file)
                     tar.add(file, arcname=file.name)
         return sandbox_path
+
 
 class DataCatalogInterface(ABC):
     """Abstract interface for data catalog operations."""
@@ -113,7 +130,9 @@ class DataCatalogInterface(ABC):
         """
         ...
 
-    def store_output(self, output_name: str, src_path: str | Path, **kwargs: Any) -> None:
+    def store_output(
+        self, output_name: str, src_path: str | Path, **kwargs: Any
+    ) -> None:
         """Store output in the data catalog.
 
         Parameters
@@ -177,11 +196,9 @@ class ExecutionHooksBasePlugin(BaseModel):
     _data_catalog: DataCatalogInterface = PrivateAttr(
         default_factory=DummyDataCatalogInterface
     )
-    
+
     # Private attribute for sandbox interface - not part of Pydantic model validation
-    _sandbox_interface: SandboxInterface = PrivateAttr(
-        default_factory=SandboxInterface
-    )
+    _sandbox_interface: SandboxInterface = PrivateAttr(default_factory=SandboxInterface)
 
     @property
     def data_catalog(self) -> DataCatalogInterface:
@@ -192,7 +209,7 @@ class ExecutionHooksBasePlugin(BaseModel):
     def data_catalog(self, value: DataCatalogInterface) -> None:
         """Set the data catalog interface."""
         self._data_catalog = value
-        
+
     @property
     def sandbox_interface(self) -> SandboxInterface:
         """Get the sandbox interface."""
@@ -232,7 +249,9 @@ class ExecutionHooksBasePlugin(BaseModel):
         """
         return command
 
-    def post_process(self, job_path: Path, stdout: Optional[str] = None, **kwargs: Any) -> bool:
+    def post_process(
+        self, job_path: Path, stdout: Optional[str] = None, **kwargs: Any
+    ) -> bool:
         """Post-process job outputs.
 
         Parameters
@@ -241,17 +260,36 @@ class ExecutionHooksBasePlugin(BaseModel):
             Path to the job working directory.
         """
         if stdout:
-            outputs = json.loads(stdout)
-            for output, files in outputs.items():
-                if files:
-                    if not isinstance(files, List):
-                        files = [files]
-                    file_paths = []
-                    for file in files:
-                        if file:
-                            file_paths.append(str(file["path"]))
-                    self.store_output(output, file_paths)
+            outputs = self.get_job_outputted_files(stdout)
+            for output, file_paths in outputs.items():
+                self.store_output(output, file_paths)
         return True
+
+    def get_job_outputted_files(self, stdout: str) -> dict[str, list[str]]:
+        """Get the outputted filepaths per output.
+
+        Parameters
+        ----------
+        stdout : str
+            The console output of the the job
+
+        Returns
+        ----------
+        dict[str, list[str]]
+            The dict of the list of filepaths for each output
+        """
+        outputted_files: dict[str, list[str]] = {}
+        outputs = json.loads(stdout)
+        for output, files in outputs.items():
+            if files:
+                if not isinstance(files, List):
+                    files = [files]
+                file_paths = []
+                for file in files:
+                    if file:
+                        file_paths.append(str(file["path"]))
+                outputted_files[output] = file_paths
+        return outputted_files
 
     def get_input_query(
         self, input_name: str, **kwargs: Any
@@ -263,7 +301,12 @@ class ExecutionHooksBasePlugin(BaseModel):
         """Delegate to data catalog interface."""
         return self.data_catalog.get_output_query(output_name, **kwargs)
 
-    def store_output(self, output_name: str, src_path: str | Path | Sequence[str | Path], **kwargs: Any) -> None:
+    def store_output(
+        self,
+        output_name: str,
+        src_path: str | Path | Sequence[str | Path],
+        **kwargs: Any,
+    ) -> None:
         """Delegate to the correct interface."""
         if isinstance(src_path, Sequence) and not isinstance(src_path, str):
             sb = []
@@ -273,19 +316,20 @@ class ExecutionHooksBasePlugin(BaseModel):
                 else:
                     self.data_catalog.store_output(output_name, path, **kwargs)
             if len(sb) > 0:
-                self.sandbox_interface.store_output(outputs=sb)    
+                self.sandbox_interface.store_output(outputs=sb)
         elif self.get_output_type(output_name, src_path) == OutputType.Sandbox:
             self.sandbox_interface.store_output(outputs=[src_path])
         else:
             self.data_catalog.store_output(output_name, src_path, **kwargs)
 
-    def get_output_type(self, output_name: str, src_path: str | Path, **kwargs: Any) -> OutputType:
+    def get_output_type(
+        self, output_name: str, src_path: str | Path, **kwargs: Any
+    ) -> OutputType:
         """Whether the output must be stored in a Sandbox or the Data Catalog."""
         if self.get_output_query(output_name, **kwargs):
             return OutputType.Data_Catalog
         else:
             return OutputType.Sandbox
-        
 
     @classmethod
     def get_schema_info(cls) -> Dict[str, Any]:

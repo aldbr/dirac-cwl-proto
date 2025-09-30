@@ -114,7 +114,9 @@ class DataGenerationPlugin(ExecutionHooksBasePlugin):
             output_file_name_2=self.output_file_name_2,
         )
 
-    def post_process(self, job_path: Path, stdout: Optional[str] = None, **kwargs: Any) -> bool:
+    def post_process(
+        self, job_path: Path, stdout: Optional[str] = None, **kwargs: Any
+    ) -> bool:
         """Post process the generated data files."""
         success = False
 
@@ -169,7 +171,9 @@ class GaussianFitPlugin(ExecutionHooksBasePlugin):
             data1=self.data1, data2=self.data2
         )
 
-    def post_process(self, job_path: Path, stdout: Optional[str] = None, **kwargs: Any) -> bool:
+    def post_process(
+        self, job_path: Path, stdout: Optional[str] = None, **kwargs: Any
+    ) -> bool:
         """Post process the fitting results."""
         outputs = glob.glob(str(job_path / "fit*"))
         if outputs:

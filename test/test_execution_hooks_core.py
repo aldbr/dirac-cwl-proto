@@ -77,7 +77,7 @@ class TestDataCatalogInterface:
                 return Path(f"/output/{output_name}")
 
             def store_output(
-                self, output_name: str, src_path: str, **kwargs: Any
+                self, output_name: str, src_path: str | Path, **kwargs: Any
             ) -> None:
                 pass
 
