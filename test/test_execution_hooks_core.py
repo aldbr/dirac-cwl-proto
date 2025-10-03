@@ -1,7 +1,7 @@
 """
-Tests for the core metadata plugin system.
+Tests for the execution hooks core classes.
 
-This module tests the foundational classes and interfaces of the metadata
+This module tests the foundational classes and interfaces of the execution hooks
 plugin system, including ExecutionHooksBasePlugin, ExecutionHooksHint, and core
 abstract interfaces.
 """
@@ -11,7 +11,7 @@ from typing import Any, List, Optional, Union
 
 import pytest
 
-from dirac_cwl_proto.metadata.core import (
+from dirac_cwl_proto.execution_hooks.core import (
     DataCatalogInterface,
     ExecutionHooksBasePlugin,
     ExecutionHooksHint,
