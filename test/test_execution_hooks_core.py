@@ -153,7 +153,7 @@ class TestExecutionHookExtended:
 
         # Test dict conversion
         data = model.model_dump()
-        assert data == {"field": "test", "value": 42}
+        assert data == {"field": "test", "value": 42, "lfns_output_overrides": {}}
 
         # Test JSON schema generation
         schema = model.model_json_schema()

@@ -142,7 +142,17 @@ class DataCatalogInterface(ABC):
         src_path : str | Path
             Source path of the output file.
         """
-        output_path = self.get_output_query(output_name, **kwargs)
+        lfns = (
+            kwargs.pop("lfns_output_overrides")
+            if "lfns_output_overrides" in kwargs
+            else {}
+        )
+
+        output_path = (
+            Path(lfns[output_name].removeprefix("lfn:"))
+            if output_name in lfns
+            else self.get_output_query(output_name, **kwargs)
+        )
         if not output_path:
             raise RuntimeError(f"No output path defined for {output_name}")
 
@@ -191,6 +201,11 @@ class ExecutionHooksBasePlugin(BaseModel):
     vo: ClassVar[Optional[str]] = None
     version: ClassVar[str] = "1.0.0"
     description: ClassVar[str] = "Base metadata model"
+
+    # Eventual datacatalog output overrides
+    lfns_output_overrides: dict[str, str] = Field(
+        description="Data Catalog output paths overrides", default={}
+    )
 
     # Private attribute for data catalog interface - not part of Pydantic model validation
     _data_catalog: DataCatalogInterface = PrivateAttr(
@@ -307,6 +322,8 @@ class ExecutionHooksBasePlugin(BaseModel):
         src_path: str | Path | Sequence[str | Path],
         **kwargs: Any,
     ) -> None:
+        if "lfns_output_overrides" not in kwargs:
+            kwargs["lfns_output_overrides"] = self.lfns_output_overrides
         """Delegate to the correct interface."""
         if isinstance(src_path, Sequence) and not isinstance(src_path, str):
             sb = []
@@ -326,7 +343,9 @@ class ExecutionHooksBasePlugin(BaseModel):
         self, output_name: str, src_path: str | Path, **kwargs: Any
     ) -> OutputType:
         """Whether the output must be stored in a Sandbox or the Data Catalog."""
-        if self.get_output_query(output_name, **kwargs):
+        if output_name in self.lfns_output_overrides or self.get_output_query(
+            output_name, **kwargs
+        ):
             return OutputType.Data_Catalog
         else:
             return OutputType.Sandbox
