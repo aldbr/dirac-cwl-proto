@@ -55,7 +55,7 @@ class OutputType(Enum):
     Data_Catalog = 2
 
 
-class SandboxInterface(BaseModel):
+class SandboxInterface:
     """Interface for Sandbox interaction"""
 
     def get_output_query(self, id: str, **kwargs: Any) -> Optional[Path]:
@@ -379,6 +379,7 @@ class ExecutionHooksBasePlugin(BaseModel):
         """Set the list of post-processing commands."""
         self._postprocess_commands = value
 
+    @property
     def sandbox_interface(self) -> SandboxInterface:
         """Get the sandbox interface."""
         return self._sandbox_interface
@@ -569,6 +570,7 @@ class ExecutionHooksBasePlugin(BaseModel):
                 logger.exception(msg)
                 raise WorkflowProcessingException(msg) from e
 
+        # Get the outputs and outputted files from the cwltool standard output
         if stdout:
             outputs = self.get_job_outputted_files(stdout)
             for output, file_paths in outputs.items():
@@ -621,9 +623,9 @@ class ExecutionHooksBasePlugin(BaseModel):
         src_path: str | Path | Sequence[str | Path],
         **kwargs: Any,
     ) -> None:
+        """Delegate to the correct interface."""
         if "lfns_output_overrides" not in kwargs:
             kwargs["lfns_output_overrides"] = self.lfns_output_overrides
-        """Delegate to the correct interface."""
         if self.data_catalog is None:
             logger.warning(
                 f"No data catalog available, cannot store output {output_name}"
