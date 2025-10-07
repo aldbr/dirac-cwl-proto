@@ -40,7 +40,7 @@ class OutputType(Enum):
     Data_Catalog = 2
 
 
-class SandboxInterface(BaseModel):
+class SandboxInterface:
     """Interface for Sandbox interaction"""
 
     def get_output_query(self, id: str, **kwargs: Any) -> Optional[Path]:
@@ -274,6 +274,7 @@ class ExecutionHooksBasePlugin(BaseModel):
         job_path : Path
             Path to the job working directory.
         """
+        # Get the outputs and outputted files from the cwltool standard output
         if stdout:
             outputs = self.get_job_outputted_files(stdout)
             for output, file_paths in outputs.items():
@@ -322,9 +323,9 @@ class ExecutionHooksBasePlugin(BaseModel):
         src_path: str | Path | Sequence[str | Path],
         **kwargs: Any,
     ) -> None:
+        """Delegate to the correct interface."""
         if "lfns_output_overrides" not in kwargs:
             kwargs["lfns_output_overrides"] = self.lfns_output_overrides
-        """Delegate to the correct interface."""
         if isinstance(src_path, Sequence) and not isinstance(src_path, str):
             sb = []
             for path in src_path:
@@ -472,7 +473,7 @@ class ExecutionHooksHint(BaseModel, Hint):
                if present.
             3. The descriptor's ``configuration``.
 
-            During merging, keys are normalised from dash-case to snake_case to
+            During merging, keys are normalized from dash-case to snake_case to
             align with typical Python argument names used by runtime implementations.
 
             Parameters
