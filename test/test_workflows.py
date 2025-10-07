@@ -316,7 +316,7 @@ def test_run_job_validation_failure(
         # --- Gaussian fit example ---
         # Data generation workflow
         (
-            "test/workflows/gaussian_fit/data_generation/data-generation.cwl",
+            "test/workflows/gaussian_fit/data_generation/data-generation-workflow.cwl",
             "test/workflows/gaussian_fit/type_dependencies/transformation/inputs-data-generation.yaml",
         ),
     ],
