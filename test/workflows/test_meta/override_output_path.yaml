@@ -1,0 +1,15 @@
+$namespaces:
+  dirac: "./schemas/dirac-metadata.json#"
+cwltool:overrides:
+  test_meta.cwl#:
+    baseCommand: ["touch", "test_file"]
+    outputs:
+      test:
+      type: File?
+      outputBinding:
+        glob: "test_file"
+    hints:
+      dirac:execution-hooks:
+        configuration:
+          lfns_output_overrides:
+            test: "lfn:filecatalog/test/results"
