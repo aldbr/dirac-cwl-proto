@@ -15,6 +15,8 @@ from dirac_cwl_proto.execution_hooks.core import (
     DataCatalogInterface,
     ExecutionHooksBasePlugin,
     ExecutionHooksHint,
+    OutputType,
+    SandboxInterface,
     SchedulingHint,
     TransformationExecutionHooksHint,
 )
@@ -77,7 +79,7 @@ class TestDataCatalogInterface:
                 return Path(f"/output/{output_name}")
 
             def store_output(
-                self, output_name: str, src_path: str, **kwargs: Any
+                self, output_name: str, src_path: str | Path, **kwargs: Any
             ) -> None:
                 pass
 
@@ -93,6 +95,15 @@ class TestDataCatalogInterface:
 
         # Test store_output
         catalog.store_output("test_output", "/tmp/test")  # Should not raise an error
+
+
+class TestSandboxInterface:
+    """Test the SandboxInterface base class."""
+
+    def test_output_query(self):
+        sandbox = SandboxInterface()
+        output_path = sandbox.get_output_query("1337")
+        assert output_path == Path("sandboxstore/output_sandbox_1337.tar.gz")
 
 
 class TestExecutionHookExtended:
@@ -138,9 +149,54 @@ class TestExecutionHookExtended:
         assert model.get_input_query("test") is None
         assert model.get_output_query("test") is None
 
-        # Test store_output raises RuntimeError when no output path is defined
+        # Test datacatalog store_output raises RuntimeError when no output path is defined
         with pytest.raises(RuntimeError, match="No output path defined"):
-            model.store_output("test", "/tmp/file.txt")
+            model.data_catalog.store_output("test", "/tmp/file.txt")
+
+    def test_output_interfaces_selection(self, mocker):
+        """Test that the Hook uses the correct interface methods."""
+
+        class TestCatalog(DataCatalogInterface):
+            def get_output_query(self, output_name, **kwargs):
+                if output_name == "test_output":
+                    return Path("filecatalog/test1/output")
+                return super().get_output_query(output_name, **kwargs)
+
+            def get_input_query(self, input_name, **kwargs):
+                return None
+
+        class TestModel(ExecutionHooksBasePlugin):
+            _data_catalog = TestCatalog()
+            _sandbox_interface = SandboxInterface()
+
+        model = TestModel(lfns_output_overrides={"test_lfn": "lfn:filecatalog/test"})
+
+        mocker.patch.object(model._data_catalog, "store_output", return_value=None)
+        mocker.patch.object(model._sandbox_interface, "store_output", return_value=None)
+
+        # Test output type
+        # DataCatalog if output in lfns_output_overrides
+        output_type = model.get_output_type("test_lfn", "file.test")
+        assert "test_lfn" in model.lfns_output_overrides
+        assert output_type == OutputType.Data_Catalog
+
+        # DataCatalog if datacatalog output query is defined
+        output_path = model.data_catalog.get_output_query("test_output")
+        output_type = model.get_output_type("test_output", "file.test")
+        assert output_path is not None
+        assert output_type == OutputType.Data_Catalog
+
+        # Sandbox if not in lfns_output_overrides and datacatalog output query is None
+        output_path = model.data_catalog.get_output_query("test")
+        output_type = model.get_output_type("test", "file.test")
+        assert output_path is None
+        assert output_type == OutputType.Sandbox
+
+        # Test if store_output delegates to the correct interface.
+        model.store_output("test_output", "file.test")
+        model._data_catalog.store_output.assert_called_once()
+        model.store_output("test", "file.test")
+        model._sandbox_interface.store_output.assert_called_once()
 
     def test_model_serialization(self):
         """Test that model serialization works correctly."""
@@ -153,7 +209,7 @@ class TestExecutionHookExtended:
 
         # Test dict conversion
         data = model.model_dump()
-        assert data == {"field": "test", "value": 42}
+        assert data == {"field": "test", "value": 42, "lfns_output_overrides": {}}
 
         # Test JSON schema generation
         schema = model.model_json_schema()

@@ -306,7 +306,9 @@ class LHCbSimulationPlugin(LHCbBasePlugin):
             **kwargs,
         )
 
-    def post_process(self, job_path: Path, **kwargs: Any) -> bool:
+    def post_process(
+        self, job_path: Path, stdout: Optional[str] = None, **kwargs: Any
+    ) -> bool:
         """Post-process LHCb simulation outputs."""
         success = True
 
@@ -325,7 +327,12 @@ class LHCbSimulationPlugin(LHCbBasePlugin):
         catalog_files = glob.glob(str(job_path / "pool_xml_catalog.xml"))
         for catalog_file in catalog_files:
             try:
-                self.store_output("pool_xml_catalog", catalog_file)
+                self.store_output(
+                    "pool_xml_catalog",
+                    catalog_file,
+                    task_id=self.task_id,
+                    run_id=self.run_id,
+                )
             except Exception as e:
                 print(f"Failed to store catalog {catalog_file}: {e}")
                 success = False
@@ -399,7 +406,9 @@ class LHCbReconstructionPlugin(LHCbBasePlugin):
 
         return command
 
-    def post_process(self, job_path: Path, **kwargs: Any) -> bool:
+    def post_process(
+        self, job_path: Path, stdout: Optional[str] = None, **kwargs: Any
+    ) -> bool:
         """Post-process LHCb reconstruction outputs."""
         success = True
 
@@ -407,7 +416,9 @@ class LHCbReconstructionPlugin(LHCbBasePlugin):
         dst_files = glob.glob(str(job_path / "*.dst"))
         for dst_file in dst_files:
             try:
-                self.store_output("dst", dst_file)
+                self.store_output(
+                    "dst", dst_file, task_id=self.task_id, run_id=self.run_id
+                )
             except Exception as e:
                 print(f"Failed to store DST output {dst_file}: {e}")
                 success = False
@@ -416,7 +427,9 @@ class LHCbReconstructionPlugin(LHCbBasePlugin):
         log_files = glob.glob(str(job_path / "*.log"))
         for log_file in log_files:
             try:
-                self.store_output("log", log_file)
+                self.store_output(
+                    "log", log_file, task_id=self.task_id, run_id=self.run_id
+                )
             except Exception as e:
                 print(f"Failed to store log {log_file}: {e}")
                 success = False
@@ -497,7 +510,9 @@ class LHCbAnalysisPlugin(LHCbBasePlugin):
 
         return command
 
-    def post_process(self, job_path: Path, **kwargs: Any) -> bool:
+    def post_process(
+        self, job_path: Path, stdout: Optional[str] = None, **kwargs: Any
+    ) -> bool:
         """Post-process LHCb analysis outputs."""
         success = True
 

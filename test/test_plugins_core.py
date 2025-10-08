@@ -41,7 +41,7 @@ class TestUserPlugin:
 
         # Test store_output raises RuntimeError when no output path is defined
         with pytest.raises(RuntimeError, match="No output path defined"):
-            plugin.store_output("test_output", "/tmp/file.txt")
+            plugin.data_catalog.store_output("test_output", "/tmp/file.txt")
 
     def test_serialization(self):
         """Test UserPlugin serialization."""

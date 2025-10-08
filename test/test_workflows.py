@@ -67,6 +67,7 @@ def cleanup():
             "test/workflows/test_meta/test_meta.cwl",
             [
                 "test/workflows/test_meta/override_dirac_hints.yaml",
+                "test/workflows/test_meta/override_output_path.yaml",
             ],
         ),
         # --- Crypto example ---
@@ -316,7 +317,7 @@ def test_run_job_validation_failure(
         # --- Gaussian fit example ---
         # Data generation workflow
         (
-            "test/workflows/gaussian_fit/data_generation/data-generation.cwl",
+            "test/workflows/gaussian_fit/data_generation/data-generation-workflow.cwl",
             "test/workflows/gaussian_fit/type_dependencies/transformation/inputs-data-generation.yaml",
         ),
     ],
