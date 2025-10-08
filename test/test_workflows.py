@@ -92,6 +92,7 @@ def pi_test_files():
             "test/workflows/test_meta/test_meta.cwl",
             [
                 "test/workflows/test_meta/override_dirac_hints.yaml",
+                "test/workflows/test_meta/override_output_path.yaml",
             ],
         ),
         # --- Crypto example ---
