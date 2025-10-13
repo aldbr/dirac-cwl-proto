@@ -396,15 +396,17 @@ def run_job(job: JobSubmissionModel) -> bool:
 
         # Post-process the job
         logger.info("Post-processing Task...")
-        _post_process(
+        if _post_process(
             result.returncode,
             result.stdout,
             result.stderr,
             job_path,
             runtime_metadata,
-        )
-        logger.info("Task post-processed successfully!")
-        return True
+        ):
+            logger.info("Task post-processed successfully!")
+            return True
+        logger.error("Failed to post-process Task")
+        return False
 
     except Exception:
         logger.exception("JobWrapper: Failed to execute workflow")
