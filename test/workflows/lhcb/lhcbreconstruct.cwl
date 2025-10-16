@@ -8,6 +8,9 @@ requirements:
     ramMin: 2048
     ramMax: 4096
 
+hints:
+  $import: "type_dependencies/transformation/metadata-lhcb_reconstruct.yaml"
+
 inputs:
   run-id:
     type: int

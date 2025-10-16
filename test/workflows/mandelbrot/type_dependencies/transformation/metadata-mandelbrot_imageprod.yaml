@@ -1,1 +1,2 @@
-hook_plugin: MandelBrotGenerationPlugin
+dirac:execution-hooks:
+  hook_plugin: MandelBrotGenerationPlugin

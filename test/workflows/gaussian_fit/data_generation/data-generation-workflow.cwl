@@ -4,6 +4,9 @@ label: "Data Generation Workflow"
 doc: >
   This workflow generates data using two independent data-generation tools.
 
+hints:
+  $import: "../type_dependencies/transformation/inputs-data-generation.yaml"
+
 inputs:
   output_file_name_1:
     type: string

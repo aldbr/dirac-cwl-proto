@@ -8,6 +8,9 @@ requirements:
   SubworkflowFeatureRequirement: {}
   MultipleInputFeatureRequirement: {}
 
+hints:
+  $import: "../type_dependencies/transformation/inputs-gaussian-fit.yaml"
+
 inputs:
   data1:
     type: File[]

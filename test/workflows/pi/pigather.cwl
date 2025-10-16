@@ -6,6 +6,9 @@ requirements:
     coresMin: 1
     ramMin: 1024
 
+hints:
+  $import: "type_dependencies/transformation/metadata-pi_gather.yaml"
+
 inputs:
   input-data:
     type: File[]

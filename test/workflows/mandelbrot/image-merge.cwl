@@ -14,6 +14,9 @@ outputs:
     type: File[]?
     outputSource: merge-mandelbrot/log
 
+hints:
+  $import: "type_dependencies/transformation/metadata-mandelbrot_imagemerge.yaml"
+
 steps:
   # Clone the project
   get-mandelbrot:

@@ -43,6 +43,9 @@ requirements:
     coresMin: 1
     ramMin: 2048
 
+hints:
+  $import: "type_dependencies/transformation/metadata-lhcb_simulate.yaml"
+
 inputs:
   run-id:
     type: int
