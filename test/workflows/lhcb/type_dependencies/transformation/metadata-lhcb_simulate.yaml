@@ -1,1 +1,2 @@
-hook_plugin: LHCbSimulationPlugin
+dirac:execution-hooks:
+  hook_plugin: LHCbSimulationPlugin

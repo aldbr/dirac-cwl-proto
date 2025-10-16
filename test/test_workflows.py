@@ -293,31 +293,19 @@ def test_run_job_validation_failure(
         ("test/workflows/crypto/md5.cwl", None),
         # --- Pi example ---
         # There is no input expected
-        (
-            "test/workflows/pi/pisimulate.cwl",
-            "test/workflows/pi/type_dependencies/transformation/metadata-pi_simulate.yaml",
-        ),
+        ("test/workflows/pi/pisimulate.cwl", None),
         # --- Pi v2 example ---
         # There is no input expected
-        (
-            "test/workflows/merge/pisimulate_v2.cwl",
-            "test/workflows/merge/type_dependencies/transformation/metadata-pi_simulate_v2.yaml",
-        ),
+        ("test/workflows/merge/pisimulate_v2.cwl", None),
         # --- LHCb example ---
-        (
-            "test/workflows/lhcb/lhcbsimulate.cwl",
-            "test/workflows/lhcb/type_dependencies/transformation/metadata-lhcb_simulate.yaml",
-        ),
+        ("test/workflows/lhcb/lhcbsimulate.cwl", None),
         # --- Mandelbrot example ---
-        (
-            "test/workflows/mandelbrot/image-prod.cwl",
-            "test/workflows/mandelbrot/type_dependencies/transformation/metadata-mandelbrot_imageprod.yaml",
-        ),
+        ("test/workflows/mandelbrot/image-prod.cwl", None),
         # --- Gaussian fit example ---
         # Data generation workflow
         (
             "test/workflows/gaussian_fit/data_generation/data-generation-workflow.cwl",
-            "test/workflows/gaussian_fit/type_dependencies/transformation/inputs-data-generation.yaml",
+            None,
         ),
     ],
 )
@@ -343,7 +331,7 @@ def test_run_nonblocking_transformation_success(
         # --- Pi example ---
         (
             "test/workflows/pi/pigather.cwl",
-            "test/workflows/pi/type_dependencies/transformation/metadata-pi_gather.yaml",
+            None,
             {
                 "filecatalog/pi/100": [
                     "test/workflows/pi/type_dependencies/job/result_1.sim",
@@ -357,7 +345,7 @@ def test_run_nonblocking_transformation_success(
         # --- LHCb example ---
         (
             "test/workflows/lhcb/lhcbreconstruct.cwl",
-            "test/workflows/lhcb/type_dependencies/transformation/metadata-lhcb_reconstruct.yaml",
+            None,
             {
                 "filecatalog/lhcb/456/123/simulation": [
                     "test/workflows/lhcb/type_dependencies/job/Gauss_123_456_1.sim",
@@ -369,7 +357,7 @@ def test_run_nonblocking_transformation_success(
         # --- Mandelbrot example ---
         (
             "test/workflows/mandelbrot/image-merge.cwl",
-            "test/workflows/mandelbrot/type_dependencies/transformation/metadata-mandelbrot_imagemerge.yaml",
+            None,
             {
                 "filecatalog/mandelbrot/images/raw/1920x1080/": [
                     "test/workflows/mandelbrot/type_dependencies/transformation/data_1.txt",
@@ -381,7 +369,7 @@ def test_run_nonblocking_transformation_success(
         # Gaussian fit workflow
         (
             "test/workflows/gaussian_fit/gaussian_fit/gaussian-fit-workflow.cwl",
-            "test/workflows/gaussian_fit/type_dependencies/transformation/inputs-gaussian-fit.yaml",
+            None,
             {
                 "filecatalog/gaussian_fit/data-generation-1/": [
                     "test/workflows/gaussian_fit/type_dependencies/transformation/data-generation-1/data_gen1.txt",

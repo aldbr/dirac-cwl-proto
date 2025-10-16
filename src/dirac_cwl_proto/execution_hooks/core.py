@@ -372,3 +372,10 @@ class TransformationExecutionHooksHint(ExecutionHooksHint):
     group_size: Optional[Dict[str, int]] = Field(
         default=None, description="Input grouping configuration for transformation jobs"
     )
+
+    # TODO: I can't use TransformationExecutionHooksHint.fromcwl
+    #  normally without doing that..? (mypi won't let me commit
+    #  since he thinks it's a ExecutionHooksHint)
+    @classmethod
+    def from_cwl(cls, cwl_object: Any) -> "TransformationExecutionHooksHint":
+        return cls(**super().from_cwl(cwl_object).dict())

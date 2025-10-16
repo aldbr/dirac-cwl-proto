@@ -1,1 +1,2 @@
-hook_plugin: PiSimulateV2Plugin
+dirac:execution-hooks:
+  hook_plugin: PiSimulateV2Plugin

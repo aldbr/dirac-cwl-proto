@@ -14,7 +14,6 @@ from cwl_utils.parser import load_document
 from cwl_utils.parser.cwl_v1_2 import File
 from rich import print_json
 from rich.console import Console
-from ruamel.yaml import YAML
 from schema_salad.exceptions import ValidationException
 
 from dirac_cwl_proto.execution_hooks import (
@@ -40,9 +39,6 @@ console = Console()
 @app.command("submit")
 def submit_transformation_client(
     task_path: str = typer.Argument(..., help="Path to the CWL file"),
-    metadata_path: Optional[str] = typer.Option(
-        None, help="Path to metadata file used to generate the input query"
-    ),
     # Specific parameter for the purpose of the prototype
     local: Optional[bool] = typer.Option(
         True, help="Run the jobs locally instead of submitting them to the router"
@@ -73,22 +69,7 @@ def submit_transformation_client(
         return typer.Exit(code=1)
     console.print(f"\t[green]:heavy_check_mark:[/green] Task {task_path}")
 
-    # Load the metadata: at this stage, only the structure is validated, not the content
-    metadata_model = TransformationExecutionHooksHint()
-    if metadata_path:
-        with open(metadata_path, "r") as file:
-            metadata = YAML(typ="safe").load(file)
-        metadata_model = TransformationExecutionHooksHint(**metadata)
-    console.print("\t[green]:heavy_check_mark:[/green] Metadata")
-
-    transformation_scheduling = SchedulingHint.from_cwl(task)
-    console.print("\t[green]:heavy_check_mark:[/green] Description")
-
-    transformation = TransformationSubmissionModel(
-        task=task,
-        execution_hooks=metadata_model,
-        scheduling=transformation_scheduling,
-    )
+    transformation = TransformationSubmissionModel(task=task)
     console.print(
         "[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Transformation validated."
     )
@@ -134,12 +115,24 @@ def submit_transformation_router(transformation: TransformationSubmissionModel) 
     # - if there is no execution_hooks, the transformation is not waiting for an input and can go on
     # - if there is execution_hooks, the transformation is waiting for an input
     job_model_params = []
+
+    try:
+        (
+            transformation_execution_hooks,
+            transformation_scheduling_hints,
+        ) = (
+            TransformationExecutionHooksHint.from_cwl(transformation.task),
+            SchedulingHint.from_cwl(transformation.task),
+        )
+    except Exception as exc:
+        raise ValueError(f"Invalid DIRAC hints:\n{exc}") from exc
+
     if (
-        transformation.execution_hooks.configuration
-        and transformation.execution_hooks.group_size
+        transformation_execution_hooks.configuration
+        and transformation_execution_hooks.group_size
     ):
         # Get the metadata class
-        transformation_metadata = transformation.execution_hooks.to_runtime(
+        transformation_metadata = transformation_execution_hooks.to_runtime(
             transformation
         )
 
@@ -147,7 +140,7 @@ def submit_transformation_router(transformation: TransformationSubmissionModel) 
         logger.info("Getting the input data for the transformation...")
         input_data_dict = {}
         min_length = None
-        for input_name, group_size in transformation.execution_hooks.group_size.items():
+        for input_name, group_size in transformation_execution_hooks.group_size.items():
             # Get input query
             logger.info(f"\t- Getting input query for {input_name}...")
             input_query = transformation_metadata.get_input_query(input_name)
@@ -177,8 +170,8 @@ def submit_transformation_router(transformation: TransformationSubmissionModel) 
     jobs = JobSubmissionModel(
         task=transformation.task,
         parameters=job_model_params,
-        scheduling=transformation.scheduling,
-        execution_hooks=transformation.execution_hooks,
+        scheduling=transformation_scheduling_hints,
+        execution_hooks=transformation_execution_hooks,
     )
     logger.info("Jobs built!")
 
