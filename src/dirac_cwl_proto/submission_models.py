@@ -73,8 +73,6 @@ class TransformationSubmissionModel(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     task: CommandLineTool | Workflow | ExpressionTool
-    execution_hooks: TransformationExecutionHooksHint
-    scheduling: SchedulingHint
 
     @field_serializer("task")
     def serialize_task(self, value):
