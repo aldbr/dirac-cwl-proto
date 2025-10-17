@@ -134,7 +134,7 @@ class TestQueryBasedPlugin:
         plugin = QueryBasedPlugin(campaign="Test", data_type="SIM")
 
         command = ["python", "script.py"]
-        result = plugin.pre_process(Path("/tmp"), command)
+        result = plugin.pre_process({}, None, Path("/tmp"), command)
 
         # Should return command unchanged
         assert result == command

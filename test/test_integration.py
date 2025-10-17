@@ -89,7 +89,7 @@ class TestRealWorldScenarios:
         command = ["python", "user_script.py"]
 
         # Pre-process should return a command list (may be modified by plugin)
-        processed_command = user_runtime.pre_process(job_path, command)
+        processed_command = user_runtime.pre_process(None, None, job_path, command)
         assert isinstance(processed_command, list)
 
         # Post-process should return a boolean
@@ -122,7 +122,7 @@ class TestRealWorldScenarios:
         job_path = Path("/tmp/admin_job")
         command = ["python", "admin_script.py"]
 
-        processed_command = admin_runtime.pre_process(job_path, command)
+        processed_command = admin_runtime.pre_process(None, None, job_path, command)
         assert isinstance(processed_command, list)
 
     def test_data_analysis_workflow_scenario(self):

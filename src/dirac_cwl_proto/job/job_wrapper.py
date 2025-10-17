@@ -112,10 +112,11 @@ class JobWrapper:
                 self.__download_input_sandbox(arguments, self.job_path)
                 logger.info("Files downloaded successfully!")
 
-            # Download input data from the file catalog
-            logger.info("Downloading input data from the file catalog...")
-            self.__download_input_data(arguments, self.job_path)
-            logger.info("Input data downloaded successfully!")
+            # Disabled for now
+            # # Download input data from the file catalog
+            # logger.info("Downloading input data from the file catalog...")
+            # self.__download_input_data(arguments, self.job_path)
+            # logger.info("Input data downloaded successfully!")
 
             # Prepare the parameters for cwltool
             logger.info("Preparing the parameters for cwltool...")

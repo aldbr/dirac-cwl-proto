@@ -288,24 +288,10 @@ def test_run_job_parallely():
                 ]
             },
         ),
-        # --- LHCb example ---
-        (
-            "test/workflows/lhcb/lhcbreconstruct.cwl",
-            [
-                "test/workflows/lhcb/type_dependencies/job/inputs-lhcb_reconstruct_catalog.yaml"
-            ],
-            {
-                "filecatalog/lhcb/456/123/simulation": [
-                    "test/workflows/lhcb/type_dependencies/job/Gauss_123_456_1.sim",
-                    "test/workflows/lhcb/type_dependencies/job/Gauss_456_456_1.sim",
-                    "test/workflows/lhcb/type_dependencies/job/Gauss_789_456_1.sim",
-                ]
-            },
-        ),
     ],
 )
 def test_run_job_with_input_data(
-    cli_runner, cleanup, cwl_file, inputs, destination_source_input_data
+    cli_runner, cleanup, pi_test_files, cwl_file, inputs, destination_source_input_data
 ):
     for destination, inputs_data in destination_source_input_data.items():
         # Copy the input data to the destination

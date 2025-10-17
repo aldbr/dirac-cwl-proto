@@ -201,7 +201,7 @@ def prepare_input_sandbox(input_data: dict[str, Any]) -> list[Path]:
     return files_path
 
 
-def get_lfns(input_data: dict[str, Any]) -> dict[str, Path]:
+def get_lfns(input_data: dict[str, Any]) -> dict[str, Path | list[Path]]:
     """
     Get the list au LFNs in the inputs from the parameters
 
@@ -209,16 +209,18 @@ def get_lfns(input_data: dict[str, Any]) -> dict[str, Path]:
     :return: The list of LFN paths
     """
     # Get the files from the input data
-    files = {}
+    files: dict[str, Path | list[Path]] = {}
     for input_name, input_value in input_data.items():
         if isinstance(input_value, list):
+            val = []
             for item in input_value:
                 if isinstance(item, File):
                     if not item.path:
                         raise NotImplementedError("File path is not defined.")
                     # Skip files from the File Catalog
                     if item.path.startswith("lfn:"):
-                        files[input_name] = Path(item.path)
+                        val.append(Path(item.path))
+            files[input_name] = val
         elif isinstance(input_value, File):
             if not input_value.path:
                 raise NotImplementedError("File path is not defined.")

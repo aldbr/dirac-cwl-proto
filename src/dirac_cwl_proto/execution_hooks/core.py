@@ -27,6 +27,7 @@ from cwl_utils.parser import save
 from cwl_utils.parser.cwl_v1_2 import (
     CommandLineTool,
     ExpressionTool,
+    File,
     Saveable,
     Workflow,
 )
@@ -308,22 +309,35 @@ class ExecutionHooksBasePlugin(BaseModel):
         """Auto-derive hook plugin identifier from class name."""
         return cls.__name__
 
-    def download_lfns(self, inputs: Any, job_path: Path) -> dict[str, Path]:
-        new_paths: dict[str, Path] = {}
+    def download_lfns(
+        self, inputs: Any, job_path: Path
+    ) -> dict[str, Path | list[Path]]:
+        # TODO: use data catalog interface
+        new_paths: dict[str, Path | list[Path]] = {}
         if inputs.lfns_input:
-            for input_name, lfn in inputs.lfns_input.items():
-                # TODO: use data catalog interface
-                if isinstance(lfn, Path):
-                    input_path = lfn
-                else:
-                    input_path = Path(lfn)
-                shutil.copy(input_path, job_path / input_path.name)
-                new_paths[input_name] = Path(input_path.name)
+            for input_name, lfns in inputs.lfns_input.items():
+                if not isinstance(lfns, list):
+                    lfns = [lfns]
+                paths = []
+                for lfn in lfns:
+                    if isinstance(lfn, Path):
+                        input_path = Path(str(lfn).removeprefix("lfn:"))
+                    else:
+                        input_path = Path(lfn.removeprefix("lfn:"))
+                    shutil.copy(input_path, job_path / input_path.name)
+                    paths.append(Path(input_path.name))
+                if paths:
+                    new_paths[input_name] = paths
         return new_paths
 
-    def update_inputs(self, inputs: Any, updates: dict[str, Path]):
+    def update_inputs(self, inputs: Any, updates: dict[str, Path | list[Path]]):
         for input_name, path in updates.items():
-            inputs.cwl[input_name] = path
+            if isinstance(path, Path):
+                inputs.cwl[input_name] = File(path=str(path))
+            else:
+                inputs.cwl[input_name] = []
+                for p in path:
+                    inputs.cwl[input_name].append(File(path=str(p)))
 
     def pre_process(
         self,
