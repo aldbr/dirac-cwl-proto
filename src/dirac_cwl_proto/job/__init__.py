@@ -180,13 +180,16 @@ def upload_local_input_files(input_data: dict[str, Any]) -> str | None:
     with tarfile.open(sandbox_path, "w:gz") as tar:
         for file in files:
             # TODO: path is not the only attribute to consider, but so far it is the only one used
-            if not file.path:
+            if not file.path and not file.location:
                 raise NotImplementedError("File path is not defined.")
             # Skip files from the File Catalog
-            if file.path.startswith("lfn:"):
+            if file.location and file.location.startswith("lfn:"):
                 continue
 
-            file_path = Path(file.path.replace("file://", ""))
+            if not file.location:
+                file.location = file.path
+
+            file_path = Path(file.location.replace("file://", ""))
             console.print(
                 f"\t\t[blue]:information_source:[/blue] Found {file_path} locally, uploading it to the sandbox store..."
             )
@@ -198,10 +201,10 @@ def upload_local_input_files(input_data: dict[str, Any]) -> str | None:
     # Modify the location of the files to point to the future location on the worker node
     for file in files:
         # TODO: path is not the only attribute to consider, but so far it is the only one used
-        if not file.path:
+        if not file.location and not file.path:
             raise NotImplementedError("File path is not defined.")
 
-        if not file.path.startswith("lfn:"):
+        if file.path:
             file.path = str(Path(".") / file.path.split("/")[-1])
 
     sandbox_id = sandbox_path.name.replace(".tar.gz", "")
@@ -222,17 +225,17 @@ def get_lfns(input_data: dict[str, Any]) -> dict[str, Path | list[Path]]:
             val = []
             for item in input_value:
                 if isinstance(item, File):
-                    if not item.path:
-                        raise NotImplementedError("File path is not defined.")
+                    if not item.location:
+                        raise NotImplementedError("File location is not defined.")
                     # Skip files from the File Catalog
-                    if item.path.startswith("lfn:"):
-                        val.append(Path(item.path))
+                    if item.location.startswith("lfn:"):
+                        val.append(Path(item.location))
             files[input_name] = val
         elif isinstance(input_value, File):
-            if not input_value.path:
-                raise NotImplementedError("File path is not defined.")
-            if input_value.path.startswith("lfn:"):
-                files[input_name] = Path(input_value.path)
+            if not input_value.location:
+                raise NotImplementedError("File location is not defined.")
+            if input_value.location.startswith("lfn:"):
+                files[input_name] = Path(input_value.location)
     return files
 
 
