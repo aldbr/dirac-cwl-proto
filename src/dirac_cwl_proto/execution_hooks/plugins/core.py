@@ -9,6 +9,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, ClassVar, List, Optional, Union
 
+from cwl_utils.parser.cwl_v1_2 import (
+    CommandLineTool,
+    ExpressionTool,
+    Workflow,
+)
 from pydantic import Field
 
 from ..core import (
@@ -110,9 +115,17 @@ class AdminPlugin(ExecutionHooksBasePlugin):
         self.data_catalog = DummyDataCatalogInterface()
 
     def pre_process(
-        self, job_path: Path, command: List[str], **kwargs: Any
+        self,
+        executable: CommandLineTool | Workflow | ExpressionTool,
+        arguments: Any | None,
+        job_path: Path,
+        command: List[str],
+        **kwargs: Any,
     ) -> List[str]:
         """Add logging configuration to command."""
+        command = super().pre_process(
+            executable, arguments, job_path, command, **kwargs
+        )
         if self.log_level != "INFO":
             command.extend(["--log-level", self.log_level])
         return command

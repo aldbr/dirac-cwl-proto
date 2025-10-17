@@ -29,7 +29,7 @@ class TestExecutionHook:
 
         # Test default pre_process behavior
         command = ["echo", "hello"]
-        result = hook.pre_process(Path("/tmp"), command)
+        result = hook.pre_process({}, None, Path("/tmp"), command)
         assert result == command  # Should return command unchanged
 
         # Test default post_process behavior
@@ -40,14 +40,22 @@ class TestExecutionHook:
 
         class ConcreteHook(ExecutionHooksBasePlugin):
             def pre_process(
-                self, job_path: Path, command: List[str], **kwargs: Any
+                self,
+                executable,
+                arguments,
+                job_path: Path,
+                command: List[str],
+                **kwargs: Any,
             ) -> List[str]:
+                command = super().pre_process(
+                    executable, arguments, job_path, command, **kwargs
+                )
                 return command + ["--processed"]
 
         processor = ConcreteHook()
 
         # Test pre_process
-        result = processor.pre_process(Path("/tmp"), ["echo", "hello"])
+        result = processor.pre_process({}, None, Path("/tmp"), ["echo", "hello"])
         assert result == ["echo", "hello", "--processed"]
 
         # Test post_process

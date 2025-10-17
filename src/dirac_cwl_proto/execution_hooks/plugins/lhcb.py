@@ -12,7 +12,12 @@ from pathlib import Path
 from typing import Any, ClassVar, List, Optional, Union, cast
 
 from cwl_utils.parser import load_document_by_uri, save
-from cwl_utils.parser.cwl_v1_2 import Saveable
+from cwl_utils.parser.cwl_v1_2 import (
+    CommandLineTool,
+    ExpressionTool,
+    Saveable,
+    Workflow,
+)
 from cwl_utils.parser.cwl_v1_2_utils import load_inputfile
 from pydantic import Field
 from ruamel.yaml import YAML
@@ -197,13 +202,21 @@ class LHCbSimulationPlugin(LHCbBasePlugin):
         self.data_catalog = LHCbDataCatalogInterface()
 
     def pre_process(
-        self, job_path: Path, command: List[str], **kwargs: Any
+        self,
+        executable: CommandLineTool | Workflow | ExpressionTool,
+        arguments: Any | None,
+        job_path: Path,
+        command: List[str],
+        **kwargs: Any,
     ) -> List[str]:
         """Pre-process LHCb simulation job.
 
         This method calculates the optimal number of events to simulate
         based on available CPU resources and job requirements.
         """
+        command = super().pre_process(
+            executable, arguments, job_path, command, **kwargs
+        )
         # Load the CWL document to get resource requirements
         if len(command) > 1:
             try:
@@ -388,11 +401,19 @@ class LHCbReconstructionPlugin(LHCbBasePlugin):
         )
 
     def pre_process(
-        self, job_path: Path, command: List[str], **kwargs: Any
+        self,
+        executable: CommandLineTool | Workflow | ExpressionTool,
+        arguments: Any | None,
+        job_path: Path,
+        command: List[str],
+        **kwargs: Any,
     ) -> List[str]:
         """Pre-process the job command for reconstruction."""
         # Only add LHCb-specific arguments if this is not a CWL workflow execution
         # (i.e., when running LHCb applications directly, not cwltool)
+        command = super().pre_process(
+            executable, arguments, job_path, command, **kwargs
+        )
         if not command or command[0] != "cwltool":
             # Add reconstruction version if specified
             if self.reconstruction_version:
@@ -491,9 +512,17 @@ class LHCbAnalysisPlugin(LHCbBasePlugin):
         )
 
     def pre_process(
-        self, job_path: Path, command: List[str], **kwargs: Any
+        self,
+        executable: CommandLineTool | Workflow | ExpressionTool,
+        arguments: Any | None,
+        job_path: Path,
+        command: List[str],
+        **kwargs: Any,
     ) -> List[str]:
         """Pre-process LHCb analysis job."""
+        command = super().pre_process(
+            executable, arguments, job_path, command, **kwargs
+        )
         # Add analysis-specific parameters
         command.extend(["--analysis", self.analysis_name])
         command.extend(["--user", self.user_name])

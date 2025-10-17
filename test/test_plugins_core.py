@@ -27,7 +27,7 @@ class TestUserPlugin:
 
         # Test pre_process (should return command unchanged)
         command = ["python", "script.py"]
-        result = plugin.pre_process(Path("/tmp"), command)
+        result = plugin.pre_process({}, None, Path("/tmp"), command)
         assert result == command
 
         # Test post_process (should not raise exception)
@@ -79,7 +79,7 @@ class TestAdminPlugin:
         plugin = AdminPlugin(log_level="DEBUG")
 
         command = ["python", "script.py"]
-        result = plugin.pre_process(Path("/tmp"), command)
+        result = plugin.pre_process({}, None, Path("/tmp"), command)
 
         # Should add log level to command
         assert "--log-level" in result
@@ -91,7 +91,7 @@ class TestAdminPlugin:
         plugin = AdminPlugin()  # Default log_level is "INFO"
 
         command = ["python", "script.py"]
-        result = plugin.pre_process(Path("/tmp"), command)
+        result = plugin.pre_process({}, None, Path("/tmp"), command)
 
         # Should not add log level for INFO (default)
         assert result == command
@@ -237,7 +237,7 @@ class TestQueryBasedPlugin:
         plugin = QueryBasedPlugin(campaign="Test", data_type="SIM")
 
         command = ["python", "script.py"]
-        result = plugin.pre_process(Path("/tmp"), command)
+        result = plugin.pre_process({}, None, Path("/tmp"), command)
 
         # Should return command unchanged
         assert result == command
