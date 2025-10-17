@@ -42,11 +42,11 @@ console = Console()
 @app.async_command("submit")
 async def submit_job_client(
     task_path: str = typer.Argument(..., help="Path to the CWL file"),
-    parameter_path: list[str]
-    | None = typer.Option(None, help="Path to the files containing the metadata"),
+    parameter_path: list[str] | None = typer.Option(
+        None, help="Path to the files containing the metadata"
+    ),
     # Specific parameter for the purpose of the prototype
-    local: bool
-    | None = typer.Option(
+    local: bool | None = typer.Option(
         True, help="Run the job locally instead of submitting it to the router"
     ),
 ):
@@ -189,14 +189,12 @@ def prepare_input_sandbox(input_data: dict[str, Any]) -> list[Path]:
     files_path = []
     for file in files:
         # TODO: path is not the only attribute to consider, but so far it is the only one used
-        if not file.path:
+        if not file.location and not file.path:
             raise NotImplementedError("File path is not defined.")
-        # Skip files from the File Catalog
-        if file.path.startswith("lfn:"):
-            continue
 
-        file_path = Path(file.path.replace("file://", ""))
-        files_path.append(file_path)
+        if file.path:
+            file_path = Path(file.path.replace("file://", ""))
+            files_path.append(file_path)
 
     return files_path
 
@@ -215,17 +213,17 @@ def get_lfns(input_data: dict[str, Any]) -> dict[str, Path | list[Path]]:
             val = []
             for item in input_value:
                 if isinstance(item, File):
-                    if not item.path:
-                        raise NotImplementedError("File path is not defined.")
+                    if not item.location:
+                        raise NotImplementedError("File location is not defined.")
                     # Skip files from the File Catalog
-                    if item.path.startswith("lfn:"):
-                        val.append(Path(item.path))
+                    if item.location.startswith("lfn:"):
+                        val.append(Path(item.location))
             files[input_name] = val
         elif isinstance(input_value, File):
-            if not input_value.path:
-                raise NotImplementedError("File path is not defined.")
-            if input_value.path.startswith("lfn:"):
-                files[input_name] = Path(input_value.path)
+            if not input_value.location:
+                raise NotImplementedError("File location is not defined.")
+            if input_value.location.startswith("lfn:"):
+                files[input_name] = Path(input_value.location)
     return files
 
 
