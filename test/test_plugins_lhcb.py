@@ -79,7 +79,7 @@ class TestLHCbSimulationPlugin:
         plugin = LHCbSimulationPlugin(task_id=123, run_id=1, generator_config="Pythia8")
 
         command = ["lhcb-simulation", "workflow.cwl"]
-        result = plugin.pre_process(Path("/tmp/job"), command)
+        result = plugin.pre_process({}, None, Path("/tmp/job"), command)
 
         # The pre_process method calculates optimal events and updates parameters
         # It returns the original command unchanged
@@ -139,7 +139,7 @@ class TestLHCbSimulationPlugin:
         plugin = LHCbSimulationPlugin(task_id=123, run_id=1, generator_config="Pythia8")
 
         command = ["lhcb-simulation", "workflow.cwl"]
-        result = plugin.pre_process(Path("/tmp/job"), command)
+        result = plugin.pre_process({}, None, Path("/tmp/job"), command)
 
         # The pre_process method calculates optimal events and updates parameters
         # It returns the original command unchanged (actual implementation doesn't modify command)
@@ -227,7 +227,7 @@ class TestLHCbReconstructionPlugin:
         )
 
         command = ["lhcb-reconstruction", "--input", "sim.dst"]
-        result = plugin.pre_process(Path("/tmp/job"), command)
+        result = plugin.pre_process({}, None, Path("/tmp/job"), command)
 
         # Should add reconstruction-specific parameters
         assert "--version" in result
@@ -289,7 +289,7 @@ class TestLHCbAnalysisPlugin:
         )
 
         command = ["python", "analysis.py"]
-        result = plugin.pre_process(Path("/tmp/job"), command)
+        result = plugin.pre_process({}, None, Path("/tmp/job"), command)
 
         # Should add analysis-specific parameters
         assert "--analysis" in result
