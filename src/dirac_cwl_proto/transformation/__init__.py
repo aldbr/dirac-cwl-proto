@@ -102,7 +102,7 @@ def submit_transformation_router(transformation: TransformationSubmissionModel) 
 
     :param transformation: The transformation to start
 
-    :return: True if the transformation executed successfully, False otherwise
+    :return: True if the transformation is executed successfully, False otherwise
     """
     logger = logging.getLogger("TransformationRouter")
 

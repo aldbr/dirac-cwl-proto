@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, ClassVar, Dict, List, Mapping, Optional, TypeVar, Union
+from typing import Any, ClassVar, Dict, List, Mapping, Optional, Self, TypeVar, Union
 
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
 
@@ -273,7 +273,7 @@ class ExecutionHooksHint(BaseModel, Hint):
         update: Optional[Mapping[str, Any]] = None,
         *,
         deep: bool = False,
-    ) -> "ExecutionHooksHint":
+    ) -> Self:
         """Enhanced model copy with intelligent merging of dict fields (including configuration)."""
         if update is None:
             update = {}
@@ -355,7 +355,7 @@ class ExecutionHooksHint(BaseModel, Hint):
         return get_registry().instantiate_plugin(descriptor)
 
     @classmethod
-    def from_cwl(cls, cwl_object: Any) -> "ExecutionHooksHint":
+    def from_cwl(cls, cwl_object: Any) -> Self:
         """Extract metadata descriptor from CWL object using Hint interface."""
         descriptor = cls()
         hints = getattr(cwl_object, "hints", []) or []
@@ -372,10 +372,3 @@ class TransformationExecutionHooksHint(ExecutionHooksHint):
     group_size: Optional[Dict[str, int]] = Field(
         default=None, description="Input grouping configuration for transformation jobs"
     )
-
-    # TODO: I can't use TransformationExecutionHooksHint.fromcwl
-    #  normally without doing that..? (mypi won't let me commit
-    #  since he thinks it's a ExecutionHooksHint)
-    @classmethod
-    def from_cwl(cls, cwl_object: Any) -> "TransformationExecutionHooksHint":
-        return cls(**super().from_cwl(cwl_object).dict())
