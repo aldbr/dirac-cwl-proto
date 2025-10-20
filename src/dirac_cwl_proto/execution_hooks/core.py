@@ -312,6 +312,33 @@ class ExecutionHooksBasePlugin(BaseModel):
     def download_lfns(
         self, inputs: Any, job_path: Path
     ) -> dict[str, Path | list[Path]]:
+        """Download LFNs into the job working directory.
+
+        This method retrieves files referenced by LFNs from the job inputs
+        and copies them into the specified working directory. The LFNs are
+        expected to follow the format ``lfn:<path>``, which is resolved to
+        a local path. Each downloaded file path is then returned and can be
+        used to update CWL job inputs accordingly.
+
+        Parameters
+        ----------
+        inputs : JobInputModel
+            The job input model containing ``lfns_input``, a mapping from input names to one or more LFN paths.
+        job_path : Path
+            Path to the job working directory where files will be copied.
+
+        Returns
+        -------
+        dict[str, Path | list[Path]]
+            A dictionary mapping each input name to the corresponding downloaded
+            file path(s) located in the working directory.
+
+        Notes
+        -----
+        - Currently, this method performs a local copy of files and does not
+          use a remote data catalog or storage service.
+        - The returned paths are relative to the job working directory.
+        """
         # TODO: use data catalog interface
         new_paths: dict[str, Path | list[Path]] = {}
         if inputs.lfns_input:
@@ -331,6 +358,26 @@ class ExecutionHooksBasePlugin(BaseModel):
         return new_paths
 
     def update_inputs(self, inputs: Any, updates: dict[str, Path | list[Path]]):
+        """Update CWL job inputs with new file paths.
+
+        This method updates the `inputs.cwl` object by replacing or adding
+        file paths for each input specified in `updates`. It supports both
+        single files and lists of files.
+
+        Parameters
+        ----------
+        inputs : JobInputModel
+            The job input model whose ``cwl`` dictionary will be updated.
+        updates : dict[str, Path | list[Path]]
+            Dictionary mapping input names to their corresponding local file
+            paths. Each value can be a single `Path` or a list of `Path` objects.
+
+        Notes
+        -----
+        This method is typically called after downloading LFNs
+        using `download_lfns` to ensure that the CWL job inputs reference
+        the correct local files.
+        """
         for input_name, path in updates.items():
             if isinstance(path, Path):
                 inputs.cwl[input_name] = File(path=str(path))
@@ -347,19 +394,44 @@ class ExecutionHooksBasePlugin(BaseModel):
         command: List[str],
         **kwargs: Any,
     ) -> List[str]:
-        """Pre-process job inputs and command.
+        """Pre-process job inputs and command before execution.
+
+        This method prepares CWL job inputs by performing pre-execution tasks such as:
+        - downloading LFNs,
+        - updating CWL input definitions with local file paths,
+        - and serializing the final input parameters into a YAML file added to the command line.
+
+        The default implementation performs standard preparation steps,
+        but this method is designed to be **overridden by subclasses**
+        to implement custom pre-processing logic such as:
+        - specialized data staging or fetching strategies,
+        - environment setup before command execution.
 
         Parameters
         ----------
+        executable : CommandLineTool | Workflow | ExpressionTool
+            The CWL tool, workflow, or expression to be executed.
+        arguments : JobInputModel, optional
+            The job inputs, including CWL and LFN data.
         job_path : Path
             Path to the job working directory.
-        command : List[str]
-            The command to be executed.
+        command : list[str]
+            The command to be executed, which will be modified.
+        **kwargs : Any
+            Additional parameters, allowing extensions to pass extra context
+            or configuration options.
 
         Returns
         -------
-        List[str]
-            Modified command list.
+        list[str]
+            The modified command, typically including the serialized CWL
+            input file path.
+
+        Notes
+        -----
+        Subclasses may override this method to customize pre-processing behavior.
+        When overriding, it is recommended to call ``super().pre_process(...)``
+        if the base pre-processing logic should be preserved.
         """
         for preprocess_command in self.preprocess_commands:
             if not issubclass(preprocess_command, PreProcessCommand):
