@@ -3,9 +3,9 @@ $namespaces:
   dirac: "../schemas/dirac-metadata.json#"
 this-step-doesnot-exist:
   dirac:execution-hooks:
-    hook_plugin: MandelBrotGeneration
+    hook_plugin: MandelBrotGenerationPlugin
 image-merge:
   dirac:execution-hooks:
-    hook_plugin: MandelBrotMerging
+    hook_plugin: MandelBrotMergingPlugin
     group_size:
       data: 5

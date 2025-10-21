@@ -8,6 +8,6 @@ image-prod:
       data: 1
 image-merge:
   dirac:execution-hooks:
-    hook_plugin: MandelBrotMerging
+    hook_plugin: MandelBrotMergingPlugin
     group_size:
       data: 5

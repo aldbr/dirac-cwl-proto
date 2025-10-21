@@ -1,7 +1,7 @@
 $namespaces:
   dirac: "../schemas/dirac-metadata.json#"
 dirac:execution-hooks:
-  hook_plugin: PiGather
+  hook_plugin: PiGatherPlugin
   configuration:
     num_points: 1000
     input-data: 2
