@@ -1,9 +1,11 @@
 # The step does not exist
+$namespaces:
+  dirac: "../schemas/dirac-metadata.json#"
 this-step-doesnot-exist:
-  execution-hooks:
+  dirac:execution-hooks:
     hook_plugin: MandelBrotGeneration
 image-merge:
-  execution-hooks:
+  dirac:execution-hooks:
     hook_plugin: MandelBrotMerging
     group_size:
       data: 5

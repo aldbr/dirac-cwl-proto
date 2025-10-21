@@ -48,6 +48,8 @@ outputs:
       - image-merge/log
     linkMerge: merge_flattened
 
+hints:
+  $import: "./type_dependencies/production/metadata-mandelbrot_complete.yaml"
 
 # Requirements for the workflow
 requirements:

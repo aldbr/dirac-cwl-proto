@@ -1,8 +1,10 @@
+$namespaces:
+  dirac: "../schemas/dirac-metadata.json#"
 image-prod:
-  execution-hooks:
+  dirac:execution-hooks:
     hook_plugin: MandelBrotGenerationPlugin
 image-merge:
-  execution-hooks:
+  dirac:execution-hooks:
     hook_plugin: MandelBrotMergingPlugin
     group_size:
       data: 1

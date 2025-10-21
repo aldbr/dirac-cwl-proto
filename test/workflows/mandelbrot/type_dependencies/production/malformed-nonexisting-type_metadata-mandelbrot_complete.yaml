@@ -1,11 +1,13 @@
+$namespaces:
+  dirac: "../schemas/dirac-metadata.json#"
 image-prod:
-  execution-hooks:
+  dirac:execution-hooks:
     # This type does not exist
     hook_plugin: MandelBrotDoesNotExist
     group_size:
       data: 1
 image-merge:
-  execution-hooks:
+  dirac:execution-hooks:
     hook_plugin: MandelBrotMerging
     group_size:
       data: 5

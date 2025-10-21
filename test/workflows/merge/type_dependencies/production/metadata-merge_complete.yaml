@@ -1,11 +1,13 @@
+$namespaces:
+  dirac: "../schemas/dirac-metadata.json#"
 simulate_step1:
-  execution-hooks:
+  dirac:execution-hooks:
     hook_plugin: PiSimulateV2Plugin
 simulate_step2:
-  execution-hooks:
+  dirac:execution-hooks:
     hook_plugin: PiSimulateV2Plugin
 gathering:
-  execution-hooks:
+  dirac:execution-hooks:
     hook_plugin: PiGatherPlugin
     group_size:
       input-data: 2

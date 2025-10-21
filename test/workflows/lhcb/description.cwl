@@ -30,6 +30,9 @@ outputs:
     type: File[]?
     outputSource: reconstruction/others
 
+hints:
+  $import: "./type_dependencies/production/metadata-lhcb_complete.yaml"
+
 # Requirements for the workflow
 requirements:
   SubworkflowFeatureRequirement: {}

@@ -1,11 +1,13 @@
+$namespaces:
+  dirac: "../schemas/dirac-metadata.json#"
 simulation:
-  execution-hooks:
+  dirac:execution-hooks:
     hook_plugin: LHCbSimulationPlugin
     configuration:
       run_id: 123
       task_id: 456
 reconstruction:
-  execution-hooks:
+  dirac:execution-hooks:
     hook_plugin: LHCbReconstructionPlugin
     group_size:
       files: 1

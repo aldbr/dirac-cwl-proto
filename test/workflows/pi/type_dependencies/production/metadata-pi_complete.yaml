@@ -1,8 +1,10 @@
+$namespaces:
+  dirac: "../schemas/dirac-metadata.json#"
 simulate:
-  execution-hooks:
+  dirac:execution-hooks:
     hook_plugin: PiSimulatePlugin
 gathering:
-  execution-hooks:
+  dirac:execution-hooks:
     hook_plugin: PiGatherPlugin
     group_size:
       input-data: 1
