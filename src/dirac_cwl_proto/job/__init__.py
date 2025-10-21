@@ -27,7 +27,10 @@ from rich.text import Text
 from ruamel.yaml import YAML
 from schema_salad.exceptions import ValidationException
 
-from dirac_cwl_proto.execution_hooks.core import ExecutionHooksBasePlugin
+from dirac_cwl_proto.execution_hooks.core import (
+    ExecutionHooksBasePlugin,
+    ExecutionHooksHint,
+)
 from dirac_cwl_proto.submission_models import (
     JobInputModel,
     JobSubmissionModel,
@@ -126,12 +129,7 @@ def submit_job_client(
                 f"\t[green]:heavy_check_mark:[/green] Parameter {parameter_p}"
             )
 
-    job = JobSubmissionModel(
-        task=task,
-        parameters=parameters,
-        scheduling=job_scheduling,
-        execution_hooks=job_metadata,
-    )
+    job = JobSubmissionModel(task=task, parameters=parameters)
     console.print(
         "[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Job(s) validated."
     )
@@ -230,8 +228,6 @@ def submit_job_router(job: JobSubmissionModel) -> bool:
                 JobSubmissionModel(
                     task=job.task,
                     parameters=[parameter],
-                    scheduling=job.scheduling,
-                    execution_hooks=job.execution_hooks,
                 )
             )
     logger.info("Job(s) validated!")
@@ -364,8 +360,10 @@ def run_job(job: JobSubmissionModel) -> bool:
     logger = logging.getLogger("JobWrapper")
     # Instantiate runtime metadata from the serializable descriptor and
     # the job context so implementations can access task inputs/overrides.
+    job_execution_hooks = ExecutionHooksHint.from_cwl(job.task)
+
     runtime_metadata = (
-        job.execution_hooks.to_runtime(job) if job.execution_hooks else None
+        job_execution_hooks.to_runtime(job) if job_execution_hooks else None
     )
 
     # Isolate the job in a specific directory

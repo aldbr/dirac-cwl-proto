@@ -18,13 +18,8 @@ from cwl_utils.parser.cwl_v1_2 import (
 )
 from rich import print_json
 from rich.console import Console
-from ruamel.yaml import YAML
 from schema_salad.exceptions import ValidationException
 
-from dirac_cwl_proto.execution_hooks import (
-    SchedulingHint,
-    TransformationExecutionHooksHint,
-)
 from dirac_cwl_proto.submission_models import (
     ProductionSubmissionModel,
     TransformationSubmissionModel,
@@ -45,10 +40,6 @@ console = Console()
 @app.command("submit")
 def submit_production_client(
     task_path: str = typer.Argument(..., help="Path to the CWL file"),
-    steps_metadata_path: str = typer.Option(
-        None,
-        help="Path to metadata file used to generate the transformations (one entry per step)",
-    ),
     # Specific parameter for the purpose of the prototype
     local: Optional[bool] = typer.Option(
         True, help="Run the job locally instead of submitting it to the router"
@@ -78,33 +69,10 @@ def submit_production_client(
         )
         return typer.Exit(code=1)
     console.print(f"\t[green]:heavy_check_mark:[/green] Task {task_path}")
-
-    # Load the metadata: at this stage, only the structure is validated, not the content
-    steps_metadata = {}
-    if steps_metadata_path:
-        with open(steps_metadata_path, "r") as file:
-            steps_metadata = YAML(typ="safe").load(file)
-
-    production_step_execution_hooks = {}
-    production_step_scheduling = {}
-    for step_name, step_data in steps_metadata.items():
-        # Extract metadata and scheduling from step_data
-        metadata_config = step_data.get("execution-hooks", {})
-        scheduling_config = step_data.get("scheduling", {})
-
-        # Create TransformationExecutionHooksHint with the metadata
-        production_step_execution_hooks[step_name] = TransformationExecutionHooksHint(
-            **metadata_config
-        )
-        production_step_scheduling[step_name] = SchedulingHint(**scheduling_config)
     console.print("\t[green]:heavy_check_mark:[/green] Metadata")
 
     # Create the production
-    transformation = ProductionSubmissionModel(
-        task=task,
-        steps_execution_hooks=production_step_execution_hooks,
-        steps_scheduling=production_step_scheduling,
-    )
+    production = ProductionSubmissionModel(task=task)
     console.print(
         "[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Production validated."
     )
@@ -113,8 +81,8 @@ def submit_production_client(
     console.print(
         "[blue]:information_source:[/blue] [bold]CLI:[/bold] Submitting the production..."
     )
-    print_json(transformation.model_dump_json(indent=4))
-    if not submit_production_router(transformation):
+    print_json(production.model_dump_json(indent=4))
+    if not submit_production_router(production):
         console.print(
             "[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to run production."
         )
@@ -170,31 +138,32 @@ def _get_transformations(
     """
     # Create a subworkflow and a transformation for each step
     transformations = []
+    configuration = _get_configuration(production.task)
+
     for step in production.task.steps:
         step_task = _create_subworkflow(
             step, str(production.task.cwlVersion), production.task.inputs
         )
-        configuration = _get_configuration(production.task)
+        if step_task.hints is None:
+            step_task.hints = []
 
         # Get the execution_hooks & description for the step
         step_id = step.id.split("#")[-1]
-        step_data: TransformationExecutionHooksHint = (
-            production.steps_execution_hooks.get(
-                step_id,
-                TransformationExecutionHooksHint(),
-            )
-        )
-        step_scheduling: SchedulingHint = production.steps_scheduling.get(
-            step_id,
-            SchedulingHint(),
-        )
-        step_data.configuration.update(configuration)
+        if production.task.hints is not None:
+            for hint in production.task.hints:
+                if hint["class"] == "$namespaces":
+                    step_task.hints.append(hint)
+                if hint["class"] == step_id:
+                    execution_hook_hint = {
+                        **hint.pop("dirac:execution-hooks"),
+                        "class": "dirac:execution-hooks",
+                        "configuration": configuration,
+                    }
+                    step_task.hints.append(execution_hook_hint)
 
         transformations.append(
             TransformationSubmissionModel(
                 task=step_task,
-                execution_hooks=step_data,
-                scheduling=step_scheduling,
             )
         )
     return transformations

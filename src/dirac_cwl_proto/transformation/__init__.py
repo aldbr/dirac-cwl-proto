@@ -17,7 +17,6 @@ from rich.console import Console
 from schema_salad.exceptions import ValidationException
 
 from dirac_cwl_proto.execution_hooks import (
-    SchedulingHint,
     TransformationExecutionHooksHint,
 )
 from dirac_cwl_proto.job import submit_job_router
@@ -117,12 +116,8 @@ def submit_transformation_router(transformation: TransformationSubmissionModel) 
     job_model_params = []
 
     try:
-        (
-            transformation_execution_hooks,
-            transformation_scheduling_hints,
-        ) = (
-            TransformationExecutionHooksHint.from_cwl(transformation.task),
-            SchedulingHint.from_cwl(transformation.task),
+        transformation_execution_hooks = TransformationExecutionHooksHint.from_cwl(
+            transformation.task
         )
     except Exception as exc:
         raise ValueError(f"Invalid DIRAC hints:\n{exc}") from exc
@@ -170,8 +165,6 @@ def submit_transformation_router(transformation: TransformationSubmissionModel) 
     jobs = JobSubmissionModel(
         task=transformation.task,
         parameters=job_model_params,
-        scheduling=transformation_scheduling_hints,
-        execution_hooks=transformation_execution_hooks,
     )
     logger.info("Jobs built!")
 

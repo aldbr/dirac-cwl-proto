@@ -20,7 +20,6 @@ from pydantic import BaseModel, ConfigDict, field_serializer, model_validator
 from dirac_cwl_proto.execution_hooks import (
     ExecutionHooksHint,
     SchedulingHint,
-    TransformationExecutionHooksHint,
 )
 
 # -----------------------------------------------------------------------------
@@ -50,8 +49,6 @@ class JobSubmissionModel(BaseModel):
 
     task: CommandLineTool | Workflow | ExpressionTool
     parameters: list[JobInputModel] | None = None
-    scheduling: SchedulingHint
-    execution_hooks: ExecutionHooksHint
 
     @field_serializer("task")
     def serialize_task(self, value):
@@ -94,20 +91,18 @@ class ProductionSubmissionModel(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     task: Workflow
-    # Key: step name, Value: description & execution_hooks of a transformation
-    steps_execution_hooks: dict[str, TransformationExecutionHooksHint]
-    # Key: step name, Value: scheduling configuration for a transformation
-    steps_scheduling: dict[str, SchedulingHint] = {}
 
     @model_validator(mode="before")
     def validate_steps_metadata(cls, values):
         task = values.get("task")
-        steps_execution_hooks = values.get("steps_execution_hooks")
-
-        if task and steps_execution_hooks:
+        if task and task.hints:
             # Extract the available steps in the task
-            task_steps = set([step.id.split("#")[-1] for step in task.steps])
-            metadata_keys = set(steps_execution_hooks.keys())
+            task_steps = {step.id.split("#")[-1] for step in task.steps}
+            metadata_keys = {
+                hint["class"]
+                for hint in task.hints
+                if "class" in hint and hint["class"] != "$namespaces"
+            }
 
             # Check if all metadata keys exist in the task's workflow steps
             missing_steps = metadata_keys - task_steps
