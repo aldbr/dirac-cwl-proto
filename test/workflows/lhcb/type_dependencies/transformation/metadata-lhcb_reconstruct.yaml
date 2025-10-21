@@ -1,5 +1,5 @@
 $namespaces:
-  dirac: "../schemas/dirac-metadata.json#"
+  dirac: "test/workflows/test_meta/schemas/dirac-metadata.json"
 dirac:execution-hooks:
   hook_plugin: LHCbReconstructionPlugin
   group_size:

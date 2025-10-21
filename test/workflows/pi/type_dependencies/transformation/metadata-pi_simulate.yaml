@@ -1,6 +1,6 @@
 # Override hints from CWL workflow
 $namespaces:
-  dirac: "../schemas/dirac-metadata.json#"
+  dirac: "test/workflows/test_meta/schemas/dirac-metadata.json"
 dirac:execution-hooks:
   configuration:
     num_points: 2000  # Override default 1000 from CWL

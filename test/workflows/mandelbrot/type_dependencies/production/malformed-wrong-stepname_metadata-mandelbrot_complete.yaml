@@ -1,6 +1,6 @@
 # The step does not exist
 $namespaces:
-  dirac: "../schemas/dirac-metadata.json#"
+  dirac: "test/workflows/test_meta/schemas/dirac-metadata.json"
 this-step-doesnot-exist:
   dirac:execution-hooks:
     hook_plugin: MandelBrotGenerationPlugin

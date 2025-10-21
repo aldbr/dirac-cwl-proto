@@ -1,5 +1,5 @@
 $namespaces:
-  dirac: "../schemas/dirac-metadata.json#"
+  dirac: "test/workflows/test_meta/schemas/dirac-metadata.json"
 simulate:
   dirac:execution-hooks:
     hook_plugin: PiSimulatePlugin
