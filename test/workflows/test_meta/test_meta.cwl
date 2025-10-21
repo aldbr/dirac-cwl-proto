@@ -10,7 +10,7 @@ outputs: []
 baseCommand: ["echo", "Hello World"]
 
 $namespaces:
-  dirac: "./schemas/dirac-metadata.json#" # Generated schema from Pydantic models
+  dirac: "../schemas/dirac-metadata.json#" # Generated schema from Pydantic models
 hints:
   dirac:execution-hooks:
     hook_plugin: "User"

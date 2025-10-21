@@ -1,2 +1,4 @@
+$namespaces:
+  dirac: "../schemas/dirac-metadata.json#"
 dirac:execution-hooks:
   hook_plugin: LHCbSimulationPlugin
