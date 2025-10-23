@@ -349,7 +349,7 @@ def _post_process(
     logger.info(stderr)
 
     if runtime_metadata:
-        return runtime_metadata.post_process(job_path)
+        return runtime_metadata.post_process(job_path, stdout=stdout)
 
     return True
 
