@@ -6,7 +6,7 @@ import logging
 import random
 import tarfile
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import typer
 from cwl_utils.pack import pack
@@ -130,17 +130,67 @@ def submit_job_client(
         "[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Job(s) validated."
     )
 
+    jobs = validate_jobs(job)
+
+    for job in jobs:
+        # Dump the job model to a file
+        with open("job.json", "w") as f:
+            f.write(job.model_dump_json())
+
+        # TODO add call to create_sandbox router adding files from parameter and the job.json file
+        # For now just set hardcoded sandbox_id
+        sandbox_id = "SB:SandboxSE|/S3/diracx-sandbox-store/isb.tar.bz2"
+
+        # Convert job.jspn to jdl
+        console.print(
+            "[blue]:information_source:[/blue] [bold]CLI:[/bold] Converting job model to jdl..."
+        )
+        convert_to_jdl(job, sandbox_id)
+
     # Submit the job
     console.print(
-        "[blue]:information_source:[/blue] [bold]CLI:[/bold] Submitting the job(s) to service..."
+        "[blue]:information_source:[/blue] [bold]CLI:[/bold] Submitting the job(s)..."
     )
     print_json(job.model_dump_json(indent=4))
-    if not submit_job_router(job, local):
+
+    if local:
+        if not submit_job_router(job):
+            console.print(
+                "[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to run job(s)."
+            )
+            return typer.Exit(code=1)
         console.print(
-            "[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to run job(s)."
+            "[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Job(s) done."
         )
-        return typer.Exit(code=1)
-    console.print("[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Job(s) done.")
+    else:
+        # TODO call job/jdl router
+        console.print(
+            "[blue]:information_source:[/blue] [bold]CLI:[/bold] Call diracx: jobs/jdl router..."
+        )
+
+
+def validate_jobs(job: JobSubmissionModel) -> list[JobSubmissionModel]:
+    console.print(
+        "[blue]:information_source:[/blue] [bold]CLI:[/bold] Validating the job(s)..."
+    )
+    # Initiate 1 job per parameter
+    jobs = []
+    if not job.parameters:
+        jobs.append(job)
+    else:
+        for parameter in job.parameters:
+            jobs.append(
+                JobSubmissionModel(
+                    task=job.task,
+                    parameters=[parameter],
+                    scheduling=job.scheduling,
+                    execution_hooks=job.execution_hooks,
+                )
+            )
+    console.print(
+        "[green]:information_source:[/green] [bold]CLI:[/bold] Job(s) validated!"
+    )
+    return jobs
 
 
 def convert_to_jdl(job: JobSubmissionModel, sandbox_id: str) -> None:
@@ -230,7 +280,7 @@ def upload_local_input_files(input_data: dict[str, Any]) -> str | None:
 # -----------------------------------------------------------------------------
 
 
-def submit_job_router(job: JobSubmissionModel, local: Optional[bool] = True) -> bool:
+def submit_job_router(job: JobSubmissionModel) -> bool:
     """
     Execute a job using the router.
 
@@ -241,48 +291,17 @@ def submit_job_router(job: JobSubmissionModel, local: Optional[bool] = True) -> 
     logger = logging.getLogger("JobRouter")
 
     # Validate the jobs
-    logger.info("Validating the job(s)...")
-    # Initiate 1 job per parameter
-    jobs = []
-    if not job.parameters:
-        jobs.append(job)
-    else:
-        for parameter in job.parameters:
-            jobs.append(
-                JobSubmissionModel(
-                    task=job.task,
-                    parameters=[parameter],
-                    scheduling=job.scheduling,
-                    execution_hooks=job.execution_hooks,
-                )
-            )
-    logger.info("Job(s) validated!")
+    jobs = validate_jobs(job)
 
-    # Simulate the submission of the job (just execute the job locally)
-    logger.info("Submitting jobs...")
+    # Execute the job locally
+    logger.info("Executing jobs locally...")
     results = []
 
     for job in jobs:
-        if local:
-            job_wrapper = JobWrapper()
-            logger.info("Running job locally:\n")
-            print_json(job.model_dump_json(indent=4))
-            results.append(job_wrapper.run_job(job))
-            logger.info("Jobs done.")
-        else:
-            # Dump the job model to a file
-            with open("job.json", "w") as f:
-                f.write(job.model_dump_json())
-
-            # TODO add call to create_sandbox router adding files from parameter and the job.json file
-            # For now just set hardcoded sandbox_id
-            sandbox_id = "SB:SandboxSE|/S3/diracx-sandbox-store/isb.tar.bz2"
-
-            # Convert job.jspn to jdl
-            logger.info("Converting job model to jdl:\n")
-            convert_to_jdl(job, sandbox_id)
-            # TODO call job/jdl router
-            logger.info("Submitting job to jobs/jdl router:\n")
-            print_json(job.model_dump_json(indent=4))
+        job_wrapper = JobWrapper()
+        logger.info("Executing job locally:\n")
+        print_json(job.model_dump_json(indent=4))
+        results.append(job_wrapper.run_job(job))
+        logger.info("Jobs done.")
 
     return all(results)
