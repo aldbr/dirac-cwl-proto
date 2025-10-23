@@ -71,7 +71,7 @@ asyncio_mode = "auto"
 # -------------------------
 # Pixi configuration
 # -------------------------
-[tool.pixi.project]
+[tool.pixi.workspace]
 channels = ["conda-forge"]
 platforms = ["linux-64", "osx-64", "osx-arm64"]
 
