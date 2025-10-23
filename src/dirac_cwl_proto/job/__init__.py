@@ -19,7 +19,7 @@ from rich import print_json
 from rich.console import Console
 from schema_salad.exceptions import ValidationException
 
-from dirac_cwl_proto.job.JobWrapper import JobWrapper
+from dirac_cwl_proto.job.job_wrapper import JobWrapper
 from dirac_cwl_proto.submission_models import (
     JobInputModel,
     JobSubmissionModel,
@@ -152,7 +152,7 @@ def convert_to_jdl(job: JobSubmissionModel, sandbox_id: str) -> None:
     :param sandbox_id: The sandbox id
     """
     with open("generated.jdl", "w") as f:
-        f.write("Executable = job_wrapper.py;\n")
+        f.write("Executable = job_wrapper_template.py;\n")
         f.write("Arguments = job.json;\n")
         f.write("CPUTime = 86400;\n")
         f.write("JobName = test;\n")
@@ -168,7 +168,6 @@ def convert_to_jdl(job: JobSubmissionModel, sandbox_id: str) -> None:
         if job.scheduling.sites:
             f.write(f"Site = {job.scheduling.sites};\n")
         f.write(f"InputSandbox = {sandbox_id};\n")
-    f.close()
     return None
 
 
