@@ -31,6 +31,9 @@ outputs:
       - fit/log
     linkMerge: merge_flattened
 
+hints:
+  $import: "./type_dependencies/production/metadata-gaussian-fit-complete.yaml"
+
 steps:
   data-generation:
     run: ./data_generation/data-generation-workflow.cwl

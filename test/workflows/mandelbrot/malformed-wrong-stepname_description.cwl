@@ -49,7 +49,7 @@ outputs:
     linkMerge: merge_flattened
 
 hints:
-  $import: "./type_dependencies/production/metadata-mandelbrot_complete.yaml"
+  $import: "./type_dependencies/production/malformed-wrong-stepname_metadata-mandelbrot_complete.yaml"
 
 # Requirements for the workflow
 requirements:

@@ -40,6 +40,9 @@ outputs:
     type: File[]?
     outputSource: run-mandelbrot/log
 
+hints:
+  $import: "type_dependencies/transformation/metadata-mandelbrot_imageprod.yaml"
+
 steps:
   # Clone the project
   get-mandelbrot:

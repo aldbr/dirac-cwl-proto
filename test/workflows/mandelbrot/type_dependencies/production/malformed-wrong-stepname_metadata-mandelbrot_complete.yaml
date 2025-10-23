@@ -1,9 +1,11 @@
 # The step does not exist
+$namespaces:
+  dirac: "test/workflows/test_meta/schemas/dirac-metadata.json"
 this-step-doesnot-exist:
-  execution-hooks:
-    hook_plugin: MandelBrotGeneration
+  dirac:execution-hooks:
+    hook_plugin: MandelBrotGenerationPlugin
 image-merge:
-  execution-hooks:
-    hook_plugin: MandelBrotMerging
+  dirac:execution-hooks:
+    hook_plugin: MandelBrotMergingPlugin
     group_size:
       data: 5
