@@ -15,6 +15,8 @@ from cwl_utils.parser.cwl_v1_2 import (
     File,
 )
 from cwl_utils.parser.cwl_v1_2_utils import load_inputfile
+from diracx.cli.utils import AsyncTyper
+from diracx.client.aio import AsyncDiracClient
 from rich import print_json
 from rich.console import Console
 from schema_salad.exceptions import ValidationException
@@ -26,7 +28,7 @@ from dirac_cwl_proto.submission_models import (
     extract_dirac_hints,
 )
 
-app = typer.Typer()
+app = AsyncTyper()
 console = Console()
 
 # -----------------------------------------------------------------------------
@@ -34,8 +36,8 @@ console = Console()
 # -----------------------------------------------------------------------------
 
 
-@app.command("submit")
-def submit_job_client(
+@app.async_command("submit")
+async def submit_job_client(
     task_path: str = typer.Argument(..., help="Path to the CWL file"),
     parameter_path: list[str]
     | None = typer.Option(None, help="Path to the files containing the metadata"),
@@ -132,21 +134,6 @@ def submit_job_client(
 
     jobs = validate_jobs(job)
 
-    for job in jobs:
-        # Dump the job model to a file
-        with open("job.json", "w") as f:
-            f.write(job.model_dump_json())
-
-        # TODO add call to create_sandbox router adding files from parameter and the job.json file
-        # For now just set hardcoded sandbox_id
-        sandbox_id = "SB:SandboxSE|/S3/diracx-sandbox-store/isb.tar.bz2"
-
-        # Convert job.jspn to jdl
-        console.print(
-            "[blue]:information_source:[/blue] [bold]CLI:[/bold] Converting job model to jdl..."
-        )
-        convert_to_jdl(job, sandbox_id)
-
     # Submit the job
     console.print(
         "[blue]:information_source:[/blue] [bold]CLI:[/bold] Submitting the job(s)..."
@@ -163,9 +150,32 @@ def submit_job_client(
             "[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Job(s) done."
         )
     else:
-        # TODO call job/jdl router
+        jdls = []
+        for job in jobs:
+            # Dump the job model to a file
+            with open("job.json", "w") as f:
+                f.write(job.model_dump_json())
+
+            # TODO add call to create_sandbox router adding files from parameter and the job.json file
+            # For now just set hardcoded sandbox_id
+            sandbox_id = "SB:SandboxSE|/S3/diracx-sandbox-store/isb.tar.bz2"
+
+            # Convert job.json to jdl
+            console.print(
+                "[blue]:information_source:[/blue] [bold]CLI:[/bold] Converting job model to jdl..."
+            )
+            jdl = convert_to_jdl(job, sandbox_id)
+            jdls.append(jdl)
+
         console.print(
             "[blue]:information_source:[/blue] [bold]CLI:[/bold] Call diracx: jobs/jdl router..."
+        )
+
+        async with AsyncDiracClient() as api:
+            jdl_jobs = await api.jobs.submit_jdl_jobs(jdls)
+        console.print(
+            f"[green]:information_source:[/green] [bold]CLI:[/bold] Inserted {len(jdl_jobs)} jobs with ids: "
+            "{','.join(map(str, (jdl_job.job_id for jdl_job in jdl_jobs)))}"
         )
 
 
@@ -193,7 +203,7 @@ def validate_jobs(job: JobSubmissionModel) -> list[JobSubmissionModel]:
     return jobs
 
 
-def convert_to_jdl(job: JobSubmissionModel, sandbox_id: str) -> None:
+def convert_to_jdl(job: JobSubmissionModel, sandbox_id: str) -> str:
     """
     Convert job model to jdl.
 
@@ -218,7 +228,11 @@ def convert_to_jdl(job: JobSubmissionModel, sandbox_id: str) -> None:
         if job.scheduling.sites:
             f.write(f"Site = {job.scheduling.sites};\n")
         f.write(f"InputSandbox = {sandbox_id};\n")
-    return None
+
+    f = open("generated.jdl")
+    jdl = f.read()
+
+    return jdl
 
 
 def upload_local_input_files(input_data: dict[str, Any]) -> str | None:
