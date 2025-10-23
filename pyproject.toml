@@ -25,6 +25,8 @@ dependencies = [
     "cwl-utils",
     "cwlformat",
     "cwltool",
+    "dirac>=9.0.0",
+    "diracx-api",
     "lbprodrun",
     "mypy",              # usually dev-only, see note below
     "pydantic",
@@ -71,7 +73,7 @@ asyncio_mode = "auto"
 # -------------------------
 [tool.pixi.project]
 channels = ["conda-forge"]
-platforms = ["win-64", "linux-64", "osx-64", "osx-arm64"]
+platforms = ["linux-64", "osx-64", "osx-arm64"]
 
 # Additional dev-only dependencies (not published with your package)
 [tool.pixi.dependencies]
@@ -81,6 +83,9 @@ jsonschema = "*"   # used in validation
 mypy = "*"         # if you prefer not to list it under [project].dependencies
 ruff = "*"         # linter, optional
 pre-commit = "*"   # git hooks manager
+# conda dependencies
+python-gfal2 = "*"
+m2crypto = "*"
 
 # Ensure the package is installed in editable mode in the Pixi environment
 [tool.pixi.pypi-dependencies]
