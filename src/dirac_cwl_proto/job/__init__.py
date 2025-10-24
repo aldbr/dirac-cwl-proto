@@ -18,6 +18,7 @@ from cwl_utils.parser.cwl_v1_2_utils import load_inputfile
 from diracx.api.jobs import create_sandbox
 from diracx.cli.utils import AsyncTyper
 from diracx.client.aio import AsyncDiracClient
+from rich import print_json
 from rich.console import Console
 from schema_salad.exceptions import ValidationException
 
@@ -88,6 +89,7 @@ async def submit_job_client(
     cwl_file_paths = [Path("task.cwl")]
     parameters = []
     sandbox_id = None
+
     if parameter_path:
         cwl_file_paths.append(Path("parameter.cwl"))
         for parameter_p in parameter_path:
@@ -151,7 +153,7 @@ async def submit_job_client(
     console.print(
         "[blue]:information_source:[/blue] [bold]CLI:[/bold] Submitting the job(s)..."
     )
-    # print_json(job.model_dump_json(indent=4))
+    print_json(job.model_dump_json(indent=4))
 
     if local:
         if not submit_job_router(job):
@@ -175,7 +177,13 @@ async def submit_job_client(
             )
 
             # Make mypy checks pass
+            if job.parameters:
+                assert job.parameters is not None
+                assert job.parameters[0].sandbox is not None
+                sandbox_id = job.parameters[0].sandbox[0]
+
             assert sandbox_id is not None
+
             jdl = convert_to_jdl(job, sandbox_id)
             jdls.append(jdl)
 
@@ -346,7 +354,7 @@ def submit_job_router(job: JobSubmissionModel) -> bool:
     for job in jobs:
         job_wrapper = JobWrapper()
         logger.info("Executing job locally:\n")
-        # print_json(job.model_dump_json(indent=4))
+        print_json(job.model_dump_json(indent=4))
         results.append(job_wrapper.run_job(job))
         logger.info("Jobs done.")
 
