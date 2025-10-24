@@ -15,6 +15,7 @@ from cwl_utils.parser.cwl_v1_2 import (
     File,
 )
 from cwl_utils.parser.cwl_v1_2_utils import load_inputfile
+from diracx.api.jobs import create_sandbox
 from diracx.cli.utils import AsyncTyper
 from diracx.client.aio import AsyncDiracClient
 from rich import print_json
@@ -85,9 +86,11 @@ async def submit_job_client(
     console.print("\t[green]:heavy_check_mark:[/green] Metadata")
     console.print("\t[green]:heavy_check_mark:[/green] Description")
 
+    cwl_file_paths = [Path("task.cwl")]
     parameters = []
     sandbox_id = None
     if parameter_path:
+        cwl_file_paths.append(Path("parameter.cwl"))
         for parameter_p in parameter_path:
             try:
                 parameter = load_inputfile(parameter_p)
@@ -108,10 +111,17 @@ async def submit_job_client(
                         update=override_hints.pop("dirac:execution-hooks", {})
                     )
 
-            # Upload input files to the local sandbox store
+            # Prepare files for the ISB
+            isb_file_paths = prepare_input_sandbox(parameter)
             if local:
-                sandbox_id = upload_local_input_files(parameter)
-
+                # Upload files to the local sandbox store
+                sandbox_id = upload_to_local_sbstore(isb_file_paths)
+            else:
+                # Modify the location of the files to point to the future location on the worker node
+                isb_file_paths = [Path(p.name) for p in isb_file_paths]
+                isb_file_paths.extend(cwl_file_paths)
+                # Upload files to the sandbox store
+                sandbox_id = await create_sandbox(isb_file_paths)
             parameters.append(
                 JobInputModel(
                     sandbox=[sandbox_id] if sandbox_id else None,
@@ -156,14 +166,15 @@ async def submit_job_client(
             with open("job.json", "w") as f:
                 f.write(job.model_dump_json())
 
-            # TODO add call to create_sandbox router adding files from parameter and the job.json file
-            # For now just set hardcoded sandbox_id
-            sandbox_id = "SB:SandboxSE|/S3/diracx-sandbox-store/isb.tar.bz2"
-
             # Convert job.json to jdl
             console.print(
                 "[blue]:information_source:[/blue] [bold]CLI:[/bold] Converting job model to jdl..."
             )
+            # To make mypy checks pass
+            assert job.parameters is not None
+            assert job.parameters[0].sandbox is not None
+
+            sandbox_id = job.parameters[0].sandbox[0]
             jdl = convert_to_jdl(job, sandbox_id)
             jdls.append(jdl)
 
@@ -173,13 +184,21 @@ async def submit_job_client(
 
         async with AsyncDiracClient() as api:
             jdl_jobs = await api.jobs.submit_jdl_jobs(jdls)
+        jdl_jobs = []
         console.print(
-            f"[green]:information_source:[/green] [bold]CLI:[/bold] Inserted {len(jdl_jobs)} jobs with ids: "
-            "{','.join(map(str, (jdl_job.job_id for jdl_job in jdl_jobs)))}"
+            f"[green]:information_source:[/green] [bold]CLI:[/bold] Inserted {len(jdl_jobs)} jobs with ids:  \
+            {','.join(map(str, (jdl_job.job_id for jdl_job in jdl_jobs)))}"
         )
 
 
 def validate_jobs(job: JobSubmissionModel) -> list[JobSubmissionModel]:
+    """
+    Validate jobs
+
+    :param job: The task to execute
+
+    :return: The list of jobs to execute
+    """
     console.print(
         "[blue]:information_source:[/blue] [bold]CLI:[/bold] Validating the job(s)..."
     )
@@ -235,7 +254,7 @@ def convert_to_jdl(job: JobSubmissionModel, sandbox_id: str) -> str:
     return jdl
 
 
-def upload_local_input_files(input_data: dict[str, Any]) -> str | None:
+def prepare_input_sandbox(input_data: dict[str, Any]) -> list[Path]:
     """
     Extract the files from the parameters.
 
@@ -243,7 +262,6 @@ def upload_local_input_files(input_data: dict[str, Any]) -> str | None:
 
     :return: The list of files
     """
-    Path("sandboxstore").mkdir(exist_ok=True)
 
     # Get the files from the input data
     files = []
@@ -255,35 +273,45 @@ def upload_local_input_files(input_data: dict[str, Any]) -> str | None:
         elif isinstance(input_value, File):
             files.append(input_value)
 
-    if not files:
-        return None
-
-    # Tar the files and upload them to the file catalog
-    sandbox_path = (
-        Path("sandboxstore") / f"input_sandbox_{random.randint(1000, 9999)}.tar.gz"
-    )
-    with tarfile.open(sandbox_path, "w:gz") as tar:
-        for file in files:
-            # TODO: path is not the only attribute to consider, but so far it is the only one used
-            if not file.path:
-                raise NotImplementedError("File path is not defined.")
-
-            file_path = Path(file.path.replace("file://", ""))
-            console.print(
-                f"\t\t[blue]:information_source:[/blue] Found {file_path} locally, uploading it to the sandbox store..."
-            )
-            tar.add(file_path, arcname=file_path.name)
-    console.print(
-        f"\t\t[blue]:information_source:[/blue] File(s) will be available through {sandbox_path}"
-    )
-
-    # Modify the location of the files to point to the future location on the worker node
+    files_path = []
     for file in files:
         # TODO: path is not the only attribute to consider, but so far it is the only one used
         if not file.path:
             raise NotImplementedError("File path is not defined.")
 
-        file.path = str(Path(".") / file.path.split("/")[-1])
+        file_path = Path(file.path.replace("file://", ""))
+        files_path.append(file_path)
+
+    return files_path
+
+
+def upload_to_local_sbstore(files_path: list[Path]) -> str | None:
+    """
+    Upload files to the local sandbox store
+
+    :param files_path: The file paths
+
+    :return: The sandbox id
+    """
+
+    if not files_path:
+        return None
+
+    Path("sandboxstore").mkdir(exist_ok=True)
+    # Tar the files and upload them to the file catalog
+    sandbox_path = (
+        Path("sandboxstore") / f"input_sandbox_{random.randint(1000, 9999)}.tar.gz"
+    )
+
+    with tarfile.open(sandbox_path, "w:gz") as tar:
+        for file_path in files_path:
+            console.print(
+                f"\t\t[blue]:information_source:[/blue] Found {file_path}, uploading it to the local sandbox store..."
+            )
+            tar.add(file_path, arcname=file_path.name)
+    console.print(
+        f"\t\t[blue]:information_source:[/blue] File(s) will be available through {sandbox_path}"
+    )
 
     sandbox_id = sandbox_path.name.replace(".tar.gz", "")
     return sandbox_id
