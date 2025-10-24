@@ -131,6 +131,10 @@ async def submit_job_client(
             console.print(
                 f"\t[green]:heavy_check_mark:[/green] Parameter {parameter_p}"
             )
+    else:
+        if not local:
+            # Upload files to the sandbox store
+            sandbox_id = await create_sandbox(cwl_file_paths)
 
     job = JobSubmissionModel(
         task=task,
@@ -170,11 +174,9 @@ async def submit_job_client(
             console.print(
                 "[blue]:information_source:[/blue] [bold]CLI:[/bold] Converting job model to jdl..."
             )
-            # To make mypy checks pass
-            assert job.parameters is not None
-            assert job.parameters[0].sandbox is not None
 
-            sandbox_id = job.parameters[0].sandbox[0]
+            # Make mypy checks pass
+            assert sandbox_id is not None
             jdl = convert_to_jdl(job, sandbox_id)
             jdls.append(jdl)
 
