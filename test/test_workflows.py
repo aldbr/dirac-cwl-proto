@@ -5,9 +5,19 @@ import time
 from pathlib import Path
 
 import pytest
+from cwl_utils.parser.cwl_v1_2 import (
+    CommandLineTool,
+    ResourceRequirement,
+    Workflow,
+    WorkflowStep,
+)
 from typer.testing import CliRunner
 
 from dirac_cwl_proto import app
+from dirac_cwl_proto.execution_hooks.requirement_validator import (
+    RequirementError,
+    ResourceRequirementValidator,
+)
 
 
 def strip_ansi_codes(text: str) -> str:
@@ -204,7 +214,7 @@ def test_run_job_success(cli_runner, cleanup, cwl_file, inputs):
         ),
         # The description file points to itself (another circular dependency)
         (
-            "test/workflows/bad_references/reference_circular1.cwl",
+            "test/workflows/bad_references/reference_circular2.cwl",
             [],
             "Recursingintostep",
         ),
@@ -687,3 +697,159 @@ def test_run_production_validation_failure(
             f"Expected error '{expected_error}' not found in "
             f"stdout: {clean_output}, stderr: {clean_stderr}, exception: {clean_exception}"
         )
+
+
+# -----------------------------------------------------------------------------
+# Requirements tests
+# -----------------------------------------------------------------------------
+
+
+# Helper functions
+def create_commandlinetool(requirements=None, inputs=None, outputs=None):
+    return CommandLineTool(
+        requirements=requirements or [],
+        inputs=inputs or [],
+        outputs=outputs or [],
+    )
+
+
+def create_workflow(requirements=None, steps=None, inputs=None, outputs=None):
+    return Workflow(
+        requirements=requirements or [],
+        steps=steps or [],
+        inputs=inputs or [],
+        outputs=outputs or [],
+    )
+
+
+def create_step(requirements=None, run=None, in_=None, out=None):
+    return WorkflowStep(
+        requirements=requirements or [],
+        run=run,
+        in_=in_ or [],
+        out=out or [],
+    )
+
+
+@pytest.mark.parametrize(
+    "bad_min_max_reqs",
+    [
+        # cores
+        ResourceRequirement(coresMin=4, coresMax=2),
+        # ram
+        ResourceRequirement(ramMin=2048, ramMax=1024),
+    ],
+)
+def test_bad_min_max_resource_reqs(bad_min_max_reqs):
+    """
+    Test invalid min/max resource requirements in CWL objects.
+    """
+
+    # CommandlineTool with bad minmax reqs
+    clt = create_commandlinetool(requirements=[bad_min_max_reqs])
+    with pytest.raises(RequirementError):
+        ResourceRequirementValidator(cwl_object=clt).validate_requirements()
+
+    # WorkflowStep.run with bad minmax reqs
+    step_bad_run = create_step(run=clt)
+    workflow = create_workflow(steps=[step_bad_run])
+    with pytest.raises(RequirementError):
+        ResourceRequirementValidator(cwl_object=workflow).validate_requirements()
+
+    # WorkflowStep with bad minmax reqs
+    clt = create_commandlinetool()
+    step = create_step(run=clt, requirements=[bad_min_max_reqs])
+    workflow = create_workflow(steps=[step])
+    with pytest.raises(RequirementError):
+        ResourceRequirementValidator(cwl_object=workflow).validate_requirements()
+
+    # Workflow with bad minmax reqs
+    workflow = create_workflow(requirements=[bad_min_max_reqs])
+    with pytest.raises(RequirementError):
+        ResourceRequirementValidator(cwl_object=workflow).validate_requirements()
+
+    # NestedWorkflow with bad minmax reqs
+    nest_workflow = create_workflow(requirements=[bad_min_max_reqs])
+    step = create_step(run=nest_workflow)
+    workflow = create_workflow(steps=[step])
+    with pytest.raises(RequirementError):
+        ResourceRequirementValidator(cwl_object=workflow).validate_requirements()
+
+    # DeepNestedWorkflow with bad minmax reqs
+    deep_workflow = create_workflow(requirements=[bad_min_max_reqs])
+    deep_step = create_step(run=deep_workflow)
+    nest_workflow = create_workflow(steps=[deep_step])
+    step = create_step(run=nest_workflow)
+    workflow = create_workflow(steps=[step])
+    with pytest.raises(RequirementError):
+        ResourceRequirementValidator(cwl_object=workflow).validate_requirements()
+
+
+@pytest.mark.parametrize(
+    ("global_requirements", "higher_requirements"),
+    [
+        # cores
+        (
+            ResourceRequirement(coresMax=2),
+            ResourceRequirement(coresMin=4),
+        ),
+        # ram
+        (
+            ResourceRequirement(ramMax=512),
+            ResourceRequirement(ramMin=1024),
+        ),
+    ],
+)
+def test_bad_global_requirements(global_requirements, higher_requirements):
+    """
+    Test global requirements conflicts.
+    """
+
+    # Workflow - WorkflowStep conflict
+    step = create_step(requirements=[higher_requirements])
+    workflow = create_workflow(requirements=[global_requirements], steps=[step])
+    with pytest.raises(RequirementError):
+        ResourceRequirementValidator(cwl_object=workflow).validate_requirements()
+
+    # Workflow - WorkflowStep.run conflict
+    run = create_commandlinetool(requirements=[higher_requirements])
+    step = create_step(run=run)
+    workflow = create_workflow(requirements=[global_requirements], steps=[step])
+    with pytest.raises(RequirementError):
+        ResourceRequirementValidator(cwl_object=workflow).validate_requirements()
+
+    # Workflow - NestedWorkflow conflict
+    nest_workflow = create_workflow(requirements=[higher_requirements])
+    step = create_step(run=nest_workflow)
+    workflow = create_workflow(requirements=[global_requirements], steps=[step])
+    with pytest.raises(RequirementError):
+        ResourceRequirementValidator(cwl_object=workflow).validate_requirements()
+
+
+@pytest.mark.parametrize(
+    "requirements",
+    [
+        # cores
+        ResourceRequirement(coresMin=2, coresMax=4),
+        # ram
+        ResourceRequirement(ramMin=1024, ramMax=2048),
+    ],
+)
+def test_production_requirements(requirements):
+    """
+    Test production case requirements.
+    """
+
+    # Production workflows can't have global requirements
+    workflow = create_workflow(requirements=[requirements])
+    with pytest.raises(RequirementError):
+        ResourceRequirementValidator(cwl_object=workflow).validate_requirements(
+            production=True
+        )
+
+    # Production workflows can have step requirements
+    step = create_step(requirements=[requirements])
+    workflow = create_workflow(steps=[step])
+    ResourceRequirementValidator(cwl_object=workflow).validate_requirements(
+        production=True
+    )
