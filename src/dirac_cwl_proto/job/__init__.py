@@ -18,7 +18,6 @@ from cwl_utils.parser.cwl_v1_2_utils import load_inputfile
 from diracx.api.jobs import create_sandbox
 from diracx.cli.utils import AsyncTyper
 from diracx.client.aio import AsyncDiracClient
-from rich import print_json
 from rich.console import Console
 from schema_salad.exceptions import ValidationException
 
@@ -152,7 +151,7 @@ async def submit_job_client(
     console.print(
         "[blue]:information_source:[/blue] [bold]CLI:[/bold] Submitting the job(s)..."
     )
-    print_json(job.model_dump_json(indent=4))
+    # print_json(job.model_dump_json(indent=4))
 
     if local:
         if not submit_job_router(job):
@@ -232,10 +231,13 @@ def convert_to_jdl(job: JobSubmissionModel, sandbox_id: str) -> str:
 
     :param sandbox_id: The sandbox id
     """
+
     with open("generated.jdl", "w") as f:
         f.write("Executable = job_wrapper_template.py;\n")
         f.write("Arguments = job.json;\n")
-        f.write("CPUTime = 86400;\n")
+        if job.task.requirements:
+            if job.task.requirements[0].coresMin:
+                f.write(f"NumberOfProcessors = {job.task.requirements[0].coresMin};\n")
         f.write("JobName = test;\n")
         f.write(
             """OutputSandbox =
@@ -344,7 +346,7 @@ def submit_job_router(job: JobSubmissionModel) -> bool:
     for job in jobs:
         job_wrapper = JobWrapper()
         logger.info("Executing job locally:\n")
-        print_json(job.model_dump_json(indent=4))
+        # print_json(job.model_dump_json(indent=4))
         results.append(job_wrapper.run_job(job))
         logger.info("Jobs done.")
 
