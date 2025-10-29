@@ -4,7 +4,7 @@ cwltool:overrides:
   test_meta.cwl#:
     hints:
       dirac:execution-hooks:
-        hook_plugin: 'TaskWithMetadataQueryPlugin'
+        hook_plugin: 'QueryBasedPlugin'
         configuration:
           site: 'Paranal'
 
@@ -17,7 +17,7 @@ cwltool:overrides:
   test_meta.cwl#:
     hints:
       dirac:execution-hooks:
-        hook_plugin: 'TaskWithMetadataQueryPlugin'
+        hook_plugin: 'QueryBasedPlugin'
         configuration:
           site: 'LaPalma'
 

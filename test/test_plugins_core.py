@@ -1,122 +1,15 @@
 """
 Tests for the core execution hooks plugins.
 
-This module tests the built-in execution hooks plugins including User, Admin,
-and QueryBased plugin implementations.
+This module tests the built-in execution hooks plugins including the
+QueryBased plugin implementation.
 """
 
 from pathlib import Path
 
-import pytest
-
 from dirac_cwl_proto.execution_hooks.plugins.core import (
-    AdminPlugin,
     QueryBasedPlugin,
-    UserPlugin,
 )
-
-
-class TestUserPlugin:
-    """Test the UserPlugin plugin."""
-
-    def test_default_behavior(self):
-        """Test default behavior of UserPlugin."""
-        plugin = UserPlugin()
-        assert plugin.name() == "UserPlugin"
-        assert "basic user plugin" in plugin.description.lower()
-
-        # Test pre_process (should return command unchanged)
-        command = ["python", "script.py"]
-        result = plugin.pre_process(Path("/tmp"), command)
-        assert result == command
-
-        # Test post_process (should not raise exception)
-        plugin.post_process(Path("/tmp"), exit_code=0)  # Should not raise exception
-
-        # Test get_input_query (should return None)
-        assert plugin.get_input_query("test_input") is None
-
-        # Test get_output_query (should return None)
-        assert plugin.get_output_query("test_output") is None
-
-        # Test store_output raises RuntimeError when no output path is defined
-        with pytest.raises(RuntimeError, match="No output path defined"):
-            plugin.store_output("test_output", "/tmp/file.txt")
-
-    def test_serialization(self):
-        """Test UserPlugin serialization."""
-        plugin = UserPlugin()
-
-        # Test dict conversion
-        data = plugin.model_dump()
-        assert isinstance(data, dict)
-
-        # Test JSON schema
-        schema = plugin.model_json_schema()
-        assert "properties" in schema
-
-
-class TestAdminPlugin:
-    """Test the AdminPlugin plugin."""
-
-    def test_creation_and_parameters(self):
-        """Test AdminPlugin creation with default and custom parameters."""
-        # Test default values
-        plugin = AdminPlugin()
-        assert plugin.name() == "AdminPlugin"
-        assert plugin.log_level == "INFO"
-        assert plugin.enable_monitoring is True
-        assert plugin.admin_level == 1
-
-        # Test custom parameters
-        plugin = AdminPlugin(log_level="DEBUG", enable_monitoring=False, admin_level=5)
-        assert plugin.log_level == "DEBUG"
-        assert plugin.enable_monitoring is False
-        assert plugin.admin_level == 5
-
-    def test_pre_process(self):
-        """Test AdminPlugin pre_process method."""
-        plugin = AdminPlugin(log_level="DEBUG")
-
-        command = ["python", "script.py"]
-        result = plugin.pre_process(Path("/tmp"), command)
-
-        # Should add log level to command
-        assert "--log-level" in result
-        assert "DEBUG" in result
-        assert result[:2] == ["python", "script.py"]
-
-    def test_pre_process_default_log_level(self):
-        """Test pre_process with default log level."""
-        plugin = AdminPlugin()  # Default log_level is "INFO"
-
-        command = ["python", "script.py"]
-        result = plugin.pre_process(Path("/tmp"), command)
-
-        # Should not add log level for INFO (default)
-        assert result == command
-
-    def test_post_process(self):
-        """Test post-processing with monitoring."""
-        plugin = AdminPlugin(enable_monitoring=True)
-
-        result = plugin.post_process(Path("/tmp"))
-        assert result is True
-
-        # Test with monitoring disabled
-        plugin_no_monitor = AdminPlugin(enable_monitoring=False)
-        result = plugin_no_monitor.post_process(Path("/tmp"))
-        assert result is True
-
-    def test_validation(self):
-        """Test AdminPlugin validation."""
-        # Valid admin_level
-        plugin = AdminPlugin(admin_level=5)
-        assert plugin.admin_level == 5
-
-        # Test with string log level
-        plugin = AdminPlugin(log_level="ERROR")
-        assert plugin.log_level == "ERROR"
 
 
 class TestQueryBasedPlugin:
@@ -127,7 +20,7 @@ class TestQueryBasedPlugin:
         # Test default values
         plugin = QueryBasedPlugin()
         assert plugin.name() == "QueryBasedPlugin"
-        assert plugin.query_root == "/"  # Default value
+        assert plugin.query_root == "/grid/data"  # Default value
         assert plugin.site is None
         assert plugin.campaign is None
         assert plugin.data_type is None
@@ -149,8 +42,8 @@ class TestQueryBasedPlugin:
 
         result = plugin.get_input_query("test_input")
 
-        # Should build path from query parameters
-        expected = Path("/data/Run3/CERN/AOD")
+        # Should build path from query parameters (includes campaign/site/data_type and filename)
+        expected = Path("/data/Run3/CERN/AOD/test_input")
         assert result == expected
 
     def test_get_input_query_partial_parameters(self):
@@ -164,8 +57,8 @@ class TestQueryBasedPlugin:
 
         result = plugin.get_input_query("test_input")
 
-        # Should build path from available parameters
-        expected = Path("/data/Run3/AOD")
+        # Should build path from available parameters (includes campaign/data_type and filename)
+        expected = Path("/data/Run3/AOD/test_input")
         assert result == expected
 
     def test_get_input_query_no_parameters(self):
@@ -174,8 +67,9 @@ class TestQueryBasedPlugin:
 
         result = plugin.get_input_query("test_input")
 
-        # Should return None when no parameters are set
-        assert result is None
+        # Should return a path under the default root when no parameters are set
+        expected = Path("/grid/data/test_input")
+        assert result == expected
 
     def test_get_input_query_default_root(self):
         """Test get_input_query with default root."""
@@ -183,8 +77,8 @@ class TestQueryBasedPlugin:
 
         result = plugin.get_input_query("test_input")
 
-        # Should use default "/" root with campaign
-        expected = Path("/Test")
+        # Should use default "/grid/data" root with campaign
+        expected = Path("/grid/data/Test/test_input")
         assert result == expected
 
     def test_get_input_query_with_kwargs(self):
@@ -194,8 +88,8 @@ class TestQueryBasedPlugin:
         # Additional kwargs should be available for custom implementations
         result = plugin.get_input_query("test_input", custom_param="value")
 
-        # Base implementation should still work
-        expected = Path("/data/Run3")
+        # Base implementation should still work (includes campaign and filename)
+        expected = Path("/data/Run3/test_input")
         assert result == expected
 
     def test_get_output_query(self):
@@ -204,8 +98,8 @@ class TestQueryBasedPlugin:
 
         result = plugin.get_output_query("test_output")
 
-        # Should generate output path according to implementation
-        expected = Path("filecatalog/outputs/Run3")
+        # Should generate output path according to DefaultDataCatalogInterface
+        expected = Path("/output/outputs/Run3")
         assert result == expected
 
     def test_get_output_query_no_parameters(self):
@@ -214,8 +108,8 @@ class TestQueryBasedPlugin:
 
         result = plugin.get_output_query("test_output")
 
-        # Should use default path according to implementation
-        expected = Path("filecatalog/outputs/default")
+        # Should use default path according to DefaultDataCatalogInterface
+        expected = Path("/grid/data/outputs")
         assert result == expected
 
     def test_store_output(self):
@@ -255,7 +149,7 @@ class TestPluginIntegration:
 
     def test_all_plugins_have_description(self):
         """Test that all core plugins have description set."""
-        plugins = [UserPlugin, AdminPlugin, QueryBasedPlugin]
+        plugins = [QueryBasedPlugin]
 
         for plugin_class in plugins:
             assert hasattr(plugin_class, "description")
@@ -264,7 +158,7 @@ class TestPluginIntegration:
 
     def test_all_plugins_implement_interface(self):
         """Test that all core plugins implement the required interfaces."""
-        plugins = [UserPlugin(), AdminPlugin(), QueryBasedPlugin()]
+        plugins = [QueryBasedPlugin()]
 
         for plugin in plugins:
             # Test EexecutionHooksBasePlugin interface
@@ -286,8 +180,6 @@ class TestPluginIntegration:
     def test_plugin_serialization_compatibility(self):
         """Test that all plugins can be serialized consistently."""
         plugins = [
-            UserPlugin(),
-            AdminPlugin(admin_level=5),
             QueryBasedPlugin(campaign="Test"),
         ]
 
