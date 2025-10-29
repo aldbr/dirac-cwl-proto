@@ -8,7 +8,6 @@ providing enhanced functionality through the new plugin system.
 """
 
 from .core import (
-    DataCatalogInterface,
     ExecutionHooksBasePlugin,
     ExecutionHooksHint,
     SandboxInterface,
@@ -37,7 +36,6 @@ __all__ = [
     "TransformationExecutionHooksHint",
     "ExecutionHooksBasePlugin",
     "SchedulingHint",
-    "DataCatalogInterface",
     "ExecutionHooksPluginRegistry",
     "SandboxInterface",
     "get_registry",
