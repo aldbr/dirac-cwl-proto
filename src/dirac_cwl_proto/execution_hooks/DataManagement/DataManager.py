@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from DIRAC.Resources.Storage.FileStorage import FileStorage
+from DIRAC.Resources.Storage.FileStorage import FileStorage  # type: ignore[import-untyped]
 
 from dirac_cwl_proto.execution_hooks.DataManagement.FileCatalog import LocalFileCatalog
 
