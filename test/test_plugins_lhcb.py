@@ -30,7 +30,7 @@ class TestLHCbBasePlugin:
             LHCbDataCatalogInterface,
         )
 
-        data_catalog = LHCbDataCatalogInterface()
+        data_catalog = LHCbDataCatalogInterface(task_id=123, run_id=456)
         path = data_catalog.get_lhcb_base_path(task_id=12345, run_id=1)
         expected = Path("filecatalog/lhcb/12345/1")
         assert path == expected
@@ -159,8 +159,8 @@ class TestLHCbSimulationPlugin:
         mock_glob = mocker.patch(
             "dirac_cwl_proto.execution_hooks.plugins.lhcb.glob.glob"
         )
-        # Mock the store_output method on the data_catalog instance
-        mock_store = mocker.patch.object(plugin.data_catalog, "store_output")
+        # Mock the store_output method
+        mock_store = mocker.patch.object(plugin.__class__, "store_output")
         mock_glob.side_effect = [
             ["/tmp/job/output.sim"],  # sim files
             ["/tmp/job/pool_xml_catalog.xml"],  # catalog files
@@ -309,8 +309,8 @@ class TestLHCbAnalysisPlugin:
         mock_glob = mocker.patch(
             "dirac_cwl_proto.execution_hooks.plugins.lhcb.glob.glob"
         )
-        # Mock the store_output method on the data_catalog instance
-        mock_store = mocker.patch.object(plugin.data_catalog, "store_output")
+        # Mock the store_output method
+        mock_store = mocker.patch.object(plugin.__class__, "store_output")
         mock_glob.side_effect = [
             ["/tmp/job/results.root"],  # ROOT files
             [],  # PNG files

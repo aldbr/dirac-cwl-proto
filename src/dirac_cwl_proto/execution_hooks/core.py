@@ -12,7 +12,6 @@ import random
 import shutil
 import tarfile
 from abc import ABC, abstractmethod
-from enum import Enum
 from pathlib import Path
 from typing import (
     Any,
@@ -41,6 +40,7 @@ from ruamel.yaml import YAML
 
 from dirac_cwl_proto.commands import PostProcessCommand, PreProcessCommand
 from dirac_cwl_proto.core.exceptions import WorkflowProcessingException
+from dirac_cwl_proto.execution_hooks.DataManagement.DataManager import DataManager
 
 logger = logging.getLogger(__name__)
 
@@ -48,17 +48,10 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T", bound="SchedulingHint")
 
 
-class OutputType(Enum):
-    """SandBox | Data_Catalog"""
-
-    Sandbox = 1
-    Data_Catalog = 2
-
-
 class SandboxInterface:
     """Interface for Sandbox interaction"""
 
-    def get_output_query(self, id: str, **kwargs: Any) -> Optional[Path]:
+    def get_output_path(self, id: str, **kwargs: Any) -> Optional[Path]:
         """Generate output sandbox path.
 
         Parameters
@@ -91,7 +84,7 @@ class SandboxInterface:
         if len(outputs) == 0:
             return None
         sandbox_id = random.randint(1000, 9999)
-        sandbox_path = self.get_output_query(str(sandbox_id))
+        sandbox_path = self.get_output_path(str(sandbox_id))
         if not sandbox_path:
             raise RuntimeError(f"No output sanbox path defined for {outputs}")
         sandbox_path.parent.mkdir(exist_ok=True, parents=True)
@@ -104,212 +97,6 @@ class SandboxInterface:
                         file = Path(file)
                     tar.add(file, arcname=file.name)
         return sandbox_path
-
-
-class DataCatalogInterface(ABC):
-    """Abstract interface for data catalog operations.
-
-    This interface defines the contract for data discovery and output registration
-    in various data management systems. Implementations can range from simple
-    filesystem-based catalogs to complex distributed data management systems.
-
-    The interface is designed to be storage-agnostic and allows different
-    implementations to handle data in ways appropriate to their underlying
-    storage and metadata systems.
-    """
-
-    @abstractmethod
-    def get_input_query(
-        self, input_name: str, **kwargs: Any
-    ) -> Union[Path, List[Path], None]:
-        """Resolve input data locations for processing.
-
-        This method provides a mechanism to discover input data based on
-        logical names and additional query parameters. The implementation
-        determines how to translate logical input names into concrete data
-        locations.
-
-        Parameters
-        ----------
-        input_name : str
-            Logical name or identifier for the input data. This serves as
-            a documentation label and lookup key for the data catalog.
-        **kwargs : Any
-            Implementation-specific query parameters that may influence
-            data discovery (e.g., version, campaign, site, data_type).
-
-        Returns
-        -------
-        Union[Path, List[Path], None]
-            Resolved data location(s). Returns:
-            - Path: Single data location
-            - List[Path]: Multiple data locations for the same logical input
-            - None: No data found matching the query criteria
-        """
-        pass
-
-    @abstractmethod
-    def get_output_query(self, output_name: str, **kwargs: Any) -> Optional[Path]:
-        """Determine where output data should be stored.
-
-        This method generates appropriate storage locations for output data
-        based on the output name and catalog configuration. The returned
-        location serves as a staging area or final destination for outputs.
-
-        Parameters
-        ----------
-        output_name : str
-            Logical name or identifier for the output data. This serves as
-            a documentation label and determines output organization.
-        **kwargs : Any
-            Implementation-specific parameters that may influence output
-            placement (e.g., campaign, site, data classification).
-
-        Returns
-        -------
-        Optional[Path]
-            Designated output location where data should be stored.
-            Returns None if no suitable output location can be determined.
-        """
-        pass
-
-    @abstractmethod
-    def store_output(self, output_name: str, **kwargs: Any) -> None:
-        """Register or store output data in the catalog.
-
-        This method handles the catalog-specific operations needed to make
-        output data available through the data management system. The actual
-        storage mechanism is implementation-dependent and may involve file
-        operations, database registrations, or API calls to external systems.
-
-        Parameters
-        ----------
-        output_name : str
-            Logical name or identifier for the output data. This serves as
-            a documentation label for organizing and retrieving the data.
-        **kwargs : Any
-            Implementation-specific parameters that provide the necessary
-            information for storing the output (e.g., source paths, metadata,
-            checksums, file sizes, destination parameters).
-        """
-        pass
-
-
-class DefaultDataCatalogInterface(DataCatalogInterface):
-    """Default filesystem-based data catalog using Logical File Names (LFNs).
-
-    This provides a simple, filesystem-based implementation suitable for
-    examples and testing. Uses a structured LFN path format:
-    /vo/campaign/site/data_type/files
-    """
-
-    def __init__(
-        self,
-        vo: Optional[str] = None,
-        campaign: Optional[str] = None,
-        site: Optional[str] = None,
-        data_type: Optional[str] = None,
-        base_path: str = "/",
-    ):
-        self.vo = vo
-        self.campaign = campaign
-        self.site = site
-        self.data_type = data_type
-        self.base_path = Path(base_path)
-
-    def get_input_query(
-        self, input_name: str, **kwargs: Any
-    ) -> Union[Path, List[Path], None]:
-        """Generate LFN-based input query path.
-
-        Accepts and ignores extra kwargs for interface compatibility.
-        """
-        # Build LFN: /base_path/vo/campaign/site/data_type/input_name
-        path_parts = []
-
-        if self.vo:
-            path_parts.append(self.vo)
-
-        if self.campaign:
-            path_parts.append(self.campaign)
-        if self.site:
-            path_parts.append(self.site)
-        if self.data_type:
-            path_parts.append(self.data_type)
-
-        if len(path_parts) > 0:  # More than just VO
-            return self.base_path / Path(*path_parts) / Path(input_name)
-
-        return self.base_path / Path(input_name)
-
-    def get_output_query(self, output_name: str, **kwargs: Any) -> Optional[Path]:
-        """Generate LFN-based output path.
-
-        Accepts and ignores extra kwargs for interface compatibility.
-        """
-        # Output path: /grid/data/vo/outputs/campaign/site
-        output_base = self.base_path
-        if self.vo:
-            output_base = output_base / self.vo
-        output_base = output_base / "outputs"
-
-        if self.campaign:
-            output_base = output_base / self.campaign
-        if self.site:
-            output_base = output_base / self.site
-
-        return output_base
-
-    def store_output(self, output_name: str, **kwargs: Any) -> None:
-        """Store output file in the filesystem-based catalog.
-
-        This implementation handles filesystem operations to move output files
-        to their designated LFN-based storage locations.
-
-        Parameters
-        ----------
-        output_name : str
-            Logical name for the output data.
-        **kwargs : Any
-            Expected parameters:
-            - src_path (str | Path): Source path of the output file to store
-            Additional parameters are passed to get_output_query.
-
-        Raises
-        ------
-        RuntimeError
-            If no output path can be determined or if src_path is not provided.
-        """
-        # Extract the filesystem-specific parameter
-        src_path = kwargs.get("src_path")
-        if not src_path:
-            raise RuntimeError(
-                f"src_path parameter required for filesystem storage of {output_name}"
-            )
-
-        lfns = (
-            kwargs.pop("lfns_output_overrides")
-            if "lfns_output_overrides" in kwargs
-            else {}
-        )
-
-        # Get the output directory
-        output_path = (
-            Path(lfns[output_name].removeprefix("lfn:"))
-            if output_name in lfns
-            else self.get_output_query(output_name, **kwargs)
-        )
-        if not output_path:
-            raise RuntimeError(f"No output path defined for {output_name}")
-
-        # Ensure output directory exists
-        output_path.mkdir(exist_ok=True, parents=True)
-
-        # Move file to destination
-        src_path_obj = Path(src_path)
-        dest = output_path / src_path_obj.name
-        src_path_obj.rename(dest)
-        logger.info(f"Output {output_name} stored in {dest}")
 
 
 class ExecutionHooksBasePlugin(BaseModel):
@@ -334,30 +121,20 @@ class ExecutionHooksBasePlugin(BaseModel):
     version: ClassVar[str] = "1.0.0"
     description: ClassVar[str] = "Base metadata model"
 
-    # Eventual datacatalog output overrides
-    lfns_output_overrides: dict[str, str] = Field(
-        description="Data Catalog output paths overrides", default={}
-    )
+    campaign: Optional[str] = None
+    site: Optional[str] = None
+    data_type: Optional[str] = None
 
-    # Private attribute for data catalog interface - not part of Pydantic model validation
-    _data_catalog: Optional[DataCatalogInterface] = PrivateAttr(
-        default_factory=lambda: DefaultDataCatalogInterface()
+    base_path: Path = Path("/")
+
+    _datamanager: DataManager = PrivateAttr(
+        default_factory=lambda: DataManager(file_catalog="LocalFileCatalog")
     )
 
     _preprocess_commands: List[type[PreProcessCommand]] = PrivateAttr(default=[])
     _postprocess_commands: List[type[PostProcessCommand]] = PrivateAttr(default=[])
     # Private attribute for sandbox interface - not part of Pydantic model validation
     _sandbox_interface: SandboxInterface = PrivateAttr(default_factory=SandboxInterface)
-
-    @property
-    def data_catalog(self) -> Optional[DataCatalogInterface]:
-        """Get the data catalog interface."""
-        return self._data_catalog
-
-    @data_catalog.setter
-    def data_catalog(self, value: DataCatalogInterface) -> None:
-        """Set the data catalog interface."""
-        self._data_catalog = value
 
     @property
     def preprocess_commands(self) -> List[type[PreProcessCommand]]:
@@ -378,21 +155,6 @@ class ExecutionHooksBasePlugin(BaseModel):
     def postprocess_commands(self, value: List[type[PostProcessCommand]]) -> None:
         """Set the list of post-processing commands."""
         self._postprocess_commands = value
-
-    @property
-    def sandbox_interface(self) -> SandboxInterface:
-        """Get the sandbox interface."""
-        return self._sandbox_interface
-
-    @sandbox_interface.setter
-    def sandbox_interface(self, value: SandboxInterface) -> None:
-        """Set the sandbox interface."""
-        self._sandbox_interface = value
-
-    def __init__(self, **data):
-        """Initialize with data catalog interface."""
-        super().__init__(**data)
-        # Data catalog will be set by subclasses as needed
 
     @classmethod
     def name(cls) -> str:
@@ -571,10 +333,10 @@ class ExecutionHooksBasePlugin(BaseModel):
                 raise WorkflowProcessingException(msg) from e
 
         # Get the outputs and outputted files from the cwltool standard output
-        if stdout:
-            outputs = self.get_job_outputted_files(stdout)
-            for output, file_paths in outputs.items():
-                self.store_output(output, file_paths)
+        # if stdout:
+        #     outputs = self.get_job_outputted_files(stdout)
+        #     for output, file_paths in outputs.items():
+        #         self.store_output(output, file_paths)
         return True
 
     def get_job_outputted_files(self, stdout: str) -> dict[str, list[str]]:
@@ -606,16 +368,45 @@ class ExecutionHooksBasePlugin(BaseModel):
     def get_input_query(
         self, input_name: str, **kwargs: Any
     ) -> Union[Path, List[Path], None]:
-        """Delegate to data catalog interface."""
-        if self.data_catalog is None:
-            return None
-        return self.data_catalog.get_input_query(input_name, **kwargs)
+        """Generate LFN-based input query path.
+
+        Accepts and ignores extra kwargs for interface compatibility.
+        """
+        # Build LFN: /base_path/vo/campaign/site/data_type/input_name
+        path_parts = []
+
+        if self.vo:
+            path_parts.append(self.vo)
+
+        if self.campaign:
+            path_parts.append(self.campaign)
+        if self.site:
+            path_parts.append(self.site)
+        if self.data_type:
+            path_parts.append(self.data_type)
+
+        if len(path_parts) > 0:  # More than just VO
+            return self.base_path / Path(*path_parts) / Path(input_name)
+
+        return self.base_path / Path(input_name)
 
     def get_output_query(self, output_name: str, **kwargs: Any) -> Optional[Path]:
-        """Delegate to data catalog interface."""
-        if self.data_catalog is None:
-            return None
-        return self.data_catalog.get_output_query(output_name, **kwargs)
+        """Generate LFN-based output path.
+
+        Accepts and ignores extra kwargs for interface compatibility.
+        """
+        # Output path: /grid/data/vo/outputs/campaign/site
+        output_base = self.base_path
+        if self.vo:
+            output_base = output_base / self.vo
+        output_base = output_base / "outputs"
+
+        if self.campaign:
+            output_base = output_base / self.campaign
+        if self.site:
+            output_base = output_base / self.site
+
+        return output_base
 
     def store_output(
         self,
@@ -624,38 +415,23 @@ class ExecutionHooksBasePlugin(BaseModel):
         **kwargs: Any,
     ) -> None:
         """Delegate to the correct interface."""
-        if "lfns_output_overrides" not in kwargs:
-            kwargs["lfns_output_overrides"] = self.lfns_output_overrides
-        if self.data_catalog is None:
-            logger.warning(
-                f"No data catalog available, cannot store output {output_name}"
+        logger.info(f"Storing output {output_name}, with source {src_path}")
+
+        if not src_path:
+            raise RuntimeError(
+                f"src_path parameter required for filesystem storage of {output_name}"
             )
-            return
-
-        if isinstance(src_path, Sequence) and not isinstance(src_path, str):
-            sb = []
-            for path in src_path:
-                if self.get_output_type(output_name, path) == OutputType.Sandbox:
-                    sb.append(path)
-                else:
-                    self.data_catalog.store_output(output_name, src_path=path, **kwargs)
-            if len(sb) > 0:
-                self.sandbox_interface.store_output(outputs=sb)
-        elif self.get_output_type(output_name, src_path) == OutputType.Sandbox:
-            self.sandbox_interface.store_output(outputs=[src_path])
+        # TODO use a hint to differentiate Sandboxes and data outputs
+        if output_name == "SandboxOutput":
+            if isinstance(src_path, Path):
+                src_path = [src_path]
+            if isinstance(src_path, str):
+                src_path = [Path(src_path)]
+            self._sandbox_interface.store_output(src_path)
         else:
-            self.data_catalog.store_output(output_name, src_path=src_path, **kwargs)
-
-    def get_output_type(
-        self, output_name: str, src_path: str | Path, **kwargs: Any
-    ) -> OutputType:
-        """Whether the output must be stored in a Sandbox or the Data Catalog."""
-        if output_name in self.lfns_output_overrides or self.get_output_query(
-            output_name, **kwargs
-        ):
-            return OutputType.Data_Catalog
-        else:
-            return OutputType.Sandbox
+            lfn = self.get_output_query(output_name)
+            if lfn:
+                self._datamanager.putAndRegister(str(lfn), src_path)
 
     @classmethod
     def get_schema_info(cls) -> Dict[str, Any]:
