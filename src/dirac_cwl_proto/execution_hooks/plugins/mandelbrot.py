@@ -10,14 +10,18 @@ import glob
 from pathlib import Path
 from typing import Any, ClassVar, List, Optional, Union
 
-from ..core import DataCatalogInterface, ExecutionHooksBasePlugin
+from ..core import ExecutionHooksBasePlugin
 
 
-class MandelbrotDataCatalogInterface(DataCatalogInterface):
+class MandelbrotDataCatalogInterface(ExecutionHooksBasePlugin):
     """Unified data catalog interface for Mandelbrot workflows.
 
     Handles both generation and merging workflows for Mandelbrot set calculations.
     """
+
+    width: int
+    height: int
+    data: Optional[List] = None
 
     def __init__(
         self,
@@ -27,6 +31,7 @@ class MandelbrotDataCatalogInterface(DataCatalogInterface):
         data: Optional[List] = None,
         # Force workflow detection flags
         is_merging_workflow: bool = False,
+        **kwargs,
     ):
         """Initialize with Mandelbrot workflow-specific parameters.
 
@@ -41,6 +46,7 @@ class MandelbrotDataCatalogInterface(DataCatalogInterface):
         is_merging_workflow : bool, optional
             Force detection as merging workflow regardless of data state
         """
+        super().__init__(width=width, height=height, data=data, **kwargs)
         self.width = width
         self.height = height
         self.data = data
@@ -97,7 +103,7 @@ class MandelbrotDataCatalogInterface(DataCatalogInterface):
             return None
 
 
-class MandelBrotGenerationPlugin(ExecutionHooksBasePlugin):
+class MandelBrotGenerationPlugin(MandelbrotDataCatalogInterface):
     """Mandelbrot set generation metadata model.
 
     This model handles the generation of Mandelbrot set data with specified
@@ -139,11 +145,6 @@ class MandelBrotGenerationPlugin(ExecutionHooksBasePlugin):
     height: int
     output_name: str
 
-    def __init__(self, **kwargs: Any):
-        """Initialize with unified Mandelbrot data catalog interface."""
-        super().__init__(**kwargs)
-        self.data_catalog = MandelbrotDataCatalogInterface(self.width, self.height)
-
     def post_process(
         self, job_path: Path, stdout: Optional[str] = None, **kwargs: Any
     ) -> bool:
@@ -155,7 +156,7 @@ class MandelBrotGenerationPlugin(ExecutionHooksBasePlugin):
         return False
 
 
-class MandelBrotMergingPlugin(ExecutionHooksBasePlugin):
+class MandelBrotMergingPlugin(MandelbrotDataCatalogInterface):
     """Mandelbrot set merging metadata model.
 
     This model handles merging of multiple Mandelbrot data files into
@@ -202,10 +203,7 @@ class MandelBrotMergingPlugin(ExecutionHooksBasePlugin):
 
     def __init__(self, **kwargs: Any):
         """Initialize with unified Mandelbrot data catalog interface."""
-        super().__init__(**kwargs)
-        self.data_catalog = MandelbrotDataCatalogInterface(
-            self.width, self.height, data=self.data, is_merging_workflow=True
-        )
+        super().__init__(**kwargs, is_merging_workflow=True)
 
     def post_process(
         self, job_path: Path, stdout: Optional[str] = None, **kwargs: Any

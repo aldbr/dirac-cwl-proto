@@ -12,7 +12,6 @@ import random
 import shutil
 import tarfile
 from abc import ABC, abstractmethod
-from enum import Enum
 from pathlib import Path
 from typing import (
     Any,
@@ -38,23 +37,18 @@ from cwl_utils.parser.cwl_v1_2 import (
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
 from ruamel.yaml import YAML
 
+from dirac_cwl_proto.execution_hooks.DataManagement.DataManager import DataManager
+
 logger = logging.getLogger(__name__)
 
 # TypeVar for generic class methods
 T = TypeVar("T", bound="SchedulingHint")
 
 
-class OutputType(Enum):
-    """SandBox | Data_Catalog"""
-
-    Sandbox = 1
-    Data_Catalog = 2
-
-
 class SandboxInterface:
     """Interface for Sandbox interaction"""
 
-    def get_output_query(self, id: str, **kwargs: Any) -> Optional[Path]:
+    def get_output_path(self, id: str, **kwargs: Any) -> Optional[Path]:
         """Generate output sandbox path.
 
         Parameters
@@ -87,7 +81,7 @@ class SandboxInterface:
         if len(outputs) == 0:
             return None
         sandbox_id = random.randint(1000, 9999)
-        sandbox_path = self.get_output_query(str(sandbox_id))
+        sandbox_path = self.get_output_path(str(sandbox_id))
         if not sandbox_path:
             raise RuntimeError(f"No output sanbox path defined for {outputs}")
         sandbox_path.parent.mkdir(exist_ok=True, parents=True)
@@ -100,95 +94,6 @@ class SandboxInterface:
                         file = Path(file)
                     tar.add(file, arcname=file.name)
         return sandbox_path
-
-
-class DataCatalogInterface(ABC):
-    """Abstract interface for data catalog operations."""
-
-    @abstractmethod
-    def get_input_query(
-        self, input_name: str, **kwargs: Any
-    ) -> Union[Path, List[Path], None]:
-        """Generate input data query.
-
-        Parameters
-        ----------
-        input_name : str
-            Name of the input parameter.
-        **kwargs : Any
-            Additional query parameters.
-
-        Returns
-        -------
-        Union[Path, List[Path], None]
-            Path(s) to input data or None if not found.
-        """
-        pass
-
-    @abstractmethod
-    def get_output_query(self, output_name: str, **kwargs: Any) -> Optional[Path]:
-        """Generate output data path.
-
-        Parameters
-        ----------
-        output_name : str
-            Name of the output parameter.
-
-        Returns
-        -------
-        Optional[Path]
-            Path where output should be stored or None.
-        """
-        ...
-
-    def store_output(
-        self, output_name: str, src_path: str | Path, **kwargs: Any
-    ) -> None:
-        """Store output in the data catalog.
-
-        Parameters
-        ----------
-        output_name : str
-            Name of the output parameter.
-        src_path : str | Path
-            Source path of the output file.
-        """
-        lfns = (
-            kwargs.pop("lfns_output_overrides")
-            if "lfns_output_overrides" in kwargs
-            else {}
-        )
-
-        output_path = (
-            Path(lfns[output_name].removeprefix("lfn:"))
-            if output_name in lfns
-            else self.get_output_query(output_name, **kwargs)
-        )
-        if not output_path:
-            raise RuntimeError(f"No output path defined for {output_name}")
-
-        output_path.mkdir(exist_ok=True, parents=True)
-        dest = output_path / Path(src_path).name
-        Path(src_path).rename(dest)
-        logger.info(f"Output {output_name} stored in {dest}")
-
-
-class DummyDataCatalogInterface(DataCatalogInterface):
-    """Default implementation that returns None for all queries.
-
-    This is used as the default data catalog when no specific implementation
-    is provided by a plugin.
-    """
-
-    def get_input_query(
-        self, input_name: str, **kwargs: Any
-    ) -> Union[Path, List[Path], None]:
-        """Return None - no input data available."""
-        return None
-
-    def get_output_query(self, output_name: str, **kwargs: Any) -> Optional[Path]:
-        """Return None - no output path available."""
-        return None
 
 
 class ExecutionHooksBasePlugin(BaseModel):
@@ -213,43 +118,12 @@ class ExecutionHooksBasePlugin(BaseModel):
     version: ClassVar[str] = "1.0.0"
     description: ClassVar[str] = "Base metadata model"
 
-    # Eventual datacatalog output overrides
-    lfns_output_overrides: dict[str, str] = Field(
-        description="Data Catalog output paths overrides", default={}
-    )
-
-    # Private attribute for data catalog interface - not part of Pydantic model validation
-    _data_catalog: DataCatalogInterface = PrivateAttr(
-        default_factory=DummyDataCatalogInterface
+    _datamanager: DataManager = PrivateAttr(
+        default_factory=lambda: DataManager(file_catalog="LocalFileCatalog")
     )
 
     # Private attribute for sandbox interface - not part of Pydantic model validation
     _sandbox_interface: SandboxInterface = PrivateAttr(default_factory=SandboxInterface)
-
-    @property
-    def data_catalog(self) -> DataCatalogInterface:
-        """Get the data catalog interface."""
-        return self._data_catalog
-
-    @data_catalog.setter
-    def data_catalog(self, value: DataCatalogInterface) -> None:
-        """Set the data catalog interface."""
-        self._data_catalog = value
-
-    @property
-    def sandbox_interface(self) -> SandboxInterface:
-        """Get the sandbox interface."""
-        return self._sandbox_interface
-
-    @sandbox_interface.setter
-    def sandbox_interface(self, value: SandboxInterface) -> None:
-        """Set the sandbox interface."""
-        self._sandbox_interface = value
-
-    def __init__(self, **data):
-        """Initialize with data catalog interface."""
-        super().__init__(**data)
-        # Data catalog will be set by subclasses as needed
 
     @classmethod
     def name(cls) -> str:
@@ -402,10 +276,10 @@ class ExecutionHooksBasePlugin(BaseModel):
             Path to the job working directory.
         """
         # Get the outputs and outputted files from the cwltool standard output
-        if stdout:
-            outputs = self.get_job_outputted_files(stdout)
-            for output, file_paths in outputs.items():
-                self.store_output(output, file_paths)
+        # if stdout:
+        #     outputs = self.get_job_outputted_files(stdout)
+        #     for output, file_paths in outputs.items():
+        #         self.store_output(output, file_paths)
         return True
 
     def get_job_outputted_files(self, stdout: str) -> dict[str, list[str]]:
@@ -438,11 +312,11 @@ class ExecutionHooksBasePlugin(BaseModel):
         self, input_name: str, **kwargs: Any
     ) -> Union[Path, List[Path], None]:
         """Delegate to data catalog interface."""
-        return self.data_catalog.get_input_query(input_name, **kwargs)
+        return None
 
     def get_output_query(self, output_name: str, **kwargs: Any) -> Optional[Path]:
         """Delegate to data catalog interface."""
-        return self.data_catalog.get_output_query(output_name, **kwargs)
+        return None
 
     def store_output(
         self,
@@ -451,32 +325,19 @@ class ExecutionHooksBasePlugin(BaseModel):
         **kwargs: Any,
     ) -> None:
         """Delegate to the correct interface."""
-        if "lfns_output_overrides" not in kwargs:
-            kwargs["lfns_output_overrides"] = self.lfns_output_overrides
-        if isinstance(src_path, Sequence) and not isinstance(src_path, str):
-            sb = []
-            for path in src_path:
-                if self.get_output_type(output_name, path) == OutputType.Sandbox:
-                    sb.append(path)
-                else:
-                    self.data_catalog.store_output(output_name, path, **kwargs)
-            if len(sb) > 0:
-                self.sandbox_interface.store_output(outputs=sb)
-        elif self.get_output_type(output_name, src_path) == OutputType.Sandbox:
-            self.sandbox_interface.store_output(outputs=[src_path])
-        else:
-            self.data_catalog.store_output(output_name, src_path, **kwargs)
+        logger.info(f"Storing output {output_name}, with source {src_path}")
 
-    def get_output_type(
-        self, output_name: str, src_path: str | Path, **kwargs: Any
-    ) -> OutputType:
-        """Whether the output must be stored in a Sandbox or the Data Catalog."""
-        if output_name in self.lfns_output_overrides or self.get_output_query(
-            output_name, **kwargs
-        ):
-            return OutputType.Data_Catalog
+        # TODO use a hint to differentiate Sandboxes and data outputs
+        if output_name == "SandboxOutput":
+            if isinstance(src_path, Path):
+                src_path = [src_path]
+            if isinstance(src_path, str):
+                src_path = [Path(src_path)]
+            self._sandbox_interface.store_output(src_path)
         else:
-            return OutputType.Sandbox
+            lfn = self.get_output_query(output_name)
+            if lfn:
+                self._datamanager.putAndRegister(str(lfn), src_path)
 
     @classmethod
     def get_schema_info(cls) -> Dict[str, Any]:

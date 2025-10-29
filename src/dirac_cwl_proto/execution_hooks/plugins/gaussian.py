@@ -10,14 +10,19 @@ import glob
 from pathlib import Path
 from typing import Any, ClassVar, List, Optional, Union
 
-from ..core import DataCatalogInterface, ExecutionHooksBasePlugin
+from ..core import ExecutionHooksBasePlugin
 
 
-class GaussianDataCatalogInterface(DataCatalogInterface):
+class GaussianDataCatalogInterface(ExecutionHooksBasePlugin):
     """Unified data catalog interface for Gaussian workflows.
 
     Handles both data generation and fitting scenarios for Gaussian workflows.
     """
+
+    output_file_name_1: Optional[str] = None
+    output_file_name_2: Optional[str] = None
+    data1: Optional[List] = None
+    data2: Optional[List] = None
 
     def __init__(
         self,
@@ -25,6 +30,7 @@ class GaussianDataCatalogInterface(DataCatalogInterface):
         output_file_name_2: Optional[str] = None,
         data1: Optional[List] = None,
         data2: Optional[List] = None,
+        **kwargs,
     ):
         """Initialize with data generation and fitting parameters.
 
@@ -39,6 +45,7 @@ class GaussianDataCatalogInterface(DataCatalogInterface):
         data2 : List, optional
             Second set of input data files for fitting.
         """
+        super().__init__(**kwargs)
         self.output_file_name_1 = output_file_name_1
         self.output_file_name_2 = output_file_name_2
         self.data1 = data1
@@ -86,7 +93,7 @@ class GaussianDataCatalogInterface(DataCatalogInterface):
         return None
 
 
-class DataGenerationPlugin(ExecutionHooksBasePlugin):
+class DataGenerationPlugin(GaussianDataCatalogInterface):
     """Data generation metadata model for Gaussian fitting.
 
     This plugin handles generation of test data for Gaussian fitting algorithms.:w
@@ -105,14 +112,6 @@ class DataGenerationPlugin(ExecutionHooksBasePlugin):
 
     output_file_name_1: Optional[str] = None
     output_file_name_2: Optional[str] = None
-
-    def __init__(self, **kwargs: Any):
-        """Initialize with unified Gaussian data catalog interface."""
-        super().__init__(**kwargs)
-        self.data_catalog = GaussianDataCatalogInterface(
-            output_file_name_1=self.output_file_name_1,
-            output_file_name_2=self.output_file_name_2,
-        )
 
     def post_process(
         self, job_path: Path, stdout: Optional[str] = None, **kwargs: Any
@@ -144,7 +143,7 @@ class DataGenerationPlugin(ExecutionHooksBasePlugin):
         return success
 
 
-class GaussianFitPlugin(ExecutionHooksBasePlugin):
+class GaussianFitPlugin(GaussianDataCatalogInterface):
     """Gaussian fitting metadata model.
 
     This plugin handles Gaussian fitting analysis on generated data sets.
@@ -163,13 +162,6 @@ class GaussianFitPlugin(ExecutionHooksBasePlugin):
     # Input data
     data1: Optional[List] = None
     data2: Optional[List] = None
-
-    def __init__(self, **kwargs: Any):
-        """Initialize with unified Gaussian data catalog interface."""
-        super().__init__(**kwargs)
-        self.data_catalog = GaussianDataCatalogInterface(
-            data1=self.data1, data2=self.data2
-        )
 
     def post_process(
         self, job_path: Path, stdout: Optional[str] = None, **kwargs: Any
