@@ -6,7 +6,6 @@ import logging
 import random
 import shutil
 import subprocess
-import tarfile
 from pathlib import Path
 from typing import Any
 
@@ -27,6 +26,7 @@ from ruamel.yaml import YAML
 from schema_salad.exceptions import ValidationException
 
 from dirac_cwl_proto.execution_hooks.core import ExecutionHooksBasePlugin
+from dirac_cwl_proto.execution_hooks.DataManagement.Sandbox import SandboxStoreClient
 from dirac_cwl_proto.submission_models import (
     JobInputModel,
     JobSubmissionModel,
@@ -173,42 +173,37 @@ def upload_local_input_files(input_data: dict[str, Any]) -> str | None:
     if not files:
         return None
 
-    # Tar the files and upload them to the file catalog
-    sandbox_path = (
-        Path("sandboxstore") / f"input_sandbox_{random.randint(1000, 9999)}.tar.gz"
-    )
-    with tarfile.open(sandbox_path, "w:gz") as tar:
-        for file in files:
-            # TODO: path is not the only attribute to consider, but so far it is the only one used
-            if not file.path and not file.location:
-                raise NotImplementedError("File path is not defined.")
-            # Skip files from the File Catalog
-            if file.location and file.location.startswith("lfn:"):
-                continue
+    paths = []
+    for file in files:
+        # TODO: path is not the only attribute to consider, but so far it is the only one used
+        if not file.path and not file.location:
+            raise NotImplementedError("File path is not defined.")
+        # Skip files from the File Catalog
+        if file.location and file.location.startswith("lfn:"):
+            continue
 
-            if not file.location:
-                file.location = file.path
+        if not file.location:
+            file.location = file.path
 
-            file_path = Path(file.location.replace("file://", ""))
-            console.print(
-                f"\t\t[blue]:information_source:[/blue] Found {file_path} locally, uploading it to the sandbox store..."
-            )
-            tar.add(file_path, arcname=file_path.name)
+        if not file.location:  # Should never happen but fix lint issue
+            continue
+
+        file_path = Path(file.location.replace("file://", ""))
+        paths.append(file_path)
+        # Modify the location of the files to point to the future location on the worker node
+        file.path = file_path.name
+        file.location = file.path
+
+    sandbox_path = SandboxStoreClient().uploadFilesAsSandbox(paths)
+
+    if not sandbox_path:
+        return None
+
     console.print(
         f"\t\t[blue]:information_source:[/blue] File(s) will be available through {sandbox_path}"
     )
 
-    # Modify the location of the files to point to the future location on the worker node
-    for file in files:
-        # TODO: path is not the only attribute to consider, but so far it is the only one used
-        if not file.location and not file.path:
-            raise NotImplementedError("File path is not defined.")
-
-        if file.path:
-            file.path = str(Path(".") / file.path.split("/")[-1])
-
-    sandbox_id = sandbox_path.name.replace(".tar.gz", "")
-    return sandbox_id
+    return str(sandbox_path)
 
 
 def get_lfns(input_data: dict[str, Any]) -> dict[str, Path | list[Path]]:
@@ -317,9 +312,7 @@ def _pre_process(
             # Download the files from the sandbox store
             logger.info("Downloading the files from the sandbox store...")
             for sandbox in arguments.sandbox:
-                sandbox_path = Path("sandboxstore") / f"{sandbox}.tar.gz"
-                with tarfile.open(sandbox_path, "r:gz") as tar:
-                    tar.extractall(job_path, filter="data")
+                SandboxStoreClient().downloadSandbox(sandbox, str(job_path))
             logger.info("Files downloaded successfully!")
 
     if runtime_metadata:
