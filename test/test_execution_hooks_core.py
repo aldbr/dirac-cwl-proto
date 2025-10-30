@@ -14,7 +14,6 @@ import pytest
 from dirac_cwl_proto.execution_hooks.core import (
     ExecutionHooksBasePlugin,
     ExecutionHooksHint,
-    SandboxInterface,
     SchedulingHint,
     TransformationExecutionHooksHint,
 )
@@ -103,13 +102,13 @@ class TestExecutionHook:
 #         catalog.store_output("test_output")  # Should not raise an error
 
 
-class TestSandboxInterface:
-    """Test the SandboxInterface base class."""
+# class TestSandboxInterface:
+#     """Test the SandboxInterface base class."""
 
-    def test_output_query(self):
-        sandbox = SandboxInterface()
-        output_path = sandbox.get_output_path("1337")
-        assert output_path == Path("sandboxstore/output_sandbox_1337.tar.gz")
+#     def test_output_query(self):
+#         sandbox = SandboxInterface()
+#         output_path = sandbox.get_output_path("1337")
+#         assert output_path == Path("sandboxstore/output_sandbox_1337.tar.gz")
 
 
 class TestExecutionHookExtended:
@@ -171,11 +170,6 @@ class TestExecutionHookExtended:
 
             def get_input_query(self, input_name, **kwargs):
                 return None
-
-            def store_output(self, output_name, **kwargs):
-                return None
-
-            _sandbox_interface = SandboxInterface()
 
         # model = TestModel(lfns_output_overrides={"test_lfn": "lfn:filecatalog/test"})
 

@@ -321,7 +321,7 @@ class TestPluginCommands:
         plugin.preprocess_commands = [PreProcessCmd, DualProcessCmd]
         plugin.postprocess_commands = [PostProcessCmd, DualProcessCmd]
 
-        plugin.pre_process("/fake/dir", ["fake", "command"])
+        plugin.pre_process("/fake/dir", None, "", ["fake", "command"])
         execute_preprocess_mock.assert_called_once()
         execute_dualprocess_mock.assert_called_once()
 
@@ -337,7 +337,7 @@ class TestPluginCommands:
         plugin.postprocess_commands = [PreProcessCmd, DualProcessCmd]
 
         with pytest.raises(TypeError):
-            plugin.pre_process("/fake/dir", ["fake", "command"])
+            plugin.pre_process("/fake/dir", None, "", ["fake", "command"])
 
         with pytest.raises(TypeError):
             plugin.post_process("/fake/dir")
@@ -369,7 +369,7 @@ class TestPluginCommands:
 
         # The processing steps should raise a "WorkflowProcessingException"
         with pytest.raises(WorkflowProcessingException):
-            plugin.pre_process("/fake/dir", ["fake", "command"])
+            plugin.pre_process("/fake/dir", None, "", ["fake", "command"])
 
         with pytest.raises(WorkflowProcessingException):
             plugin.post_process("/fake/dir")

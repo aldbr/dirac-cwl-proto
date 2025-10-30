@@ -8,9 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
-import random
 import shutil
-import tarfile
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import (
@@ -41,62 +39,12 @@ from ruamel.yaml import YAML
 from dirac_cwl_proto.commands import PostProcessCommand, PreProcessCommand
 from dirac_cwl_proto.core.exceptions import WorkflowProcessingException
 from dirac_cwl_proto.execution_hooks.DataManagement.DataManager import DataManager
+from dirac_cwl_proto.execution_hooks.DataManagement.Sandbox import SandboxStoreClient
 
 logger = logging.getLogger(__name__)
 
 # TypeVar for generic class methods
 T = TypeVar("T", bound="SchedulingHint")
-
-
-class SandboxInterface:
-    """Interface for Sandbox interaction"""
-
-    def get_output_path(self, id: str, **kwargs: Any) -> Optional[Path]:
-        """Generate output sandbox path.
-
-        Parameters
-        ----------
-        id : str
-            Id of the output sandbox.
-
-        Returns
-        -------
-        Optional[Path]
-            Path where output should be stored or None.
-        """
-        return Path("sandboxstore") / f"output_sandbox_{id}.tar.gz"
-
-    def store_output(
-        self, outputs: Sequence[str | Path], **kwargs: Any
-    ) -> Optional[Path]:
-        """Store output in a sandbox.
-
-        Parameters
-        ----------
-        outputs : List[Path]
-            Files to be stored.
-
-        Returns
-        -------
-        Optional[Path]
-            The path of the new sandbox.
-        """
-        if len(outputs) == 0:
-            return None
-        sandbox_id = random.randint(1000, 9999)
-        sandbox_path = self.get_output_path(str(sandbox_id))
-        if not sandbox_path:
-            raise RuntimeError(f"No output sanbox path defined for {outputs}")
-        sandbox_path.parent.mkdir(exist_ok=True, parents=True)
-        if sandbox_path:
-            with tarfile.open(sandbox_path, "w:gz") as tar:
-                for file in outputs:
-                    if not file:
-                        break
-                    if isinstance(file, str):
-                        file = Path(file)
-                    tar.add(file, arcname=file.name)
-        return sandbox_path
 
 
 class ExecutionHooksBasePlugin(BaseModel):
@@ -133,8 +81,6 @@ class ExecutionHooksBasePlugin(BaseModel):
 
     _preprocess_commands: List[type[PreProcessCommand]] = PrivateAttr(default=[])
     _postprocess_commands: List[type[PostProcessCommand]] = PrivateAttr(default=[])
-    # Private attribute for sandbox interface - not part of Pydantic model validation
-    _sandbox_interface: SandboxInterface = PrivateAttr(default_factory=SandboxInterface)
 
     @property
     def preprocess_commands(self) -> List[type[PreProcessCommand]]:
@@ -355,14 +301,15 @@ class ExecutionHooksBasePlugin(BaseModel):
         outputted_files: dict[str, list[str]] = {}
         outputs = json.loads(stdout)
         for output, files in outputs.items():
-            if files:
-                if not isinstance(files, List):
-                    files = [files]
-                file_paths = []
-                for file in files:
-                    if file:
-                        file_paths.append(str(file["path"]))
-                outputted_files[output] = file_paths
+            if not files:
+                continue
+            if not isinstance(files, List):
+                files = [files]
+            file_paths = []
+            for file in files:
+                if file:
+                    file_paths.append(str(file["path"]))
+            outputted_files[output] = file_paths
         return outputted_files
 
     def get_input_query(
@@ -423,11 +370,9 @@ class ExecutionHooksBasePlugin(BaseModel):
             )
         # TODO use a hint to differentiate Sandboxes and data outputs
         if output_name == "SandboxOutput":
-            if isinstance(src_path, Path):
+            if isinstance(src_path, Path) or isinstance(src_path, str):
                 src_path = [src_path]
-            if isinstance(src_path, str):
-                src_path = [Path(src_path)]
-            self._sandbox_interface.store_output(src_path)
+            SandboxStoreClient().uploadFilesAsSandbox(src_path)
         else:
             lfn = self.get_output_query(output_name)
             if lfn:
