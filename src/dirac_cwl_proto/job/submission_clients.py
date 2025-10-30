@@ -5,8 +5,6 @@ This module contains functions to manage job submission to the prototype, DIRAC,
 It is not meant to be integrated to DiracX logic itself in the future.
 """
 
-import random
-import tarfile
 from abc import ABC, abstractmethod
 from pathlib import Path
 
@@ -15,6 +13,7 @@ from diracx.client.aio import AsyncDiracClient
 from rich.console import Console
 
 from dirac_cwl_proto.execution_hooks import SchedulingHint
+from dirac_cwl_proto.execution_hooks.DataManagement.Sandbox import SandboxStoreClient
 from dirac_cwl_proto.submission_models import JobModel, JobSubmissionModel
 
 console = Console()
@@ -60,22 +59,11 @@ class PrototypeSubmissionClient(SubmissionClient):
 
         Path("sandboxstore").mkdir(exist_ok=True)
         # Tar the files and upload them to the file catalog
-        sandbox_path = (
-            Path("sandboxstore") / f"input_sandbox_{random.randint(1000, 9999)}.tar.gz"
+        sandbox_path = SandboxStoreClient().uploadFilesAsSandbox(
+            fileList=isb_file_paths
         )
 
-        with tarfile.open(sandbox_path, "w:gz") as tar:
-            for file_path in isb_file_paths:
-                console.print(
-                    f"\t\t[blue]:information_source:[/blue] Found {file_path},"
-                    "uploading it to the local sandbox store..."
-                )
-                tar.add(file_path, arcname=file_path.name)
-        console.print(
-            f"\t\t[blue]:information_source:[/blue] File(s) will be available through {sandbox_path}"
-        )
-
-        sandbox_id = sandbox_path.name.replace(".tar.gz", "")
+        sandbox_id = sandbox_path.name.replace(".tar.gz", "") if sandbox_path else None
         return sandbox_id
 
     async def submit_job(self, job_submission: JobSubmissionModel) -> bool:

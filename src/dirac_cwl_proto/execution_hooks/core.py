@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import json
 import logging
-import shutil
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import (
@@ -137,20 +136,10 @@ class ExecutionHooksBasePlugin(BaseModel):
           use a remote data catalog or storage service.
         - The returned paths are relative to the job working directory.
         """
-        # TODO: use data catalog interface
         new_paths: dict[str, Path | list[Path]] = {}
         if inputs.lfns_input:
             for input_name, lfns in inputs.lfns_input.items():
-                if not isinstance(lfns, list):
-                    lfns = [lfns]
-                paths = []
-                for lfn in lfns:
-                    if isinstance(lfn, Path):
-                        input_path = Path(str(lfn).removeprefix("lfn:"))
-                    else:
-                        input_path = Path(lfn.removeprefix("lfn:"))
-                    shutil.copy(input_path, job_path / input_path.name)
-                    paths.append(Path(input_path.name))
+                paths = self._datamanager.getFile(lfns, job_path)
                 if paths:
                     new_paths[input_name] = paths
         return new_paths

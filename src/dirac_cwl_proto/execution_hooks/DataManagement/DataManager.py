@@ -43,11 +43,13 @@ class DataManager:
         if replicas:
             if not sourceSE:
                 sourceSE = self.storage_element
-            for lfn in lfns:
-                res = sourceSE.getFile(lfn, destinationDir)
+            for lfn in replicas:
+                res = sourceSE.getFile(str(lfn).removeprefix("lfn:"), destinationDir)
                 if not res["OK"]:
-                    raise FileNotFoundError("Could not download lfn")
-                return res["Value"]["Successful"]
+                    raise FileNotFoundError(
+                        f"Could not download lfn {lfn} : {res['Message']}"
+                    )
+            return [Path(lfn).name for lfn in lfns]
 
     def putAndRegister(
         self,

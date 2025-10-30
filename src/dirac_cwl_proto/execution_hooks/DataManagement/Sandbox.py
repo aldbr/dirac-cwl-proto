@@ -32,19 +32,19 @@ class SandboxStoreClient:
         """
         if len(fileList) == 0:
             return None
+        Path("sandboxstore").mkdir(exist_ok=True)
         sandbox_id = random.randint(1000, 9999)
-        sandbox_path = Path("sandboxstore") / f"output_sandbox_{str(sandbox_id)}.tar.gz"
+        sandbox_path = Path("sandboxstore") / f"sandbox_{str(sandbox_id)}.tar.gz"
         if not sandbox_path:
             raise RuntimeError(f"No output sanbox path defined for {fileList}")
         sandbox_path.parent.mkdir(exist_ok=True, parents=True)
-        if sandbox_path:
-            with tarfile.open(sandbox_path, "w:gz") as tar:
-                for file in fileList:
-                    if not file:
-                        break
-                    if isinstance(file, str):
-                        file = Path(file)
-                    tar.add(file, arcname=file.name)
+        with tarfile.open(sandbox_path, "w:gz") as tar:
+            for file in fileList:
+                if not file:
+                    break
+                if isinstance(file, str):
+                    file = Path(file)
+                tar.add(file, arcname=file.name)
         return sandbox_path
 
     def downloadSandbox(
@@ -55,7 +55,6 @@ class SandboxStoreClient:
         unpack: bool = True,
     ) -> list[Path]:
         # Download the files from the sandbox store
-        logger.info("Downloading the files from the sandbox store...")
         if not unpack:
             raise NotImplementedError
         else:
