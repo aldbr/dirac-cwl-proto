@@ -10,7 +10,6 @@ providing enhanced functionality through the new plugin system.
 from .core import (
     ExecutionHooksBasePlugin,
     ExecutionHooksHint,
-    SandboxInterface,
     SchedulingHint,
     TransformationExecutionHooksHint,
 )
@@ -37,6 +36,5 @@ __all__ = [
     "ExecutionHooksBasePlugin",
     "SchedulingHint",
     "ExecutionHooksPluginRegistry",
-    "SandboxInterface",
     "get_registry",
 ]
