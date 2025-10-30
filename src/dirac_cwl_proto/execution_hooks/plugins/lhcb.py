@@ -9,26 +9,41 @@ from __future__ import annotations
 import glob
 import random
 from pathlib import Path
-from typing import Any, ClassVar, List, Optional, Union, cast
+from typing import Any, ClassVar, List, Optional, Union, cast, override
 
 from cwl_utils.parser import load_document_by_uri, save
-from cwl_utils.parser.cwl_v1_2 import Saveable
+from cwl_utils.parser.cwl_v1_2 import (
+    CommandLineTool,
+    ExpressionTool,
+    Saveable,
+    Workflow,
+)
 from cwl_utils.parser.cwl_v1_2_utils import load_inputfile
 from pydantic import Field
 from ruamel.yaml import YAML
 
-from ..core import DataCatalogInterface, ExecutionHooksBasePlugin
+from ..core import ExecutionHooksBasePlugin
 
 
-class LHCbDataCatalogInterface(DataCatalogInterface):
+class LHCbBasePlugin(ExecutionHooksBasePlugin):
+    """Base metadata model for LHCb experiment.
+
+    This class provides common functionality for all LHCb metadata models,
+    including standard path structures and experiment-specific validation.
+    """
+
+    vo: ClassVar[str] = "lhcb"
+
+    # LHCb-specific fields
+    task_id: int = Field(description="LHCb task identifier")
+    run_id: int = Field(description="LHCb run identifier")
+
+
+class LHCbDataCatalogInterface(LHCbBasePlugin):
     """Unified data catalog interface for LHCb experiment.
 
     Handles simulation, reconstruction, and analysis workflows for LHCb.
     """
-
-    def __init__(self):
-        """Initialize LHCb data catalog interface."""
-        pass
 
     def get_lhcb_base_path(self, task_id: int, run_id: int) -> Path:
         """Get the base path for LHCb data organization."""
@@ -153,21 +168,7 @@ class LHCbDataCatalogInterface(DataCatalogInterface):
             return base / "outputs"
 
 
-class LHCbBasePlugin(ExecutionHooksBasePlugin):
-    """Base metadata model for LHCb experiment.
-
-    This class provides common functionality for all LHCb metadata models,
-    including standard path structures and experiment-specific validation.
-    """
-
-    vo: ClassVar[str] = "lhcb"
-
-    # LHCb-specific fields
-    task_id: int = Field(description="LHCb task identifier")
-    run_id: int = Field(description="LHCb run identifier")
-
-
-class LHCbSimulationPlugin(LHCbBasePlugin):
+class LHCbSimulationPlugin(LHCbDataCatalogInterface):
     """Metadata model for LHCb simulation jobs.
 
     This model handles the specific requirements of LHCb simulation jobs,
@@ -191,19 +192,22 @@ class LHCbSimulationPlugin(LHCbBasePlugin):
         default=None, description="Generator configuration"
     )
 
-    def __init__(self, **kwargs: Any):
-        """Initialize with unified LHCb data catalog interface."""
-        super().__init__(**kwargs)
-        self.data_catalog = LHCbDataCatalogInterface()
-
     def pre_process(
-        self, job_path: Path, command: List[str], **kwargs: Any
+        self,
+        executable: CommandLineTool | Workflow | ExpressionTool,
+        arguments: Any | None,
+        job_path: Path,
+        command: List[str],
+        **kwargs: Any,
     ) -> List[str]:
         """Pre-process LHCb simulation job.
 
         This method calculates the optimal number of events to simulate
         based on available CPU resources and job requirements.
         """
+        command = super().pre_process(
+            executable, arguments, job_path, command, **kwargs
+        )
         # Load the CWL document to get resource requirements
         if len(command) > 1:
             try:
@@ -284,11 +288,12 @@ class LHCbSimulationPlugin(LHCbBasePlugin):
         with open(parameters_path, "w") as f:
             YAML().dump(parameter_dict, f)
 
-    def get_input_query(
+    @override
+    def get_input_query(  # type: ignore[override]
         self, input_name: str, **kwargs: Any
     ) -> Union[Path, List[Path], None]:
         """Get input query for simulation workflow."""
-        return self.data_catalog.get_input_query(
+        return super().get_input_query(
             input_name,
             task_id=self.task_id,
             run_id=self.run_id,
@@ -296,9 +301,10 @@ class LHCbSimulationPlugin(LHCbBasePlugin):
             **kwargs,
         )
 
-    def get_output_query(self, output_name: str, **kwargs: Any) -> Optional[Path]:
+    @override
+    def get_output_query(self, output_name: str, **kwargs: Any) -> Optional[Path]:  # type: ignore[override]
         """Get output query for simulation workflow."""
-        return self.data_catalog.get_output_query(
+        return super().get_output_query(
             output_name,
             task_id=self.task_id,
             run_id=self.run_id,
@@ -306,7 +312,9 @@ class LHCbSimulationPlugin(LHCbBasePlugin):
             **kwargs,
         )
 
-    def post_process(self, job_path: Path, **kwargs: Any) -> bool:
+    def post_process(
+        self, job_path: Path, stdout: Optional[str] = None, **kwargs: Any
+    ) -> bool:
         """Post-process LHCb simulation outputs."""
         success = True
 
@@ -338,7 +346,7 @@ class LHCbSimulationPlugin(LHCbBasePlugin):
         return success
 
 
-class LHCbReconstructionPlugin(LHCbBasePlugin):
+class LHCbReconstructionPlugin(LHCbDataCatalogInterface):
     """Metadata model for LHCb reconstruction jobs.
 
     This model handles LHCb data reconstruction, including input file
@@ -358,16 +366,12 @@ class LHCbReconstructionPlugin(LHCbBasePlugin):
 
     output_data_type: str = Field(default="DST", description="Type of output data")
 
-    def __init__(self, **kwargs: Any):
-        """Initialize with unified LHCb data catalog interface."""
-        super().__init__(**kwargs)
-        self.data_catalog = LHCbDataCatalogInterface()
-
-    def get_input_query(
+    @override
+    def get_input_query(  # type: ignore[override]
         self, input_name: str, **kwargs: Any
     ) -> Union[Path, List[Path], None]:
         """Get input query for reconstruction workflow."""
-        return self.data_catalog.get_input_query(
+        return super().get_input_query(
             input_name,
             task_id=self.task_id,
             run_id=self.run_id,
@@ -376,9 +380,10 @@ class LHCbReconstructionPlugin(LHCbBasePlugin):
             **kwargs,
         )
 
-    def get_output_query(self, output_name: str, **kwargs: Any) -> Optional[Path]:
+    @override
+    def get_output_query(self, output_name: str, **kwargs: Any) -> Optional[Path]:  # type: ignore[override]
         """Get output query for reconstruction workflow."""
-        return self.data_catalog.get_output_query(
+        return super().get_output_query(
             output_name,
             task_id=self.task_id,
             run_id=self.run_id,
@@ -388,11 +393,19 @@ class LHCbReconstructionPlugin(LHCbBasePlugin):
         )
 
     def pre_process(
-        self, job_path: Path, command: List[str], **kwargs: Any
+        self,
+        executable: CommandLineTool | Workflow | ExpressionTool,
+        arguments: Any | None,
+        job_path: Path,
+        command: List[str],
+        **kwargs: Any,
     ) -> List[str]:
         """Pre-process the job command for reconstruction."""
         # Only add LHCb-specific arguments if this is not a CWL workflow execution
         # (i.e., when running LHCb applications directly, not cwltool)
+        command = super().pre_process(
+            executable, arguments, job_path, command, **kwargs
+        )
         if not command or command[0] != "cwltool":
             # Add reconstruction version if specified
             if self.reconstruction_version:
@@ -404,7 +417,9 @@ class LHCbReconstructionPlugin(LHCbBasePlugin):
 
         return command
 
-    def post_process(self, job_path: Path, **kwargs: Any) -> bool:
+    def post_process(
+        self, job_path: Path, stdout: Optional[str] = None, **kwargs: Any
+    ) -> bool:
         """Post-process LHCb reconstruction outputs."""
         success = True
 
@@ -433,7 +448,7 @@ class LHCbReconstructionPlugin(LHCbBasePlugin):
         return success
 
 
-class LHCbAnalysisPlugin(LHCbBasePlugin):
+class LHCbAnalysisPlugin(LHCbDataCatalogInterface):
     """Metadata model for LHCb analysis jobs.
 
     This model supports user analysis jobs with flexible input/output
@@ -457,16 +472,12 @@ class LHCbAnalysisPlugin(LHCbBasePlugin):
         default=None, description="Event selection criteria"
     )
 
-    def __init__(self, **kwargs: Any):
-        """Initialize with unified LHCb data catalog interface."""
-        super().__init__(**kwargs)
-        self.data_catalog = LHCbDataCatalogInterface()
-
-    def get_input_query(
+    @override
+    def get_input_query(  # type: ignore[override]
         self, input_name: str, **kwargs: Any
     ) -> Union[Path, List[Path], None]:
         """Get input query for analysis workflow."""
-        return self.data_catalog.get_input_query(
+        return super().get_input_query(
             input_name,
             task_id=self.task_id,
             run_id=self.run_id,
@@ -477,9 +488,10 @@ class LHCbAnalysisPlugin(LHCbBasePlugin):
             **kwargs,
         )
 
-    def get_output_query(self, output_name: str, **kwargs: Any) -> Optional[Path]:
+    @override
+    def get_output_query(self, output_name: str, **kwargs: Any) -> Optional[Path]:  # type: ignore[override]
         """Get output query for analysis workflow."""
-        return self.data_catalog.get_output_query(
+        return super().get_output_query(
             output_name,
             task_id=self.task_id,
             run_id=self.run_id,
@@ -491,9 +503,17 @@ class LHCbAnalysisPlugin(LHCbBasePlugin):
         )
 
     def pre_process(
-        self, job_path: Path, command: List[str], **kwargs: Any
+        self,
+        executable: CommandLineTool | Workflow | ExpressionTool,
+        arguments: Any | None,
+        job_path: Path,
+        command: List[str],
+        **kwargs: Any,
     ) -> List[str]:
         """Pre-process LHCb analysis job."""
+        command = super().pre_process(
+            executable, arguments, job_path, command, **kwargs
+        )
         # Add analysis-specific parameters
         command.extend(["--analysis", self.analysis_name])
         command.extend(["--user", self.user_name])
@@ -506,7 +526,9 @@ class LHCbAnalysisPlugin(LHCbBasePlugin):
 
         return command
 
-    def post_process(self, job_path: Path, **kwargs: Any) -> bool:
+    def post_process(
+        self, job_path: Path, stdout: Optional[str] = None, **kwargs: Any
+    ) -> bool:
         """Post-process LHCb analysis outputs."""
         success = True
 

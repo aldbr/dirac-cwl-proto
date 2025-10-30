@@ -10,14 +10,20 @@ import glob
 from pathlib import Path
 from typing import Any, ClassVar, List, Optional, Union
 
-from ..core import DataCatalogInterface, ExecutionHooksBasePlugin
+from ..core import ExecutionHooksBasePlugin
 
 
-class PiDataCatalogInterface(DataCatalogInterface):
+class PiDataCatalogInterface(ExecutionHooksBasePlugin):
     """Unified data catalog interface for PI workflows.
 
     Handles simulation, simulation V2, and gathering workflows for PI calculations.
     """
+
+    num_points: int
+    input_data: Optional[List] = None
+    output_path: Optional[str] = None
+    is_gather_workflow: bool = False
+    is_simulate_v2_workflow: bool = False
 
     def __init__(
         self,
@@ -29,6 +35,7 @@ class PiDataCatalogInterface(DataCatalogInterface):
         # Force workflow type detection
         is_gather_workflow: bool = False,
         is_simulate_v2_workflow: bool = False,
+        **kwargs,
     ):
         """Initialize with PI workflow-specific parameters.
 
@@ -45,6 +52,14 @@ class PiDataCatalogInterface(DataCatalogInterface):
         is_simulate_v2_workflow : bool, optional
             Force detection as simulate V2 workflow
         """
+        super().__init__(
+            num_points=num_points,
+            input_data=input_data,
+            output_path=output_path,
+            is_gather_workflow=is_gather_workflow,
+            is_simulate_v2_workflow=is_simulate_v2_workflow,
+            **kwargs,
+        )
         self.num_points = num_points
         self.input_data = input_data
         self.output_path = output_path
@@ -89,7 +104,7 @@ class PiDataCatalogInterface(DataCatalogInterface):
             return None
 
 
-class PiSimulatePlugin(ExecutionHooksBasePlugin):
+class PiSimulatePlugin(PiDataCatalogInterface):
     """PI simulation metadata model.
 
     This model handles PI simulation jobs that generate simulation data
@@ -107,12 +122,9 @@ class PiSimulatePlugin(ExecutionHooksBasePlugin):
 
     num_points: int
 
-    def __init__(self, **kwargs: Any):
-        """Initialize with unified PI data catalog interface."""
-        super().__init__(**kwargs)
-        self.data_catalog = PiDataCatalogInterface(self.num_points)
-
-    def post_process(self, job_path: Path, **kwargs: Any) -> bool:
+    def post_process(
+        self, job_path: Path, stdout: Optional[str] = None, **kwargs: Any
+    ) -> bool:
         """Post process the simulation outputs."""
         outputs = glob.glob(str(job_path / "*.sim"))
         if outputs:
@@ -121,7 +133,7 @@ class PiSimulatePlugin(ExecutionHooksBasePlugin):
         return False
 
 
-class PiSimulateV2Plugin(ExecutionHooksBasePlugin):
+class PiSimulateV2Plugin(PiDataCatalogInterface):
     """PI simulation metadata model version 2.
 
     Enhanced version with configurable output path.
@@ -143,14 +155,11 @@ class PiSimulateV2Plugin(ExecutionHooksBasePlugin):
 
     def __init__(self, **kwargs: Any):
         """Initialize with unified PI data catalog interface."""
-        super().__init__(**kwargs)
-        self.data_catalog = PiDataCatalogInterface(
-            self.num_points,
-            output_path=self.output_path,
-            is_simulate_v2_workflow=True,
-        )
+        super().__init__(**kwargs, is_simulate_v2_workflow=True)
 
-    def post_process(self, job_path: Path, **kwargs: Any) -> bool:
+    def post_process(
+        self, job_path: Path, stdout: Optional[str] = None, **kwargs: Any
+    ) -> bool:
         """Post process the simulation outputs."""
         outputs = job_path / self.output_path
         if outputs.exists():
@@ -159,7 +168,7 @@ class PiSimulateV2Plugin(ExecutionHooksBasePlugin):
         return False
 
 
-class PiGatherPlugin(ExecutionHooksBasePlugin):
+class PiGatherPlugin(PiDataCatalogInterface):
     """PI gathering metadata model.
 
     This model handles gathering and aggregation of PI simulation results
@@ -182,12 +191,11 @@ class PiGatherPlugin(ExecutionHooksBasePlugin):
 
     def __init__(self, **kwargs: Any):
         """Initialize with unified PI data catalog interface."""
-        super().__init__(**kwargs)
-        self.data_catalog = PiDataCatalogInterface(
-            self.num_points, input_data=self.input_data, is_gather_workflow=True
-        )
+        super().__init__(**kwargs, is_gather_workflow=True)
 
-    def post_process(self, job_path: Path, **kwargs: Any) -> bool:
+    def post_process(
+        self, job_path: Path, stdout: Optional[str] = None, **kwargs: Any
+    ) -> bool:
         """Post process the gathered results."""
         outputs = glob.glob(str(job_path / "*.sim"))
         if outputs:

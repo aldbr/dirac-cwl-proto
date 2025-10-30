@@ -6,94 +6,41 @@ metadata plugin system in DIRAC/DIRACX.
 
 from __future__ import annotations
 
+import json
 import logging
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, ClassVar, Dict, List, Mapping, Optional, TypeVar, Union
+from typing import (
+    Any,
+    ClassVar,
+    Dict,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    TypeVar,
+    Union,
+    cast,
+)
 
+from cwl_utils.parser import save
+from cwl_utils.parser.cwl_v1_2 import (
+    CommandLineTool,
+    ExpressionTool,
+    File,
+    Saveable,
+    Workflow,
+)
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
+from ruamel.yaml import YAML
+
+from dirac_cwl_proto.execution_hooks.DataManagement.DataManager import DataManager
+from dirac_cwl_proto.execution_hooks.DataManagement.Sandbox import SandboxStoreClient
 
 logger = logging.getLogger(__name__)
 
 # TypeVar for generic class methods
 T = TypeVar("T", bound="SchedulingHint")
-
-
-class DataCatalogInterface(ABC):
-    """Abstract interface for data catalog operations."""
-
-    @abstractmethod
-    def get_input_query(
-        self, input_name: str, **kwargs: Any
-    ) -> Union[Path, List[Path], None]:
-        """Generate input data query.
-
-        Parameters
-        ----------
-        input_name : str
-            Name of the input parameter.
-        **kwargs : Any
-            Additional query parameters.
-
-        Returns
-        -------
-        Union[Path, List[Path], None]
-            Path(s) to input data or None if not found.
-        """
-        pass
-
-    @abstractmethod
-    def get_output_query(self, output_name: str, **kwargs: Any) -> Optional[Path]:
-        """Generate output data path.
-
-        Parameters
-        ----------
-        output_name : str
-            Name of the output parameter.
-
-        Returns
-        -------
-        Optional[Path]
-            Path where output should be stored or None.
-        """
-        ...
-
-    def store_output(self, output_name: str, src_path: str, **kwargs: Any) -> None:
-        """Store output in the data catalog.
-
-        Parameters
-        ----------
-        output_name : str
-            Name of the output parameter.
-        src_path : str | Path
-            Source path of the output file.
-        """
-        output_path = self.get_output_query(output_name, **kwargs)
-        if not output_path:
-            raise RuntimeError(f"No output path defined for {output_name}")
-
-        output_path.mkdir(exist_ok=True, parents=True)
-        dest = output_path / Path(src_path).name
-        Path(src_path).rename(dest)
-        logger.info(f"Output {output_name} stored in {dest}")
-
-
-class DummyDataCatalogInterface(DataCatalogInterface):
-    """Default implementation that returns None for all queries.
-
-    This is used as the default data catalog when no specific implementation
-    is provided by a plugin.
-    """
-
-    def get_input_query(
-        self, input_name: str, **kwargs: Any
-    ) -> Union[Path, List[Path], None]:
-        """Return None - no input data available."""
-        return None
-
-    def get_output_query(self, output_name: str, **kwargs: Any) -> Optional[Path]:
-        """Return None - no output path available."""
-        return None
 
 
 class ExecutionHooksBasePlugin(BaseModel):
@@ -118,51 +65,143 @@ class ExecutionHooksBasePlugin(BaseModel):
     version: ClassVar[str] = "1.0.0"
     description: ClassVar[str] = "Base metadata model"
 
-    # Private attribute for data catalog interface - not part of Pydantic model validation
-    _data_catalog: DataCatalogInterface = PrivateAttr(
-        default_factory=DummyDataCatalogInterface
+    _datamanager: DataManager = PrivateAttr(
+        default_factory=lambda: DataManager(file_catalog="LocalFileCatalog")
     )
-
-    @property
-    def data_catalog(self) -> DataCatalogInterface:
-        """Get the data catalog interface."""
-        return self._data_catalog
-
-    @data_catalog.setter
-    def data_catalog(self, value: DataCatalogInterface) -> None:
-        """Set the data catalog interface."""
-        self._data_catalog = value
-
-    def __init__(self, **data):
-        """Initialize with data catalog interface."""
-        super().__init__(**data)
-        # Data catalog will be set by subclasses as needed
 
     @classmethod
     def name(cls) -> str:
         """Auto-derive hook plugin identifier from class name."""
         return cls.__name__
 
-    def pre_process(
-        self, job_path: Path, command: List[str], **kwargs: Any
-    ) -> List[str]:
-        """Pre-process job inputs and command.
+    def download_lfns(
+        self, inputs: Any, job_path: Path
+    ) -> dict[str, Path | list[Path]]:
+        """Download LFNs into the job working directory.
+
+        This method retrieves files referenced by LFNs from the job inputs
+        and copies them into the specified working directory. The LFNs are
+        expected to follow the format ``lfn:<path>``, which is resolved to
+        a local path. Each downloaded file path is then returned and can be
+        used to update CWL job inputs accordingly.
 
         Parameters
         ----------
+        inputs : JobInputModel
+            The job input model containing ``lfns_input``, a mapping from input names to one or more LFN paths.
         job_path : Path
-            Path to the job working directory.
-        command : List[str]
-            The command to be executed.
+            Path to the job working directory where files will be copied.
 
         Returns
         -------
-        List[str]
-            Modified command list.
+        dict[str, Path | list[Path]]
+            A dictionary mapping each input name to the corresponding downloaded
+            file path(s) located in the working directory.
+
+        Notes
+        -----
+        - Currently, this method performs a local copy of files and does not
+          use a remote data catalog or storage service.
+        - The returned paths are relative to the job working directory.
         """
+        new_paths: dict[str, Path | list[Path]] = {}
+        if inputs.lfns_input:
+            for input_name, lfns in inputs.lfns_input.items():
+                paths = self._datamanager.getFile(lfns, job_path)
+                if paths:
+                    new_paths[input_name] = paths
+        return new_paths
+
+    def update_inputs(self, inputs: Any, updates: dict[str, Path | list[Path]]):
+        """Update CWL job inputs with new file paths.
+
+        This method updates the `inputs.cwl` object by replacing or adding
+        file paths for each input specified in `updates`. It supports both
+        single files and lists of files.
+
+        Parameters
+        ----------
+        inputs : JobInputModel
+            The job input model whose ``cwl`` dictionary will be updated.
+        updates : dict[str, Path | list[Path]]
+            Dictionary mapping input names to their corresponding local file
+            paths. Each value can be a single `Path` or a list of `Path` objects.
+
+        Notes
+        -----
+        This method is typically called after downloading LFNs
+        using `download_lfns` to ensure that the CWL job inputs reference
+        the correct local files.
+        """
+        for input_name, path in updates.items():
+            if isinstance(path, Path):
+                inputs.cwl[input_name] = File(path=str(path))
+            else:
+                inputs.cwl[input_name] = []
+                for p in path:
+                    inputs.cwl[input_name].append(File(path=str(p)))
+
+    def pre_process(
+        self,
+        executable: CommandLineTool | Workflow | ExpressionTool,
+        arguments: Any | None,
+        job_path: Path,
+        command: List[str],
+        **kwargs: Any,
+    ) -> List[str]:
+        """Pre-process job inputs and command before execution.
+
+        This method prepares CWL job inputs by performing pre-execution tasks such as:
+        - downloading LFNs,
+        - updating CWL input definitions with local file paths,
+        - and serializing the final input parameters into a YAML file added to the command line.
+
+        The default implementation performs standard preparation steps,
+        but this method is designed to be **overridden by subclasses**
+        to implement custom pre-processing logic such as:
+        - specialized data staging or fetching strategies,
+        - environment setup before command execution.
+
+        Parameters
+        ----------
+        executable : CommandLineTool | Workflow | ExpressionTool
+            The CWL tool, workflow, or expression to be executed.
+        arguments : JobInputModel, optional
+            The job inputs, including CWL and LFN data.
+        job_path : Path
+            Path to the job working directory.
+        command : list[str]
+            The command to be executed, which will be modified.
+        **kwargs : Any
+            Additional parameters, allowing extensions to pass extra context
+            or configuration options.
+
+        Returns
+        -------
+        list[str]
+            The modified command, typically including the serialized CWL
+            input file path.
+
+        Notes
+        -----
+        Subclasses may override this method to customize pre-processing behavior.
+        When overriding, it is recommended to call ``super().pre_process(...)``
+        if the base pre-processing logic should be preserved.
+        """
+        if arguments:
+            updates = self.download_lfns(arguments, job_path)
+            self.update_inputs(arguments, updates)
+
+            parameter_dict = save(cast(Saveable, arguments.cwl))
+            parameter_path = job_path / "parameter.cwl"
+            with open(parameter_path, "w") as parameter_file:
+                YAML().dump(parameter_dict, parameter_file)
+            command.append(str(parameter_path.name))
         return command
 
-    def post_process(self, job_path: Path, **kwargs: Any) -> bool:
+    def post_process(
+        self, job_path: Path, stdout: Optional[str] = None, **kwargs: Any
+    ) -> bool:
         """Post-process job outputs.
 
         Parameters
@@ -170,21 +209,68 @@ class ExecutionHooksBasePlugin(BaseModel):
         job_path : Path
             Path to the job working directory.
         """
+        # Get the outputs and outputted files from the cwltool standard output
+        # if stdout:
+        #     outputs = self.get_job_outputted_files(stdout)
+        #     for output, file_paths in outputs.items():
+        #         self.store_output(output, file_paths)
         return True
+
+    def get_job_outputted_files(self, stdout: str) -> dict[str, list[str]]:
+        """Get the outputted filepaths per output.
+
+        Parameters
+        ----------
+        stdout : str
+            The console output of the the job
+
+        Returns
+        ----------
+        dict[str, list[str]]
+            The dict of the list of filepaths for each output
+        """
+        outputted_files: dict[str, list[str]] = {}
+        outputs = json.loads(stdout)
+        for output, files in outputs.items():
+            if not files:
+                continue
+            if not isinstance(files, List):
+                files = [files]
+            file_paths = []
+            for file in files:
+                if file:
+                    file_paths.append(str(file["path"]))
+            outputted_files[output] = file_paths
+        return outputted_files
 
     def get_input_query(
         self, input_name: str, **kwargs: Any
     ) -> Union[Path, List[Path], None]:
         """Delegate to data catalog interface."""
-        return self.data_catalog.get_input_query(input_name, **kwargs)
+        return None
 
     def get_output_query(self, output_name: str, **kwargs: Any) -> Optional[Path]:
         """Delegate to data catalog interface."""
-        return self.data_catalog.get_output_query(output_name, **kwargs)
+        return None
 
-    def store_output(self, output_name: str, src_path: str, **kwargs: Any) -> None:
-        """Delegate to data catalog interface."""
-        self.data_catalog.store_output(output_name, src_path, **kwargs)
+    def store_output(
+        self,
+        output_name: str,
+        src_path: str | Path | Sequence[str | Path],
+        **kwargs: Any,
+    ) -> None:
+        """Delegate to the correct interface."""
+        logger.info(f"Storing output {output_name}, with source {src_path}")
+
+        # TODO use a hint to differentiate Sandboxes and data outputs
+        if output_name == "SandboxOutput":
+            if isinstance(src_path, Path) or isinstance(src_path, str):
+                src_path = [src_path]
+            SandboxStoreClient().uploadFilesAsSandbox(src_path)
+        else:
+            lfn = self.get_output_query(output_name)
+            if lfn:
+                self._datamanager.putAndRegister(str(lfn), src_path)
 
     @classmethod
     def get_schema_info(cls) -> Dict[str, Any]:
@@ -308,7 +394,7 @@ class ExecutionHooksHint(BaseModel, Hint):
                if present.
             3. The descriptor's ``configuration``.
 
-            During merging, keys are normalised from dash-case to snake_case to
+            During merging, keys are normalized from dash-case to snake_case to
             align with typical Python argument names used by runtime implementations.
 
             Parameters

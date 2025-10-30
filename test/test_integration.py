@@ -100,7 +100,7 @@ class TestRealWorldScenarios:
         command = ["python", "user_script.py"]
 
         # Pre-process
-        processed_command = user_runtime.pre_process(job_path, command)
+        processed_command = user_runtime.pre_process({}, None, job_path, command)
         assert processed_command == command  # User plugin doesn't modify command
 
         # Post-process
@@ -125,7 +125,7 @@ class TestRealWorldScenarios:
         command = ["python", "admin_script.py"]
 
         # Pre-process should add logging
-        processed_command = admin_runtime.pre_process(job_path, command)
+        processed_command = admin_runtime.pre_process({}, None, job_path, command)
         assert len(processed_command) >= len(
             command
         )  # Should be at least the same length
