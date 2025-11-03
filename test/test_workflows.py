@@ -92,7 +92,15 @@ def pi_test_files():
             "test/workflows/test_meta/test_meta.cwl",
             [
                 "test/workflows/test_meta/override_dirac_hints.yaml",
-                "test/workflows/test_meta/override_output_path.yaml",
+            ],
+        ),
+        # --- Test outputs override example ---
+        # A string input is passed
+        (
+            "test/workflows/test_outputs/test_outputs.cwl",
+            [
+                "test/workflows/test_outputs/override_output.yaml",
+                "test/workflows/test_outputs/override_output2.yaml",
             ],
         ),
         # --- Crypto example ---

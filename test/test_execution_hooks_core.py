@@ -218,6 +218,8 @@ class TestExecutionHookExtended:
             "campaign": None,
             "data_type": None,
             "site": None,
+            "output_paths": {},
+            "output_sandbox": [],
         }
 
         # Test JSON schema generation
