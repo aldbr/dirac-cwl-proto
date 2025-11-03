@@ -14,7 +14,7 @@ outputs:
 baseCommand: ["touch", "file1"]
 
 $namespaces:
-  dirac: "./schemas/dirac-metadata.json#" # Generated schema from Pydantic models
+  dirac: "../test_meta/schemas/dirac-metadata.json#" # Generated schema from Pydantic models
 hints:
   dirac:execution-hooks:
     hook_plugin: "UserPlugin"
