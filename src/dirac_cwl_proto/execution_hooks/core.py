@@ -71,8 +71,10 @@ class ExecutionHooksBasePlugin(BaseModel):
     campaign: Optional[str] = None
     site: Optional[str] = None
     data_type: Optional[str] = None
-
     base_path: Path = Path("/")
+
+    output_paths: Dict[str, Any] = {}
+    output_sandbox: list[str] = []
 
     _datamanager: DataManager = PrivateAttr(
         default_factory=lambda: DataManager(file_catalog="LocalFileCatalog")
@@ -268,13 +270,13 @@ class ExecutionHooksBasePlugin(BaseModel):
                 raise WorkflowProcessingException(msg) from e
 
         # Get the outputs and outputted files from the cwltool standard output
-        # if stdout:
-        #     outputs = self.get_job_outputted_files(stdout)
-        #     for output, file_paths in outputs.items():
-        #         self.store_output(output, file_paths)
+        if stdout:
+            outputs = self.get_job_outputted_paths(stdout)
+            for output, file_paths in outputs.items():
+                self.store_output(output, file_paths)
         return True
 
-    def get_job_outputted_files(self, stdout: str) -> dict[str, list[str]]:
+    def get_job_outputted_paths(self, stdout: str) -> dict[str, list[str]]:
         """Get the outputted filepaths per output.
 
         Parameters
@@ -357,15 +359,20 @@ class ExecutionHooksBasePlugin(BaseModel):
             raise RuntimeError(
                 f"src_path parameter required for filesystem storage of {output_name}"
             )
-        # TODO use a hint to differentiate Sandboxes and data outputs
-        if output_name == "SandboxOutput":
+        if self.output_sandbox and output_name in self.output_sandbox:
             if isinstance(src_path, Path) or isinstance(src_path, str):
                 src_path = [src_path]
             SandboxStoreClient().uploadFilesAsSandbox(src_path)
         else:
-            lfn = self.get_output_query(output_name)
+            if self.output_paths and output_name in self.output_paths:
+                lfn = self.output_paths[output_name]
+            else:
+                lfn = self.get_output_query(output_name)
             if lfn:
-                self._datamanager.putAndRegister(str(lfn), src_path)
+                if isinstance(src_path, str) or isinstance(src_path, Path):
+                    src_path = [src_path]
+                for src in src_path:
+                    self._datamanager.putAndRegister(str(lfn), src)
 
     @classmethod
     def get_schema_info(cls) -> Dict[str, Any]:
@@ -449,6 +456,15 @@ class ExecutionHooksHint(BaseModel, Hint):
         default_factory=dict, description="Additional parameters for metadata plugins"
     )
 
+    output_paths: Dict[str, Any] = Field(
+        default_factory=dict, description="LFNs for outputs on the Data Catalog"
+    )
+
+    output_sandbox: list[str] = Field(
+        default_factory=list,
+        description="List of the outputs stored in the output sandbox",
+    )
+
     def model_copy(
         self,
         update: Optional[Mapping[str, Any]] = None,
@@ -512,7 +528,10 @@ class ExecutionHooksHint(BaseModel, Hint):
 
         if submitted is None:
             descriptor = ExecutionHooksHint(
-                hook_plugin=self.hook_plugin, **self.configuration
+                hook_plugin=self.hook_plugin,
+                output_paths=self.output_paths,
+                output_sandbox=self.output_sandbox,
+                **self.configuration,
             )
             return get_registry().instantiate_plugin(descriptor)
 
@@ -532,7 +551,12 @@ class ExecutionHooksHint(BaseModel, Hint):
 
         params = {_dash_to_snake(key): value for key, value in inputs.items()}
 
-        descriptor = ExecutionHooksHint(hook_plugin=self.hook_plugin, **params)
+        descriptor = ExecutionHooksHint(
+            hook_plugin=self.hook_plugin,
+            output_paths=self.output_paths,
+            output_sandbox=self.output_sandbox,
+            **params,
+        )
         return get_registry().instantiate_plugin(descriptor)
 
     @classmethod
