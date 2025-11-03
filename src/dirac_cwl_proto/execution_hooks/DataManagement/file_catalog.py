@@ -20,40 +20,40 @@ class FileCatalogInterface(ABC):
         pass
 
     @abstractmethod
-    def getFileMetadata(self, lfns: str | list, **kwargs) -> dict:
+    def get_file_metadata(self, lfns: str | list, **kwargs) -> dict:
         pass
 
     @abstractmethod
-    def findFilesByMetadata(self, metaDict: dict, path: str, **kwargs) -> dict:
+    def find_files_by_metadata(self, metaDict: dict, path: str, **kwargs) -> dict:
         pass
 
     @abstractmethod
-    def listDirectory(self, lfn: str | list, **kwargs) -> dict:
+    def list_directory(self, lfn: str | list, **kwargs) -> dict:
         pass
 
     @abstractmethod
-    def isFile(self, lfns: str | list, **kwargs) -> dict:
+    def is_file(self, lfns: str | list, **kwargs) -> dict:
         pass
 
     @abstractmethod
-    def isDirectory(self, lfns: str | list, **kwargs) -> dict:
+    def is_directory(self, lfns: str | list, **kwargs) -> dict:
         pass
 
     @abstractmethod
-    def getReplicas(self, lfns: str | list, **kwargs) -> dict:
+    def get_replicas(self, lfns: str | list, **kwargs) -> dict:
         pass
 
     @abstractmethod
-    def addReplica(self, lfns: str | dict, **kwargs) -> dict:
+    def add_replica(self, lfns: str | dict, **kwargs) -> dict:
         pass
 
     @abstractmethod
-    def removeReplica(self, lfns: str | dict, **kwargs) -> dict:
+    def remove_replica(self, lfns: str | dict, **kwargs) -> dict:
         pass
 
 
 class LocalFileCatalog(FileCatalogInterface):
-    def getReplicas(self, lfns, **kwargs):
+    def get_replicas(self, lfns, **kwargs):
         return {lfn: {"local": str(lfn).removeprefix("lfn:")} for lfn in lfns}
 
     # TODO
@@ -66,23 +66,23 @@ class LocalFileCatalog(FileCatalogInterface):
     def exists(self, lfns: str | list, **kwargs) -> dict:
         raise NotImplementedError
 
-    def getFileMetadata(self, lfns: str | list, **kwargs) -> dict:
+    def get_file_metadata(self, lfns: str | list, **kwargs) -> dict:
         raise NotImplementedError
 
-    def findFilesByMetadata(self, metaDict: dict, path: str, **kwargs) -> dict:
+    def find_files_by_metadata(self, metaDict: dict, path: str, **kwargs) -> dict:
         raise NotImplementedError
 
-    def listDirectory(self, lfn: str | list, **kwargs) -> dict:
+    def list_directory(self, lfn: str | list, **kwargs) -> dict:
         raise NotImplementedError
 
-    def isFile(self, lfns: str | list, **kwargs) -> dict:
+    def is_file(self, lfns: str | list, **kwargs) -> dict:
         raise NotImplementedError
 
-    def isDirectory(self, lfns: str | list, **kwargs) -> dict:
+    def is_directory(self, lfns: str | list, **kwargs) -> dict:
         raise NotImplementedError
 
-    def addReplica(self, lfns: str | dict, **kwargs) -> dict:
+    def add_replica(self, lfns: str | dict, **kwargs) -> dict:
         raise NotImplementedError
 
-    def removeReplica(self, lfns: str | dict, **kwargs) -> dict:
+    def remove_replica(self, lfns: str | dict, **kwargs) -> dict:
         raise NotImplementedError

@@ -13,7 +13,9 @@ from diracx.client.aio import AsyncDiracClient
 from rich.console import Console
 
 from dirac_cwl_proto.execution_hooks import SchedulingHint
-from dirac_cwl_proto.execution_hooks.DataManagement.Sandbox import SandboxStoreClient
+from dirac_cwl_proto.execution_hooks.DataManagement.sandbox import (
+    upload_files_as_sandbox,
+)
 from dirac_cwl_proto.submission_models import JobModel, JobSubmissionModel
 
 console = Console()
@@ -59,9 +61,7 @@ class PrototypeSubmissionClient(SubmissionClient):
 
         Path("sandboxstore").mkdir(exist_ok=True)
         # Tar the files and upload them to the file catalog
-        sandbox_path = SandboxStoreClient().uploadFilesAsSandbox(
-            fileList=isb_file_paths
-        )
+        sandbox_path = upload_files_as_sandbox(fileList=isb_file_paths)
 
         sandbox_id = sandbox_path.name.replace(".tar.gz", "") if sandbox_path else None
         return sandbox_id

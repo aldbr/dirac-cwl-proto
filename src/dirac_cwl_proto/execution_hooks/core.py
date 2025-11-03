@@ -37,8 +37,10 @@ from ruamel.yaml import YAML
 
 from dirac_cwl_proto.commands import PostProcessCommand, PreProcessCommand
 from dirac_cwl_proto.core.exceptions import WorkflowProcessingException
-from dirac_cwl_proto.execution_hooks.DataManagement.DataManager import DataManager
-from dirac_cwl_proto.execution_hooks.DataManagement.Sandbox import SandboxStoreClient
+from dirac_cwl_proto.execution_hooks.DataManagement.data_manager import DataManager
+from dirac_cwl_proto.execution_hooks.DataManagement.sandbox import (
+    upload_files_as_sandbox,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -141,7 +143,7 @@ class ExecutionHooksBasePlugin(BaseModel):
         new_paths: dict[str, Path | list[Path]] = {}
         if inputs.lfns_input:
             for input_name, lfns in inputs.lfns_input.items():
-                paths = self._datamanager.getFile(lfns, job_path)
+                paths = self._datamanager.get_file(lfns, job_path)
                 if paths:
                     new_paths[input_name] = paths
         return new_paths
@@ -352,7 +354,31 @@ class ExecutionHooksBasePlugin(BaseModel):
         src_path: str | Path | Sequence[str | Path],
         **kwargs: Any,
     ) -> None:
-        """Delegate to the correct interface."""
+        """Store an output file or set of files via the appropriate storage interface.
+
+        This method determines the correct destination for output files based on
+        the given ``output_name`` and delegates the storage operation accordingly.
+        If the output belongs to the configured sandbox, files are uploaded to
+        the sandbox via ``SandboxStoreClient``. Otherwise, they are registered
+        and stored using the data manager and LFNs.
+
+        Parameters
+        ----------
+        output_name : str
+            The logical name of the output to store, used to determine the storage
+            target (sandbox or output path).
+        src_path : str | Path | Sequence[str | Path]
+            The path or list of paths to the source file(s) to be stored.
+            Can be a single path (string or ``Path``) or a sequence of paths.
+        **kwargs : Any
+            Additional keyword arguments for extensibility.
+
+        Raises
+        ------
+        KeyError
+            If ``output_name`` is not found in ``output_paths`` and no logical file
+            name (LFN) can be resolved via ``get_output_query()``.
+        """
         logger.info(f"Storing output {output_name}, with source {src_path}")
 
         if not src_path:
@@ -362,7 +388,7 @@ class ExecutionHooksBasePlugin(BaseModel):
         if self.output_sandbox and output_name in self.output_sandbox:
             if isinstance(src_path, Path) or isinstance(src_path, str):
                 src_path = [src_path]
-            SandboxStoreClient().uploadFilesAsSandbox(src_path)
+            upload_files_as_sandbox(src_path)
         else:
             if self.output_paths and output_name in self.output_paths:
                 lfn = self.output_paths[output_name]
@@ -372,7 +398,7 @@ class ExecutionHooksBasePlugin(BaseModel):
                 if isinstance(src_path, str) or isinstance(src_path, Path):
                     src_path = [src_path]
                 for src in src_path:
-                    self._datamanager.putAndRegister(str(lfn), src)
+                    self._datamanager.put_and_register(str(lfn), src)
 
     @classmethod
     def get_schema_info(cls) -> Dict[str, Any]:

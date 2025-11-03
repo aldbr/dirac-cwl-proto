@@ -201,7 +201,7 @@ def prepare_input_sandbox(input_data: dict[str, Any]) -> list[Path]:
 
 def get_lfns(input_data: dict[str, Any]) -> dict[str, Path | list[Path]]:
     """
-    Get the list au LFNs in the inputs from the parameters
+    Get the list of LFNs in the inputs from the parameters
 
     :param input_data: The parameters of the job
     :return: The list of LFN paths
