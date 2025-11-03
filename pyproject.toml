@@ -42,13 +42,8 @@ testing = ["pytest>=6", "pytest-mock"]
 
 [project.scripts]
 dirac-cwl = "dirac_cwl_proto:app"
-pi-simulate = "dirac_cwl_proto.modules.pi_simulate:app"
-pi-simulate-v2 = "dirac_cwl_proto.modules.pi_simulate_v2:app"
-pi-gather = "dirac_cwl_proto.modules.pi_gather:app"
 crypto = "dirac_cwl_proto.modules.crypto:app"
-lhcb-app = "dirac_cwl_proto.modules.lhcb_app:app"
 random-data-gen = "dirac_cwl_proto.modules.random_data_gen:app"
-gaussian-fit = "dirac_cwl_proto.modules.gaussian_fit:app"
 
 [tool.setuptools_scm]
 
