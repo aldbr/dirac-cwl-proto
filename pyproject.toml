@@ -43,7 +43,6 @@ testing = ["pytest>=6", "pytest-mock"]
 [project.scripts]
 dirac-cwl = "dirac_cwl_proto:app"
 crypto = "dirac_cwl_proto.modules.crypto:app"
-random-data-gen = "dirac_cwl_proto.modules.random_data_gen:app"
 
 [tool.setuptools_scm]
 
