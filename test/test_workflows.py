@@ -689,14 +689,14 @@ def test_run_production_validation_failure(
             f"stdout: {clean_output}, stderr: {clean_stderr}, exception: {clean_exception}"
         )
 
+
 # -----------------------------------------------------------------------------
 # Production tests
 # -----------------------------------------------------------------------------
 
-def test_run_parallely(
-    cli_runner, cleanup
-):
-    error_margin = 0.10 # Percentage of error
+
+def test_run_parallely(cli_runner, cleanup):
+    error_margin = 0.10  # Percentage of error
 
     command = ["job", "submit", "test/workflows/parallel/sequential.cwl"]
     start = time.time()
@@ -710,24 +710,40 @@ def test_run_parallely(
     end = time.time()
     parallel_time = end - start
 
-    assert parallel_time * 2 > (1-error_margin) * sequential_time
-    assert parallel_time * 2 < (1+error_margin) * sequential_time
+    assert parallel_time * 2 > (1 - error_margin) * sequential_time
+    assert parallel_time * 2 < (1 + error_margin) * sequential_time
+
 
 def test_run_parallely_one_core():
-    error_margin = 0.05 # Percentage of error
+    error_margin = 0.05  # Percentage of error
 
-    command = ["taskset", "-c", "0", "dirac-cwl", "job", "submit", "test/workflows/parallel/sequential.cwl"]
+    command = [
+        "taskset",
+        "-c",
+        "0",
+        "dirac-cwl",
+        "job",
+        "submit",
+        "test/workflows/parallel/sequential.cwl",
+    ]
     start = time.time()
     subprocess.run(command)
     end = time.time()
     sequential_time = end - start
 
-    command = ["taskset", "-c", "0", "dirac-cwl", "job", "submit", "test/workflows/parallel/parallel.cwl"]
+    command = [
+        "taskset",
+        "-c",
+        "0",
+        "dirac-cwl",
+        "job",
+        "submit",
+        "test/workflows/parallel/parallel.cwl",
+    ]
     start = time.time()
     subprocess.run(command)
     end = time.time()
     parallel_time = end - start
 
-    assert parallel_time * (1-error_margin) * sequential_time
-    assert parallel_time * (1+error_margin) * sequential_time
-
+    assert parallel_time > (1 - error_margin) * sequential_time
+    assert parallel_time < (1 + error_margin) * sequential_time
