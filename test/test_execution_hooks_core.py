@@ -91,7 +91,7 @@ class TestDataCatalogInterface:
         assert result == Path("/output/test_output")
 
         # Test store_output
-        catalog.store_output("test_output", "/tmp/test")  # Should not raise an error
+        catalog.store_output("test_output")  # Should not raise an error
 
 
 class TestExecutionHookExtended:
