@@ -13,6 +13,7 @@ import pytest
 
 from dirac_cwl_proto.execution_hooks.core import (
     DataCatalogInterface,
+    DefaultDataCatalogInterface,
     ExecutionHooksBasePlugin,
     ExecutionHooksHint,
     SchedulingHint,
@@ -76,9 +77,7 @@ class TestDataCatalogInterface:
             ) -> Optional[Path]:
                 return Path(f"/output/{output_name}")
 
-            def store_output(
-                self, output_name: str, src_path: str, **kwargs: Any
-            ) -> None:
+            def store_output(self, output_name: str, **kwargs: Any) -> None:
                 pass
 
         catalog = ConcreteCatalog()
@@ -92,7 +91,7 @@ class TestDataCatalogInterface:
         assert result == Path("/output/test_output")
 
         # Test store_output
-        catalog.store_output("test_output", "/tmp/test")  # Should not raise an error
+        catalog.store_output("test_output")  # Should not raise an error
 
 
 class TestExecutionHookExtended:
@@ -126,21 +125,23 @@ class TestExecutionHookExtended:
         with pytest.raises(ValueError):
             TestModel()  # Missing required_field
 
-    def test_default_interface_methods(self):
+    def test_default_interface_methods(self, tmp_path):
         """Test that default interface methods are implemented."""
 
         class TestModel(ExecutionHooksBasePlugin):
             pass
 
         model = TestModel()
+        # Use a temp directory for the data catalog to avoid system path issues
+        model.data_catalog = DefaultDataCatalogInterface(base_path=tmp_path)
 
         # Test DataCatalogInterface methods
-        assert model.get_input_query("test") is None
-        assert model.get_output_query("test") is None
+        assert str(model.get_input_query("test")) == str(tmp_path / "test")
+        assert str(model.get_output_query("test")) == str(tmp_path / "outputs")
 
-        # Test store_output raises RuntimeError when no output path is defined
-        with pytest.raises(RuntimeError, match="No output path defined"):
-            model.store_output("test", "/tmp/file.txt")
+        # Test store_output raises RuntimeError when src_path is missing
+        with pytest.raises(RuntimeError, match="src_path parameter required"):
+            model.store_output("test", src_path=None)
 
     def test_model_serialization(self):
         """Test that model serialization works correctly."""
@@ -196,7 +197,7 @@ class TestExecutionHooksHint:
         descriptor = ExecutionHooksHint.from_cwl(mock_cwl)
 
         # Should create default descriptor
-        assert descriptor.hook_plugin == "UserPlugin"
+        assert descriptor.hook_plugin == "QueryBasedPlugin"
 
     def test_from_cwl_no_dirac_hints(self, mocker):
         """Test extraction when no DIRAC hints are present."""
@@ -206,11 +207,11 @@ class TestExecutionHooksHint:
         descriptor = ExecutionHooksHint.from_cwl(mock_cwl)
 
         # Should create default descriptor
-        assert descriptor.hook_plugin == "UserPlugin"
+        assert descriptor.hook_plugin == "QueryBasedPlugin"
 
     def test_model_copy_merges_dict_fields(self):
         """Test model_copy merges dict fields and updates values."""
-        descriptor = ExecutionHooksHint(hook_plugin="LHCbSimulationPlugin")
+        descriptor = ExecutionHooksHint(hook_plugin="AdminPlugin")
 
         updated = descriptor.model_copy(
             update={"hook_plugin": "NewClass", "new_field": "value"}
@@ -221,9 +222,11 @@ class TestExecutionHooksHint:
 
     def test_default_values(self):
         """Test default values."""
-        descriptor = ExecutionHooksHint(hook_plugin="UserPlugin", user_id="test123")
+        descriptor = ExecutionHooksHint(
+            hook_plugin="QueryBasedPlugin", user_id="test123"
+        )
 
-        assert descriptor.hook_plugin == "UserPlugin"
+        assert descriptor.hook_plugin == "QueryBasedPlugin"
         assert getattr(descriptor, "user_id", None) == "test123"
 
 
@@ -292,13 +295,13 @@ class TestTransformationExecutionHooksHint:
     def test_inheritance(self):
         """Test that it inherits from ExecutionHooksHint."""
         descriptor = TransformationExecutionHooksHint(
-            hook_plugin="LHCbSimulationPlugin",
+            hook_plugin="AdminPlugin",
             group_size={"sim_data": 50},
             n_events=1000,
         )
 
         # Test that it has the fields from both classes
-        assert descriptor.hook_plugin == "LHCbSimulationPlugin"
+        assert descriptor.hook_plugin == "AdminPlugin"
         assert descriptor.group_size == {"sim_data": 50}
         assert getattr(descriptor, "n_events", None) == 1000
 
