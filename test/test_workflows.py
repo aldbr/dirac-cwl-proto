@@ -32,6 +32,30 @@ def cleanup():
     _cleanup()
 
 
+@pytest.fixture()
+def pi_test_files():
+    """Create test files needed for pi workflow tests."""
+    # Create job input files
+    job_dir = Path("test/workflows/pi/type_dependencies/job")
+    job_dir.mkdir(parents=True, exist_ok=True)
+
+    # Create result files for pi-gather job test (result_1.sim through result_5.sim)
+    result_files = []
+    for i in range(1, 6):
+        result_file = job_dir / f"result_{i}.sim"
+        with open(result_file, "w") as f:
+            # Create different sample data for each file
+            f.write(f"0.{i} 0.{i+1}\n-0.{i+2} 0.{i+3}\n0.{i+4} -0.{i+5}\n")
+        result_files.append(result_file)
+
+    yield
+
+    # Cleanup - remove created files
+    for result_file in result_files:
+        if result_file.exists():
+            result_file.unlink()
+
+
 # -----------------------------------------------------------------------------
 # Job tests
 # -----------------------------------------------------------------------------
@@ -95,9 +119,22 @@ def cleanup():
             "test/workflows/crypto/md5.cwl",
             ["test/workflows/crypto/type_dependencies/job/inputs-crypto_complete.yaml"],
         ),
+        # --- Pi example ---
+        # Complete workflow
+        (
+            "test/workflows/pi/description.cwl",
+            ["test/workflows/pi/type_dependencies/job/inputs-pi_complete.yaml"],
+        ),
+        # Simulate only
+        ("test/workflows/pi/pisimulate.cwl", []),
+        # Gather only
+        (
+            "test/workflows/pi/pigather.cwl",
+            ["test/workflows/pi/type_dependencies/job/inputs-pi_gather.yaml"],
+        ),
     ],
 )
-def test_run_job_success(cli_runner, cleanup, cwl_file, inputs):
+def test_run_job_success(cli_runner, cleanup, pi_test_files, cwl_file, inputs):
     # CWL file is the first argument
     command = ["job", "submit", cwl_file]
 
@@ -227,6 +264,12 @@ def test_run_job_validation_failure(
         ("test/workflows/crypto/base64.cwl", None),
         # MD5 only
         ("test/workflows/crypto/md5.cwl", None),
+        # --- Pi example ---
+        # Pi simulate transformation
+        (
+            "test/workflows/pi/pisimulate.cwl",
+            "test/workflows/pi/type_dependencies/transformation/metadata-pi_simulate.yaml",
+        ),
     ],
 )
 def test_run_nonblocking_transformation_success(
@@ -245,14 +288,24 @@ def test_run_nonblocking_transformation_success(
     ), f"Failed to run the transformation: {result.stdout}"
 
 
-@pytest.mark.skip(
-    reason="Temporarily disabled: no non-core plugin tests during refactoring"
-)
 @pytest.mark.parametrize(
     "cwl_file, metadata, destination_source_input_data",
     [
-        # Placeholder - all tests commented out during architectural refactoring
-        pytest.param(None, None, None, marks=pytest.mark.skip),
+        # --- Pi example ---
+        # Pi gather transformation (waits for simulation result files)
+        (
+            "test/workflows/pi/pigather.cwl",
+            "test/workflows/pi/type_dependencies/transformation/metadata-pi_gather.yaml",
+            {
+                "filecatalog/pi/100/input-data": [
+                    ("result_1.sim", "0.1 0.2\n-0.3 0.4\n0.5 -0.6\n"),
+                    ("result_2.sim", "-0.1 0.8\n0.9 -0.2\n-0.7 0.3\n"),
+                    ("result_3.sim", "0.4 0.5\n-0.8 -0.1\n0.6 0.7\n"),
+                    ("result_4.sim", "-0.9 0.0\n0.2 -0.4\n-0.5 0.8\n"),
+                    ("result_5.sim", "0.3 -0.7\n-0.6 0.1\n0.9 -0.2\n"),
+                ]
+            },
+        ),
     ],
 )
 def test_run_blocking_transformation_success(
@@ -272,26 +325,30 @@ def test_run_blocking_transformation_success(
         nonlocal transformation_result
         transformation_result = run_transformation()
 
+    # Start the transformation in a separate thread (it will wait for files)
     transformation_thread = threading.Thread(target=run_and_capture)
     transformation_thread.start()
 
-    # Give it some time to ensure the command is waiting for input files
-    time.sleep(5)
+    # Give it some time to start and begin waiting for input files
+    time.sleep(2)
 
-    # Ensure the command is waiting (e.g., it hasn't finished yet)
+    # Verify the transformation is still running (waiting for files)
     assert (
         transformation_thread.is_alive()
     ), "The transformation should be waiting for files."
 
+    # Now create the input files (simulating files becoming available)
     for destination, inputs in destination_source_input_data.items():
-        # Copy the input data to the destination
+        # Create the destination directory and files with content
         destination = Path(destination)
         destination.mkdir(parents=True, exist_ok=True)
-        for input in inputs:
-            shutil.copy(input, destination)
+        for filename, content in inputs:
+            file_path = destination / filename
+            with open(file_path, "w") as f:
+                f.write(content)
 
-    # Wait for the thread to finish
-    transformation_thread.join(timeout=60)
+    # Wait for the transformation to detect the files and complete
+    transformation_thread.join(timeout=30)
 
     # Check if the transformation completed successfully
     assert (
@@ -400,11 +457,13 @@ def test_run_transformation_validation_failure(
     "cwl_file, metadata",
     [
         # --- Crypto example ---
-        # Complete
+        # Complete workflow with independent steps (ideal for production mode)
         ("test/workflows/crypto/description.cwl", None),
     ],
 )
-def test_run_simple_production_success(cli_runner, cleanup, cwl_file, metadata):
+def test_run_simple_production_success(
+    cli_runner, cleanup, pi_test_files, cwl_file, metadata
+):
     # CWL file is the first argument
     command = ["production", "submit", cwl_file]
     # Add the metadata file
