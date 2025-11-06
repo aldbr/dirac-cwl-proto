@@ -43,16 +43,6 @@ def submit_transformation_client(
     metadata_path: Optional[str] = typer.Option(
         None, help="Path to metadata file used to generate the input query"
     ),
-    # Dirac-specific parameters that are used by the jobs
-    platform: Optional[str] = typer.Option(
-        None, help="The platform required to run the transformation"
-    ),
-    priority: Optional[int] = typer.Option(
-        10, help="The priority of the transformation"
-    ),
-    sites: Optional[List[str]] = typer.Option(
-        None, help="The site to run the transformation"
-    ),
     # Specific parameter for the purpose of the prototype
     local: Optional[bool] = typer.Option(
         True, help="Run the jobs locally instead of submitting them to the router"
@@ -84,20 +74,14 @@ def submit_transformation_client(
     console.print(f"\t[green]:heavy_check_mark:[/green] Task {task_path}")
 
     # Load the metadata: at this stage, only the structure is validated, not the content
-    metadata_model = None
+    metadata_model = TransformationExecutionHooksHint()
     if metadata_path:
         with open(metadata_path, "r") as file:
             metadata = YAML(typ="safe").load(file)
         metadata_model = TransformationExecutionHooksHint(**metadata)
-    else:
-        metadata_model = TransformationExecutionHooksHint()
     console.print("\t[green]:heavy_check_mark:[/green] Metadata")
 
-    transformation_scheduling = SchedulingHint(
-        platform=platform,
-        priority=priority,
-        sites=sites,
-    )
+    transformation_scheduling = SchedulingHint.from_cwl(task)
     console.print("\t[green]:heavy_check_mark:[/green] Description")
 
     transformation = TransformationSubmissionModel(
