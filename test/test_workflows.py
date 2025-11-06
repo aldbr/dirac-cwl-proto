@@ -270,6 +270,50 @@ def test_run_job_validation_failure(
         )
 
 
+def test_run_parallely(cli_runner, cleanup):
+    error_margin_percentage = 0.10
+
+    # This command forces the process 'dirac-cwl' to execute ONLY in
+    # one core of the machine, independently of how many there are
+    # phisically available.
+    # This simulates a sequential execution of the worklflow.
+    command = [
+        "taskset",
+        "-c",
+        "0",
+        "dirac-cwl",
+        "job",
+        "submit",
+        "test/workflows/parallel/description.cwl",
+    ]
+
+    start = time.time()
+    subprocess.run(command)
+    end = time.time()
+    sequential_time = end - start
+
+    command = [
+        "dirac-cwl",
+        "job",
+        "submit",
+        "test/workflows/parallel/description.cwl",
+    ]
+
+    start = time.time()
+    subprocess.run(command)
+    end = time.time()
+    parallel_time = end - start
+
+    min_time = (1 - error_margin_percentage) * sequential_time / 2
+    max_time = (1 + error_margin_percentage) * sequential_time / 2
+    # Parallel time should be aproximately half the time.
+    assert (parallel_time > min_time) and (parallel_time < max_time), (
+        "Difference between parallel and sequential time is too large",
+        f"Sequential: {sequential_time} # Parallel: {parallel_time}",
+        f"Sequential time should be twice the parallel time with an error of {int(error_margin_percentage*100)}%",
+    )
+
+
 # -----------------------------------------------------------------------------
 # Transformation tests
 # -----------------------------------------------------------------------------
@@ -688,48 +732,3 @@ def test_run_production_validation_failure(
             f"Expected error '{expected_error}' not found in "
             f"stdout: {clean_output}, stderr: {clean_stderr}, exception: {clean_exception}"
         )
-
-
-# -----------------------------------------------------------------------------
-# Production tests
-# -----------------------------------------------------------------------------
-
-
-def test_run_parallely(cli_runner, cleanup):
-    error_margin_percentage = 0.10
-
-    # This command forces the process 'dirac-cwl' to execute ONLY in
-    # one core of the machine, independently of how many there are
-    # phisically available.
-    # This simulates a sequential execution of the worklflow.
-    command = [
-        "taskset",
-        "-c",
-        "0",
-        "dirac-cwl",
-        "job",
-        "submit",
-        "test/workflows/parallel/description.cwl",
-    ]
-
-    start = time.time()
-    subprocess.run(command)
-    end = time.time()
-    sequential_time = end - start
-
-    command = [
-        "dirac-cwl",
-        "job",
-        "submit",
-        "test/workflows/parallel/description.cwl",
-    ]
-
-    start = time.time()
-    subprocess.run(command)
-    end = time.time()
-    parallel_time = end - start
-
-    # Parallel time should be aproximately half the time.
-    assert (parallel_time * 2 > (1 - error_margin_percentage) * sequential_time) and (
-        parallel_time * 2 < (1 + error_margin_percentage) * sequential_time
-    )
