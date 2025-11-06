@@ -696,27 +696,12 @@ def test_run_production_validation_failure(
 
 
 def test_run_parallely(cli_runner, cleanup):
-    error_margin = 0.10  # Percentage of error
+    error_margin_percentage = 0.10
 
-    command = ["job", "submit", "test/workflows/parallel/sequential.cwl"]
-    start = time.time()
-    cli_runner.invoke(app, command)
-    end = time.time()
-    sequential_time = end - start
-
-    command = ["job", "submit", "test/workflows/parallel/parallel.cwl"]
-    start = time.time()
-    cli_runner.invoke(app, command)
-    end = time.time()
-    parallel_time = end - start
-
-    assert parallel_time * 2 > (1 - error_margin) * sequential_time
-    assert parallel_time * 2 < (1 + error_margin) * sequential_time
-
-
-def test_run_parallely_one_core():
-    error_margin = 0.05  # Percentage of error
-
+    # This command forces the process 'dirac-cwl' to execute ONLY in
+    # one core of the machine, independently of how many there are
+    # phisically available.
+    # This simulates a sequential execution of the worklflow.
     command = [
         "taskset",
         "-c",
@@ -724,26 +709,27 @@ def test_run_parallely_one_core():
         "dirac-cwl",
         "job",
         "submit",
-        "test/workflows/parallel/sequential.cwl",
+        "test/workflows/parallel/description.cwl",
     ]
+
     start = time.time()
     subprocess.run(command)
     end = time.time()
     sequential_time = end - start
 
     command = [
-        "taskset",
-        "-c",
-        "0",
         "dirac-cwl",
         "job",
         "submit",
-        "test/workflows/parallel/parallel.cwl",
+        "test/workflows/parallel/description.cwl",
     ]
+
     start = time.time()
     subprocess.run(command)
     end = time.time()
     parallel_time = end - start
 
-    assert parallel_time > (1 - error_margin) * sequential_time
-    assert parallel_time < (1 + error_margin) * sequential_time
+    # Parallel time should be aproximately half the time.
+    assert (parallel_time * 2 > (1 - error_margin_percentage) * sequential_time) and (
+        parallel_time * 2 < (1 + error_margin_percentage) * sequential_time
+    )
