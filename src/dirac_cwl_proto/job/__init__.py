@@ -27,7 +27,9 @@ from rich.text import Text
 from ruamel.yaml import YAML
 from schema_salad.exceptions import ValidationException
 
-from dirac_cwl_proto.execution_hooks.core import ExecutionHooksBasePlugin
+from dirac_cwl_proto.execution_hooks import (
+    ExecutionHooksBasePlugin,
+)
 from dirac_cwl_proto.submission_models import (
     JobInputModel,
     JobSubmissionModel,
@@ -220,6 +222,7 @@ def submit_job_router(job: JobSubmissionModel) -> bool:
 
     # Validate the jobs
     logger.info("Validating the job(s)...")
+
     # Initiate 1 job per parameter
     jobs = []
     if not job.parameters:
@@ -251,8 +254,6 @@ def submit_job_router(job: JobSubmissionModel) -> bool:
 # -----------------------------------------------------------------------------
 # JobWrapper
 # -----------------------------------------------------------------------------
-
-
 def _pre_process(
     executable: CommandLineTool | Workflow | ExpressionTool,
     arguments: JobInputModel | None,
