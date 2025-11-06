@@ -270,7 +270,7 @@ def test_run_job_validation_failure(
         )
 
 
-def test_run_parallely(cli_runner, cleanup):
+def test_run_job_parallely():
     error_margin_percentage = 0.10
 
     # This command forces the process 'dirac-cwl' to execute ONLY in
