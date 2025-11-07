@@ -35,6 +35,49 @@ from dirac_cwl_proto.submission_models import (
 class JobWrapper:
     """Job Wrapper for the execution hook."""
 
+    def __download_input_sandbox(
+        self, arguments: JobInputModel, job_path: Path
+    ) -> None:
+        """
+        Download the files from the sandbox store
+        """
+        assert arguments.sandbox is not None
+        for sandbox in arguments.sandbox:
+            sandbox_path = Path("sandboxstore") / f"{sandbox}.tar.gz"
+            with tarfile.open(sandbox_path, "r:gz") as tar:
+                tar.extractall(job_path, filter="data")
+
+    def __download_input_data(self, arguments: JobInputModel, job_path: Path) -> None:
+        """
+        Download input data
+        """
+        input_data = []
+        for _, input_value in arguments.cwl.items():
+            input = input_value
+            if not isinstance(input_value, list):
+                input = [input_value]
+
+            for item in input:
+                if not isinstance(item, File):
+                    continue
+
+                # TODO: path is not the only attribute to consider, but so far it is the only one used
+                if not item.path:
+                    raise NotImplementedError("File path is not defined.")
+
+                input_path = Path(item.path)
+                if "filecatalog" in input_path.parts:
+                    input_data.append(item)
+
+        for file in input_data:
+            # TODO: path is not the only attribute to consider, but so far it is the only one used
+            if not file.path:
+                raise NotImplementedError("File path is not defined.")
+
+            input_path = Path(file.path)
+            shutil.copy(input_path, job_path / input_path.name)
+            file.path = file.path.split("/")[-1]
+
     def _pre_process(
         self,
         executable: CommandLineTool | Workflow | ExpressionTool,
@@ -63,40 +106,12 @@ class JobWrapper:
             if arguments.sandbox:
                 # Download the files from the sandbox store
                 logger.info("Downloading the files from the sandbox store...")
-                for sandbox in arguments.sandbox:
-                    sandbox_path = Path("sandboxstore") / f"{sandbox}.tar.gz"
-                    with tarfile.open(sandbox_path, "r:gz") as tar:
-                        tar.extractall(job_path, filter="data")
+                self.__download_input_sandbox(arguments, job_path)
                 logger.info("Files downloaded successfully!")
 
             # Download input data from the file catalog
             logger.info("Downloading input data from the file catalog...")
-            input_data = []
-            for _, input_value in arguments.cwl.items():
-                input = input_value
-                if not isinstance(input_value, list):
-                    input = [input_value]
-
-                for item in input:
-                    if not isinstance(item, File):
-                        continue
-
-                    # TODO: path is not the only attribute to consider, but so far it is the only one used
-                    if not item.path:
-                        raise NotImplementedError("File path is not defined.")
-
-                    input_path = Path(item.path)
-                    if "filecatalog" in input_path.parts:
-                        input_data.append(item)
-
-            for file in input_data:
-                # TODO: path is not the only attribute to consider, but so far it is the only one used
-                if not file.path:
-                    raise NotImplementedError("File path is not defined.")
-
-                input_path = Path(file.path)
-                shutil.copy(input_path, job_path / input_path.name)
-                file.path = file.path.split("/")[-1]
+            self.__download_input_data(arguments, job_path)
             logger.info("Input data downloaded successfully!")
 
             # Prepare the parameters for cwltool
