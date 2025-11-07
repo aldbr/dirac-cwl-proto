@@ -1,5 +1,8 @@
-hook_plugin: PiGatherPlugin
+hook_plugin: QueryBasedPlugin
 group_size:
   input-data: 5
 configuration:
   num_points: 100
+  query_root: "./filecatalog"
+  campaign: "pi"
+  data_type: "100"

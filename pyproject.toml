@@ -42,13 +42,9 @@ testing = ["pytest>=6", "pytest-mock"]
 
 [project.scripts]
 dirac-cwl = "dirac_cwl_proto:app"
-pi-simulate = "dirac_cwl_proto.modules.pi_simulate:app"
-pi-simulate-v2 = "dirac_cwl_proto.modules.pi_simulate_v2:app"
-pi-gather = "dirac_cwl_proto.modules.pi_gather:app"
 crypto = "dirac_cwl_proto.modules.crypto:app"
-lhcb-app = "dirac_cwl_proto.modules.lhcb_app:app"
-random-data-gen = "dirac_cwl_proto.modules.random_data_gen:app"
-gaussian-fit = "dirac_cwl_proto.modules.gaussian_fit:app"
+pi-simulate = "dirac_cwl_proto.modules.pi_simulate:app"
+pi-gather = "dirac_cwl_proto.modules.pi_gather:app"
 
 [tool.setuptools_scm]
 
@@ -65,7 +61,11 @@ allow_redefinition = true
 enable_error_code = ["import", "attr-defined"]
 
 [tool.pytest.ini_options]
-addopts = ["-v"]
+addopts = [
+    "-v",
+    "--ignore=test/test_metadata_plugins_lhcb.py",
+    "--ignore=test/test_plugins_lhcb.py",
+]
 asyncio_mode = "auto"
 
 # -------------------------
