@@ -35,6 +35,10 @@ from dirac_cwl_proto.submission_models import (
 class JobWrapper:
     """Job Wrapper for the execution hook."""
 
+    def __init__(self) -> None:
+        self.runtime_metadata: ExecutionHooksBasePlugin | None = None
+        self.job_path: Path = Path()
+
     def __download_input_sandbox(
         self, arguments: JobInputModel, job_path: Path
     ) -> None:
@@ -82,8 +86,6 @@ class JobWrapper:
         self,
         executable: CommandLineTool | Workflow | ExpressionTool,
         arguments: JobInputModel | None,
-        runtime_metadata: ExecutionHooksBasePlugin | None,
-        job_path: Path,
     ) -> list[str]:
         """
         Pre-process the job before execution.
@@ -97,7 +99,7 @@ class JobWrapper:
         command = ["cwltool", "--parallel"]
 
         task_dict = save(executable)
-        task_path = job_path / "task.cwl"
+        task_path = self.job_path / "task.cwl"
         with open(task_path, "w") as task_file:
             YAML().dump(task_dict, task_file)
         command.append(str(task_path.name))
@@ -106,23 +108,23 @@ class JobWrapper:
             if arguments.sandbox:
                 # Download the files from the sandbox store
                 logger.info("Downloading the files from the sandbox store...")
-                self.__download_input_sandbox(arguments, job_path)
+                self.__download_input_sandbox(arguments, self.job_path)
                 logger.info("Files downloaded successfully!")
 
             # Download input data from the file catalog
             logger.info("Downloading input data from the file catalog...")
-            self.__download_input_data(arguments, job_path)
+            self.__download_input_data(arguments, self.job_path)
             logger.info("Input data downloaded successfully!")
 
             # Prepare the parameters for cwltool
             logger.info("Preparing the parameters for cwltool...")
             parameter_dict = save(cast(Saveable, arguments.cwl))
-            parameter_path = job_path / "parameter.cwl"
+            parameter_path = self.job_path / "parameter.cwl"
             with open(parameter_path, "w") as parameter_file:
                 YAML().dump(parameter_dict, parameter_file)
             command.append(str(parameter_path.name))
-        if runtime_metadata:
-            return runtime_metadata.pre_process(job_path, command)
+        if self.runtime_metadata:
+            return self.runtime_metadata.pre_process(self.job_path, command)
 
         return command
 
@@ -131,8 +133,6 @@ class JobWrapper:
         status: int,
         stdout: str,
         stderr: str,
-        job_path: Path,
-        runtime_metadata: ExecutionHooksBasePlugin | None,
     ):
         """
         Post-process the job after execution.
@@ -146,8 +146,8 @@ class JobWrapper:
         logger.info(stdout)
         logger.info(stderr)
 
-        if runtime_metadata:
-            return runtime_metadata.post_process(job_path)
+        if self.runtime_metadata:
+            return self.runtime_metadata.post_process(self.job_path)
 
         return True
 
@@ -161,13 +161,13 @@ class JobWrapper:
         logger = logging.getLogger("JobWrapper")
         # Instantiate runtime metadata from the serializable descriptor and
         # the job context so implementations can access task inputs/overrides.
-        runtime_metadata = (
+        self.runtime_metadata = (
             job.execution_hooks.to_runtime(job) if job.execution_hooks else None
         )
 
         # Isolate the job in a specific directory
-        job_path = Path(".") / "workernode" / f"{random.randint(1000, 9999)}"
-        job_path.mkdir(parents=True, exist_ok=True)
+        self.job_path = Path(".") / "workernode" / f"{random.randint(1000, 9999)}"
+        self.job_path.mkdir(parents=True, exist_ok=True)
 
         try:
             # Pre-process the job
@@ -175,15 +175,13 @@ class JobWrapper:
             command = self._pre_process(
                 job.task,
                 job.parameters[0] if job.parameters else None,
-                runtime_metadata,
-                job_path,
             )
             logger.info("Task pre-processed successfully!")
 
             # Execute the task
             logger.info(f"Executing Task: {command}")
             result = subprocess.run(
-                command, capture_output=True, text=True, cwd=job_path
+                command, capture_output=True, text=True, cwd=self.job_path
             )
 
             if result.returncode != 0:
@@ -199,8 +197,6 @@ class JobWrapper:
                 result.returncode,
                 result.stdout,
                 result.stderr,
-                job_path,
-                runtime_metadata,
             ):
                 logger.info("Task post-processed successfully!")
                 return True
@@ -212,5 +208,5 @@ class JobWrapper:
             return False
         finally:
             # Clean up
-            if job_path.exists():
-                shutil.rmtree(job_path)
+            if self.job_path.exists():
+                shutil.rmtree(self.job_path)
