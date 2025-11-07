@@ -241,7 +241,7 @@ def convert_to_jdl(job: JobSubmissionModel, sandbox_id: str) -> str:
     """
 
     with open("generated.jdl", "w") as f:
-        f.write("Executable = job_wrapper_template.py;\n")
+        f.write("Executable = dirac-cwl-exec;\n")
         f.write("Arguments = job.json;\n")
         if job.task.requirements:
             if job.task.requirements[0].coresMin:
