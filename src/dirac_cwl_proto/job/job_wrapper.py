@@ -94,7 +94,7 @@ class JobWrapper:
 
         # Prepare the task for cwltool
         logger.info("Preparing the task for cwltool...")
-        command = ["cwltool"]
+        command = ["cwltool", "--parallel"]
 
         task_dict = save(executable)
         task_path = job_path / "task.cwl"
