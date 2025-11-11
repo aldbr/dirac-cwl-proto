@@ -4,7 +4,7 @@ CLI interface to run a workflow as a job.
 
 import logging
 import random
-import tarfile
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -15,14 +15,16 @@ from cwl_utils.parser.cwl_v1_2 import (
     File,
 )
 from cwl_utils.parser.cwl_v1_2_utils import load_inputfile
-from diracx.api.jobs import create_sandbox
 from diracx.cli.utils import AsyncTyper
-from diracx.client.aio import AsyncDiracClient
 from rich import print_json
 from rich.console import Console
 from schema_salad.exceptions import ValidationException
 
-from dirac_cwl_proto.job.job_wrapper import JobWrapper
+from dirac_cwl_proto.job.submission_clients import (
+    DIRACSubmissionClient,
+    PrototypeSubmissionClient,
+    SubmissionClient,
+)
 from dirac_cwl_proto.submission_models import (
     JobInputModel,
     JobSubmissionModel,
@@ -55,6 +57,11 @@ async def submit_job_client(
     - Validate the workflow
     - Start the jobs
     """
+    # Select submission strategy based on local flag
+    submission_client: SubmissionClient = (
+        PrototypeSubmissionClient() if local else DIRACSubmissionClient()
+    )
+
     # Validate the workflow
     console.print(
         "[blue]:information_source:[/blue] [bold]CLI:[/bold] Validating the job(s)..."
@@ -83,15 +90,11 @@ async def submit_job_client(
         )
         return typer.Exit(code=1)
 
-    console.print("\t[green]:heavy_check_mark:[/green] Metadata")
-    console.print("\t[green]:heavy_check_mark:[/green] Description")
+    console.print("\t[green]:heavy_check_mark:[/green] Hints")
 
-    cwl_file_paths = [Path("task.cwl")]
+    # Extract parameters if any
     parameters = []
-    sandbox_id = None
-
     if parameter_path:
-        cwl_file_paths.append(Path("parameter.cwl"))
         for parameter_p in parameter_path:
             try:
                 parameter = load_inputfile(parameter_p)
@@ -114,15 +117,10 @@ async def submit_job_client(
 
             # Prepare files for the ISB
             isb_file_paths = prepare_input_sandbox(parameter)
-            if local:
-                # Upload files to the local sandbox store
-                sandbox_id = upload_to_local_sbstore(isb_file_paths)
-            else:
-                # Modify the location of the files to point to the future location on the worker node
-                isb_file_paths = [Path(p.name) for p in isb_file_paths]
-                isb_file_paths.extend(cwl_file_paths)
-                # Upload files to the sandbox store
-                sandbox_id = await create_sandbox(isb_file_paths)
+
+            # Upload parameter sandbox
+            sandbox_id = await submission_client.upload_sandbox(isb_file_paths)
+
             parameters.append(
                 JobInputModel(
                     sandbox=[sandbox_id] if sandbox_id else None,
@@ -132,10 +130,6 @@ async def submit_job_client(
             console.print(
                 f"\t[green]:heavy_check_mark:[/green] Parameter {parameter_p}"
             )
-    else:
-        if not local:
-            # Upload files to the sandbox store
-            sandbox_id = await create_sandbox(cwl_file_paths)
 
     job = JobSubmissionModel(
         task=task,
@@ -147,57 +141,17 @@ async def submit_job_client(
         "[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Job(s) validated."
     )
 
-    jobs = validate_jobs(job)
-
     # Submit the job
     console.print(
         "[blue]:information_source:[/blue] [bold]CLI:[/bold] Submitting the job(s)..."
     )
     print_json(job.model_dump_json(indent=4))
 
-    if local:
-        if not submit_job_router(job):
-            console.print(
-                "[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to run job(s)."
-            )
-            return typer.Exit(code=1)
+    if not await submission_client.submit_job(job):
         console.print(
-            "[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Job(s) done."
+            "[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to submit job(s)."
         )
-    else:
-        jdls = []
-        for job in jobs:
-            # Dump the job model to a file
-            with open("job.json", "w") as f:
-                f.write(job.model_dump_json())
-
-            # Convert job.json to jdl
-            console.print(
-                "[blue]:information_source:[/blue] [bold]CLI:[/bold] Converting job model to jdl..."
-            )
-
-            # Make mypy checks pass
-            if job.parameters:
-                assert job.parameters is not None
-                assert job.parameters[0].sandbox is not None
-                sandbox_id = job.parameters[0].sandbox[0]
-
-            assert sandbox_id is not None
-
-            jdl = convert_to_jdl(job, sandbox_id)
-            jdls.append(jdl)
-
-        console.print(
-            "[blue]:information_source:[/blue] [bold]CLI:[/bold] Call diracx: jobs/jdl router..."
-        )
-
-        async with AsyncDiracClient() as api:
-            jdl_jobs = await api.jobs.submit_jdl_jobs(jdls)
-        jdl_jobs = []
-        console.print(
-            f"[green]:information_source:[/green] [bold]CLI:[/bold] Inserted {len(jdl_jobs)} jobs with ids:  \
-            {','.join(map(str, (jdl_job.job_id for jdl_job in jdl_jobs)))}"
-        )
+        return typer.Exit(code=1)
 
 
 def validate_jobs(job: JobSubmissionModel) -> list[JobSubmissionModel]:
@@ -231,41 +185,6 @@ def validate_jobs(job: JobSubmissionModel) -> list[JobSubmissionModel]:
     return jobs
 
 
-def convert_to_jdl(job: JobSubmissionModel, sandbox_id: str) -> str:
-    """
-    Convert job model to jdl.
-
-    :param job: The task to execute
-
-    :param sandbox_id: The sandbox id
-    """
-
-    with open("generated.jdl", "w") as f:
-        f.write("Executable = dirac-cwl-exec;\n")
-        f.write("Arguments = job.json;\n")
-        if job.task.requirements:
-            if job.task.requirements[0].coresMin:
-                f.write(f"NumberOfProcessors = {job.task.requirements[0].coresMin};\n")
-        f.write("JobName = test;\n")
-        f.write(
-            """OutputSandbox =
-        {
-            std.out,
-            std.err
-        };\n"""
-        )
-        if job.scheduling.priority:
-            f.write(f"Priority = {job.scheduling.priority};\n")
-        if job.scheduling.sites:
-            f.write(f"Site = {job.scheduling.sites};\n")
-        f.write(f"InputSandbox = {sandbox_id};\n")
-
-    f = open("generated.jdl")
-    jdl = f.read()
-
-    return jdl
-
-
 def prepare_input_sandbox(input_data: dict[str, Any]) -> list[Path]:
     """
     Extract the files from the parameters.
@@ -297,38 +216,6 @@ def prepare_input_sandbox(input_data: dict[str, Any]) -> list[Path]:
     return files_path
 
 
-def upload_to_local_sbstore(files_path: list[Path]) -> str | None:
-    """
-    Upload files to the local sandbox store
-
-    :param files_path: The file paths
-
-    :return: The sandbox id
-    """
-
-    if not files_path:
-        return None
-
-    Path("sandboxstore").mkdir(exist_ok=True)
-    # Tar the files and upload them to the file catalog
-    sandbox_path = (
-        Path("sandboxstore") / f"input_sandbox_{random.randint(1000, 9999)}.tar.gz"
-    )
-
-    with tarfile.open(sandbox_path, "w:gz") as tar:
-        for file_path in files_path:
-            console.print(
-                f"\t\t[blue]:information_source:[/blue] Found {file_path}, uploading it to the local sandbox store..."
-            )
-            tar.add(file_path, arcname=file_path.name)
-    console.print(
-        f"\t\t[blue]:information_source:[/blue] File(s) will be available through {sandbox_path}"
-    )
-
-    sandbox_id = sandbox_path.name.replace(".tar.gz", "")
-    return sandbox_id
-
-
 # -----------------------------------------------------------------------------
 # dirac-router commands
 # -----------------------------------------------------------------------------
@@ -352,10 +239,54 @@ def submit_job_router(job: JobSubmissionModel) -> bool:
     results = []
 
     for job in jobs:
-        job_wrapper = JobWrapper()
-        logger.info("Executing job locally:\n")
-        print_json(job.model_dump_json(indent=4))
-        results.append(job_wrapper.run_job(job))
-        logger.info("Jobs done.")
+        job_id = random.randint(1000, 9999)
+        results.append(run_job(job_id, job, logger.getChild(f"job-{job_id}")))
 
     return all(results)
+
+
+# -----------------------------------------------------------------------------
+# Worker node execution
+# -----------------------------------------------------------------------------
+
+
+def run_job(job_id: int, job: JobSubmissionModel, logger: logging.Logger) -> bool:
+    """
+    Run a single job by dumping it to JSON and executing the job_wrapper_template.py script.
+
+    :param job: The job to execute
+    :param logger: Logger instance for output
+
+    :return: True if the job executed successfully, False otherwise
+    """
+    logger.info("Executing job locally:\n")
+    print_json(job.model_dump_json(indent=4))
+
+    # Dump job to a JSON file
+    job_json_path = Path(f"job_{job_id}.json")
+    with open(job_json_path, "w") as f:
+        f.write(job.model_dump_json())
+
+    # Run the job_wrapper_template.py script via bash command
+    result = subprocess.run(
+        [
+            "python",
+            "-m",
+            "dirac_cwl_proto.job.job_wrapper_template",
+            str(job_json_path),
+        ],
+        capture_output=True,
+        text=True,
+    )
+
+    # Clean up the job JSON file
+    job_json_path.unlink()
+
+    # Log output
+    if result.stdout:
+        logger.info(f"STDOUT {job_id}:\n{result.stdout}")
+    if result.stderr:
+        logger.error(f"STDERR {job_id}:\n{result.stderr}")
+
+    logger.info("Job execution completed.")
+    return result.returncode == 0
