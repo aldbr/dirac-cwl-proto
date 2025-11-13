@@ -14,7 +14,6 @@ from cwl_utils.parser import (
 from cwl_utils.parser.cwl_v1_2 import (
     CommandLineTool,
     ExpressionTool,
-    File,
     Saveable,
     Workflow,
 )
@@ -55,32 +54,8 @@ class JobWrapper:
         """
         Download input data
         """
-        input_data = []
-        for _, input_value in arguments.cwl.items():
-            input = input_value
-            if not isinstance(input_value, list):
-                input = [input_value]
-
-            for item in input:
-                if not isinstance(item, File):
-                    continue
-
-                # TODO: path is not the only attribute to consider, but so far it is the only one used
-                if not item.path:
-                    raise NotImplementedError("File path is not defined.")
-
-                input_path = Path(item.path)
-                if "filecatalog" in input_path.parts:
-                    input_data.append(item)
-
-        for file in input_data:
-            # TODO: path is not the only attribute to consider, but so far it is the only one used
-            if not file.path:
-                raise NotImplementedError("File path is not defined.")
-
-            input_path = Path(file.path)
-            shutil.copy(input_path, job_path / input_path.name)
-            file.path = file.path.split("/")[-1]
+        if self.runtime_metadata:
+            self.runtime_metadata.download_lfns(arguments, job_path)
 
     def _pre_process(
         self,
@@ -111,10 +86,11 @@ class JobWrapper:
                 self.__download_input_sandbox(arguments, self.job_path)
                 logger.info("Files downloaded successfully!")
 
-            # Download input data from the file catalog
-            logger.info("Downloading input data from the file catalog...")
-            self.__download_input_data(arguments, self.job_path)
-            logger.info("Input data downloaded successfully!")
+            # Disabled for now
+            # # Download input data from the file catalog
+            # logger.info("Downloading input data from the file catalog...")
+            # self.__download_input_data(arguments, self.job_path)
+            # logger.info("Input data downloaded successfully!")
 
             # Prepare the parameters for cwltool
             logger.info("Preparing the parameters for cwltool...")
@@ -124,7 +100,9 @@ class JobWrapper:
                 YAML().dump(parameter_dict, parameter_file)
             command.append(str(parameter_path.name))
         if self.runtime_metadata:
-            return self.runtime_metadata.pre_process(self.job_path, command)
+            return self.runtime_metadata.pre_process(
+                executable, arguments, self.job_path, command
+            )
 
         return command
 
