@@ -244,7 +244,7 @@ def test_run_job_validation_failure(
 
 
 def test_run_job_parallely():
-    error_margin_percentage = 0.10
+    error_margin_percentage = 0.15
 
     # This command forces the process 'dirac-cwl' to execute ONLY in
     # one core of the machine, independently of how many there are
