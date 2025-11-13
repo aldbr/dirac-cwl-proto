@@ -18,9 +18,9 @@ inputs:
     #  a parallel and a sequetial workflow.
     # - If it's too large, the test will take too long to complete.
     #
-    # 5.000.000 points returned reasonable results, having a good balance
+    # 10.000.000 points returned reasonable results, having a good balance
     #  between the previously mentioned issues
-    default: 5000000
+    default: 10000000
 
 # Outputs for this test are not necessary
 outputs: []
