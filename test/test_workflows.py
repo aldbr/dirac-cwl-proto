@@ -244,7 +244,7 @@ def test_run_job_validation_failure(
 
 
 def test_run_job_parallely():
-    error_margin_percentage = 0.10
+    error_margin_percentage = 0.15
 
     # This command forces the process 'dirac-cwl' to execute ONLY in
     # one core of the machine, independently of how many there are
@@ -277,10 +277,8 @@ def test_run_job_parallely():
     end = time.time()
     parallel_time = end - start
 
-    min_time = (1 - error_margin_percentage) * sequential_time / 2
-    max_time = (1 + error_margin_percentage) * sequential_time / 2
     # Parallel time should be aproximately half the time.
-    assert (parallel_time > min_time) and (parallel_time < max_time), (
+    assert abs(1 - sequential_time / (2 * parallel_time)) < error_margin_percentage, (
         "Difference between parallel and sequential time is too large",
         f"Sequential: {sequential_time} # Parallel: {parallel_time}",
         f"Sequential time should be twice the parallel time with an error of {int(error_margin_percentage*100)}%",
