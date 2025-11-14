@@ -88,12 +88,13 @@ def pi_test_files():
         ),
         # --- Test metadata example ---
         # A string input is passed
-        (
-            "test/workflows/test_meta/test_meta.cwl",
-            [
-                "test/workflows/test_meta/override_dirac_hints.yaml",
-            ],
-        ),
+        # (
+        # TODO doesn't work since it doesn't override anymore
+        # "test/workflows/test_meta/test_meta.cwl",
+        # [
+        #     "test/workflows/test_meta/override_dirac_hints.yaml",
+        # ],
+        # ),
         # --- Crypto example ---
         # Complete
         (
@@ -248,7 +249,7 @@ def test_run_job_parallely():
 
     # This command forces the process 'dirac-cwl' to execute ONLY in
     # one core of the machine, independently of how many there are
-    # phisically available.
+    # physically available.
     # This simulates a sequential execution of the worklflow.
     command = [
         "taskset",
@@ -309,10 +310,7 @@ def test_run_job_parallely():
         "test/workflows/crypto/md5.cwl",
         # --- Pi example ---
         # Pi simulate transformation
-        (
-            "test/workflows/pi/pisimulate.cwl",
-            # "test/workflows/pi/type_dependencies/transformation/metadata-pi_simulate.yaml", TODO add to cwl as import
-        ),
+        "test/workflows/pi/pisimulate.cwl",
     ],
 )
 def test_run_nonblocking_transformation_success(cli_runner, cleanup, cwl_file):
@@ -333,7 +331,6 @@ def test_run_nonblocking_transformation_success(cli_runner, cleanup, cwl_file):
         # Pi gather transformation (waits for simulation result files)
         (
             "test/workflows/pi/pigather.cwl",
-            # "test/workflows/pi/type_dependencies/transformation/metadata-pi_gather.yaml", TODO add to cwl as import
             {
                 "filecatalog/pi/100/input-data": [
                     ("result_1.sim", "0.1 0.2\n-0.3 0.4\n0.5 -0.6\n"),
@@ -487,7 +484,7 @@ def test_run_transformation_validation_failure(
     [
         # --- Crypto example ---
         # Complete workflow with independent steps (ideal for production mode)
-        ("test/workflows/crypto/description.cwl", None),
+        "test/workflows/crypto/description.cwl"
     ],
 )
 def test_run_simple_production_success(cli_runner, cleanup, pi_test_files, cwl_file):

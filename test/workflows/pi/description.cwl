@@ -19,9 +19,6 @@ outputs:
     type: File
     outputSource: gathering/pi_result
 
-hints:
-  $import: "./type_dependencies/production/metadata-pi_complete.yaml"
-
 # Define the steps of the workflow
 steps:
   # Simulation step

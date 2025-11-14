@@ -13,7 +13,7 @@ $namespaces:
   dirac: "./schemas/dirac-metadata.json#" # Generated schema from Pydantic models
 hints:
   dirac:execution-hooks:
-    hook_plugin: "QueryBased"
+    hook_plugin: "QueryBased" # should be overrided
     configuration:
       campaign: PROD5
       site: LaPalma
