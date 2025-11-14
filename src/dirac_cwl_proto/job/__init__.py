@@ -4,39 +4,34 @@ CLI interface to run a workflow as a job.
 
 import logging
 import random
-import shutil
 import subprocess
-import tarfile
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 import typer
 from cwl_utils.pack import pack
-from cwl_utils.parser import load_document, save
+from cwl_utils.parser import load_document
 from cwl_utils.parser.cwl_v1_2 import (
-    CommandLineTool,
-    ExpressionTool,
     File,
-    Saveable,
-    Workflow,
 )
 from cwl_utils.parser.cwl_v1_2_utils import load_inputfile
+from diracx.cli.utils import AsyncTyper
 from rich import print_json
 from rich.console import Console
-from rich.text import Text
-from ruamel.yaml import YAML
 from schema_salad.exceptions import ValidationException
 
-from dirac_cwl_proto.execution_hooks.core import (
-    ExecutionHooksBasePlugin,
-    ExecutionHooksHint,
+from dirac_cwl_proto.job.submission_clients import (
+    DIRACSubmissionClient,
+    PrototypeSubmissionClient,
+    SubmissionClient,
 )
 from dirac_cwl_proto.submission_models import (
     JobInputModel,
     JobSubmissionModel,
+    extract_dirac_hints,
 )
 
-app = typer.Typer()
+app = AsyncTyper()
 console = Console()
 
 # -----------------------------------------------------------------------------
@@ -44,8 +39,8 @@ console = Console()
 # -----------------------------------------------------------------------------
 
 
-@app.command("submit")
-def submit_job_client(
+@app.async_command("submit")
+async def submit_job_client(
     task_path: str = typer.Argument(..., help="Path to the CWL file"),
     parameter_path: list[str]
     | None = typer.Option(None, help="Path to the files containing the metadata"),
@@ -62,6 +57,11 @@ def submit_job_client(
     - Validate the workflow
     - Start the jobs
     """
+    # Select submission strategy based on local flag
+    submission_client: SubmissionClient = (
+        PrototypeSubmissionClient() if local else DIRACSubmissionClient()
+    )
+
     # Validate the workflow
     console.print(
         "[blue]:information_source:[/blue] [bold]CLI:[/bold] Validating the job(s)..."
@@ -80,9 +80,20 @@ def submit_job_client(
         return typer.Exit(code=1)
 
     console.print(f"\t[green]:heavy_check_mark:[/green] Task {task_path}")
-    console.print("\t[green]:heavy_check_mark:[/green] Metadata")
-    console.print("\t[green]:heavy_check_mark:[/green] Description")
 
+    # Extract and validate dirac hints; unknown hints are logged as warnings.
+    try:
+        # TODO: is this necessary here to only check if they're valid?
+        _ = extract_dirac_hints(task)
+    except Exception as exc:
+        console.print(
+            f"[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Invalid DIRAC hints:\n{exc}"
+        )
+        return typer.Exit(code=1)
+
+    console.print("\t[green]:heavy_check_mark:[/green] Hints")
+
+    # Extract parameters if any
     parameters = []
     if parameter_path:
         for parameter_p in parameter_path:
@@ -94,8 +105,11 @@ def submit_job_client(
                 )
                 return typer.Exit(code=1)
 
-            # Upload the local files to the sandbox store
-            sandbox_id = upload_local_input_files(parameter)
+            # Prepare files for the ISB
+            isb_file_paths = prepare_input_sandbox(parameter)
+
+            # Upload parameter sandbox
+            sandbox_id = await submission_client.upload_sandbox(isb_file_paths)
 
             parameters.append(
                 JobInputModel(
@@ -114,18 +128,47 @@ def submit_job_client(
 
     # Submit the job
     console.print(
-        "[blue]:information_source:[/blue] [bold]CLI:[/bold] Submitting the job(s) to service..."
+        "[blue]:information_source:[/blue] [bold]CLI:[/bold] Submitting the job(s)..."
     )
     print_json(job.model_dump_json(indent=4))
-    if not submit_job_router(job):
+
+    if not await submission_client.submit_job(job):
         console.print(
-            "[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to run job(s)."
+            "[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to submit job(s)."
         )
         return typer.Exit(code=1)
-    console.print("[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Job(s) done.")
 
 
-def upload_local_input_files(input_data: dict[str, Any]) -> str | None:
+def validate_jobs(job: JobSubmissionModel) -> list[JobSubmissionModel]:
+    """
+    Validate jobs
+
+    :param job: The task to execute
+
+    :return: The list of jobs to execute
+    """
+    console.print(
+        "[blue]:information_source:[/blue] [bold]CLI:[/bold] Validating the job(s)..."
+    )
+    # Initiate 1 job per parameter
+    jobs = []
+    if not job.parameters:
+        jobs.append(job)
+    else:
+        for parameter in job.parameters:
+            jobs.append(
+                JobSubmissionModel(
+                    task=job.task,
+                    parameters=[parameter],
+                )
+            )
+    console.print(
+        "[green]:information_source:[/green] [bold]CLI:[/bold] Job(s) validated!"
+    )
+    return jobs
+
+
+def prepare_input_sandbox(input_data: dict[str, Any]) -> list[Path]:
     """
     Extract the files from the parameters.
 
@@ -133,7 +176,6 @@ def upload_local_input_files(input_data: dict[str, Any]) -> str | None:
 
     :return: The list of files
     """
-    Path("sandboxstore").mkdir(exist_ok=True)
 
     # Get the files from the input data
     files = []
@@ -145,38 +187,16 @@ def upload_local_input_files(input_data: dict[str, Any]) -> str | None:
         elif isinstance(input_value, File):
             files.append(input_value)
 
-    if not files:
-        return None
-
-    # Tar the files and upload them to the file catalog
-    sandbox_path = (
-        Path("sandboxstore") / f"input_sandbox_{random.randint(1000, 9999)}.tar.gz"
-    )
-    with tarfile.open(sandbox_path, "w:gz") as tar:
-        for file in files:
-            # TODO: path is not the only attribute to consider, but so far it is the only one used
-            if not file.path:
-                raise NotImplementedError("File path is not defined.")
-
-            file_path = Path(file.path.replace("file://", ""))
-            console.print(
-                f"\t\t[blue]:information_source:[/blue] Found {file_path} locally, uploading it to the sandbox store..."
-            )
-            tar.add(file_path, arcname=file_path.name)
-    console.print(
-        f"\t\t[blue]:information_source:[/blue] File(s) will be available through {sandbox_path}"
-    )
-
-    # Modify the location of the files to point to the future location on the worker node
+    files_path = []
     for file in files:
         # TODO: path is not the only attribute to consider, but so far it is the only one used
         if not file.path:
             raise NotImplementedError("File path is not defined.")
 
-        file.path = str(Path(".") / file.path.split("/")[-1])
+        file_path = Path(file.path.replace("file://", ""))
+        files_path.append(file_path)
 
-    sandbox_id = sandbox_path.name.replace(".tar.gz", "")
-    return sandbox_id
+    return files_path
 
 
 # -----------------------------------------------------------------------------
@@ -195,199 +215,61 @@ def submit_job_router(job: JobSubmissionModel) -> bool:
     logger = logging.getLogger("JobRouter")
 
     # Validate the jobs
-    logger.info("Validating the job(s)...")
-    # Initiate 1 job per parameter
-    jobs = []
-    if not job.parameters:
-        jobs.append(job)
-    else:
-        for parameter in job.parameters:
-            jobs.append(
-                JobSubmissionModel(
-                    task=job.task,
-                    parameters=[parameter],
-                )
-            )
-    logger.info("Job(s) validated!")
+    jobs = validate_jobs(job)
 
-    # Simulate the submission of the job (just execute the job locally)
-    logger.info("Running jobs...")
+    # Execute the job locally
+    logger.info("Executing jobs locally...")
     results = []
+
     for job in jobs:
-        logger.info("Running job:\n")
-        print_json(job.model_dump_json(indent=4))
-        results.append(run_job(job))
-    logger.info("Jobs done.")
+        job_id = random.randint(1000, 9999)
+        results.append(run_job(job_id, job, logger.getChild(f"job-{job_id}")))
 
     return all(results)
 
 
 # -----------------------------------------------------------------------------
-# JobWrapper
+# Worker node execution
 # -----------------------------------------------------------------------------
 
 
-def _pre_process(
-    executable: CommandLineTool | Workflow | ExpressionTool,
-    arguments: JobInputModel | None,
-    runtime_metadata: ExecutionHooksBasePlugin | None,
-    job_path: Path,
-) -> list[str]:
+def run_job(job_id: int, job: JobSubmissionModel, logger: logging.Logger) -> bool:
     """
-    Pre-process the job before execution.
+    Run a single job by dumping it to JSON and executing the job_wrapper_template.py script.
 
-    :return: True if the job is pre-processed successfully, False otherwise
+    :param job: The job to execute
+    :param logger: Logger instance for output
+
+    :return: True if the job executed successfully, False otherwise
     """
-    logger = logging.getLogger("JobWrapper - Pre-process")
+    logger.info("Executing job locally:\n")
+    print_json(job.model_dump_json(indent=4))
 
-    # Prepare the task for cwltool
-    logger.info("Preparing the task for cwltool...")
-    command = ["cwltool"]
+    # Dump job to a JSON file
+    job_json_path = Path(f"job_{job_id}.json")
+    with open(job_json_path, "w") as f:
+        f.write(job.model_dump_json())
 
-    task_dict = save(executable)
-    task_path = job_path / "task.cwl"
-    with open(task_path, "w") as task_file:
-        YAML().dump(task_dict, task_file)
-    command.append(str(task_path.name))
-
-    if arguments:
-        if arguments.sandbox:
-            # Download the files from the sandbox store
-            logger.info("Downloading the files from the sandbox store...")
-            for sandbox in arguments.sandbox:
-                sandbox_path = Path("sandboxstore") / f"{sandbox}.tar.gz"
-                with tarfile.open(sandbox_path, "r:gz") as tar:
-                    tar.extractall(job_path, filter="data")
-            logger.info("Files downloaded successfully!")
-
-        # Download input data from the file catalog
-        logger.info("Downloading input data from the file catalog...")
-        input_data = []
-        for _, input_value in arguments.cwl.items():
-            input = input_value
-            if not isinstance(input_value, list):
-                input = [input_value]
-
-            for item in input:
-                if not isinstance(item, File):
-                    continue
-
-                # TODO: path is not the only attribute to consider, but so far it is the only one used
-                if not item.path:
-                    raise NotImplementedError("File path is not defined.")
-
-                input_path = Path(item.path)
-                if "filecatalog" in input_path.parts:
-                    input_data.append(item)
-
-        for file in input_data:
-            # TODO: path is not the only attribute to consider, but so far it is the only one used
-            if not file.path:
-                raise NotImplementedError("File path is not defined.")
-
-            input_path = Path(file.path)
-            shutil.copy(input_path, job_path / input_path.name)
-            file.path = file.path.split("/")[-1]
-        logger.info("Input data downloaded successfully!")
-
-        # Prepare the parameters for cwltool
-        logger.info("Preparing the parameters for cwltool...")
-        parameter_dict = save(cast(Saveable, arguments.cwl))
-        parameter_path = job_path / "parameter.cwl"
-        with open(parameter_path, "w") as parameter_file:
-            YAML().dump(parameter_dict, parameter_file)
-        command.append(str(parameter_path.name))
-    if runtime_metadata:
-        return runtime_metadata.pre_process(job_path, command)
-
-    return command
-
-
-def _post_process(
-    status: int,
-    stdout: str,
-    stderr: str,
-    job_path: Path,
-    runtime_metadata: ExecutionHooksBasePlugin | None,
-):
-    """
-    Post-process the job after execution.
-
-    :return: True if the job is post-processed successfully, False otherwise
-    """
-    logger = logging.getLogger("JobWrapper - Post-process")
-    if status != 0:
-        raise RuntimeError(f"Error {status} during the task execution.")
-
-    logger.info(stdout)
-    logger.info(stderr)
-
-    if runtime_metadata:
-        return runtime_metadata.post_process(job_path)
-
-    return True
-
-
-def run_job(job: JobSubmissionModel) -> bool:
-    """
-    Executes a given CWL workflow using cwltool.
-    This is the equivalent of the DIRAC JobWrapper.
-
-    :return: True if the job is executed successfully, False otherwise
-    """
-    logger = logging.getLogger("JobWrapper")
-    # Instantiate runtime metadata from the serializable descriptor and
-    # the job context so implementations can access task inputs/overrides.
-    job_execution_hooks = ExecutionHooksHint.from_cwl(job.task)
-
-    runtime_metadata = (
-        job_execution_hooks.to_runtime(job) if job_execution_hooks else None
+    # Run the job_wrapper_template.py script via bash command
+    result = subprocess.run(
+        [
+            "python",
+            "-m",
+            "dirac_cwl_proto.job.job_wrapper_template",
+            str(job_json_path),
+        ],
+        capture_output=True,
+        text=True,
     )
 
-    # Isolate the job in a specific directory
-    job_path = Path(".") / "workernode" / f"{random.randint(1000, 9999)}"
-    job_path.mkdir(parents=True, exist_ok=True)
+    # Clean up the job JSON file
+    job_json_path.unlink()
 
-    try:
-        # Pre-process the job
-        logger.info("Pre-processing Task...")
-        command = _pre_process(
-            job.task,
-            job.parameters[0] if job.parameters else None,
-            runtime_metadata,
-            job_path,
-        )
-        logger.info("Task pre-processed successfully!")
+    # Log output
+    if result.stdout:
+        logger.info(f"STDOUT {job_id}:\n{result.stdout}")
+    if result.stderr:
+        logger.error(f"STDERR {job_id}:\n{result.stderr}")
 
-        # Execute the task
-        logger.info(f"Executing Task: {command}")
-        result = subprocess.run(command, capture_output=True, text=True, cwd=job_path)
-
-        if result.returncode != 0:
-            logger.error(
-                f"Error in executing workflow:\n{Text.from_ansi(result.stderr)}"
-            )
-            return False
-        logger.info("Task executed successfully!")
-
-        # Post-process the job
-        logger.info("Post-processing Task...")
-        if _post_process(
-            result.returncode,
-            result.stdout,
-            result.stderr,
-            job_path,
-            runtime_metadata,
-        ):
-            logger.info("Task post-processed successfully!")
-            return True
-        logger.error("Failed to post-process Task")
-        return False
-
-    except Exception:
-        logger.exception("JobWrapper: Failed to execute workflow")
-        return False
-    finally:
-        # Clean up
-        if job_path.exists():
-            shutil.rmtree(job_path)
+    logger.info("Job execution completed.")
+    return result.returncode == 0

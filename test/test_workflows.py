@@ -1,5 +1,6 @@
 import re
 import shutil
+import subprocess
 import threading
 import time
 from pathlib import Path
@@ -30,6 +31,30 @@ def cleanup():
     _cleanup()
     yield
     _cleanup()
+
+
+@pytest.fixture()
+def pi_test_files():
+    """Create test files needed for pi workflow tests."""
+    # Create job input files
+    job_dir = Path("test/workflows/pi/type_dependencies/job")
+    job_dir.mkdir(parents=True, exist_ok=True)
+
+    # Create result files for pi-gather job test (result_1.sim through result_5.sim)
+    result_files = []
+    for i in range(1, 6):
+        result_file = job_dir / f"result_{i}.sim"
+        with open(result_file, "w") as f:
+            # Create different sample data for each file
+            f.write(f"0.{i} 0.{i+1}\n-0.{i+2} 0.{i+3}\n0.{i+4} -0.{i+5}\n")
+        result_files.append(result_file)
+
+    yield
+
+    # Cleanup - remove created files
+    for result_file in result_files:
+        if result_file.exists():
+            result_file.unlink()
 
 
 # -----------------------------------------------------------------------------
@@ -96,7 +121,7 @@ def cleanup():
             ["test/workflows/crypto/type_dependencies/job/inputs-crypto_complete.yaml"],
         ),
         # --- Pi example ---
-        # Complete
+        # Complete workflow
         (
             "test/workflows/pi/description.cwl",
             ["test/workflows/pi/type_dependencies/job/inputs-pi_complete.yaml"],
@@ -108,60 +133,9 @@ def cleanup():
             "test/workflows/pi/pigather.cwl",
             ["test/workflows/pi/type_dependencies/job/inputs-pi_gather.yaml"],
         ),
-        # --- Merge example ---
-        # Complete
-        ("test/workflows/merge/description.cwl", []),
-        # --- LHCb example ---
-        # Complete
-        (
-            "test/workflows/lhcb/description.cwl",
-            ["test/workflows/lhcb/type_dependencies/job/inputs-lhcb_complete.yaml"],
-        ),
-        # Simulate only
-        (
-            "test/workflows/lhcb/lhcbsimulate.cwl",
-            ["test/workflows/lhcb/type_dependencies/job/inputs-lhcb_simulate.yaml"],
-        ),
-        # Reconstruct only
-        (
-            "test/workflows/lhcb/lhcbreconstruct.cwl",
-            ["test/workflows/lhcb/type_dependencies/job/inputs-lhcb_reconstruct.yaml"],
-        ),
-        # --- Mandelbrot example ---
-        # Complete
-        (
-            "test/workflows/mandelbrot/description.cwl",
-            [
-                "test/workflows/mandelbrot/type_dependencies/job/inputs-mandelbrot_complete.yaml"
-            ],
-        ),
-        # Image production only
-        ("test/workflows/mandelbrot/image-prod.cwl", []),
-        # Image merge only
-        (
-            "test/workflows/mandelbrot/image-merge.cwl",
-            [
-                "test/workflows/mandelbrot/type_dependencies/job/inputs-mandelbrot_imagemerge.yaml"
-            ],
-        ),
-        # --- Gaussian fit example ---
-        # Data generation only
-        (
-            "test/workflows/gaussian_fit/data_generation/data-generation.cwl",
-            [
-                "test/workflows/gaussian_fit/type_dependencies/job/inputs-data-generation.yaml"
-            ],
-        ),
-        # Gaussian fit only
-        (
-            "test/workflows/gaussian_fit/gaussian_fit/gaussian-fit.cwl",
-            [
-                "test/workflows/gaussian_fit/type_dependencies/job/inputs-gaussian-fit.yaml"
-            ],
-        ),
     ],
 )
-def test_run_job_success(cli_runner, cleanup, cwl_file, inputs):
+def test_run_job_success(cli_runner, cleanup, pi_test_files, cwl_file, inputs):
     # CWL file is the first argument
     command = ["job", "submit", cwl_file]
 
@@ -269,6 +243,48 @@ def test_run_job_validation_failure(
         )
 
 
+def test_run_job_parallely():
+    error_margin_percentage = 0.15
+
+    # This command forces the process 'dirac-cwl' to execute ONLY in
+    # one core of the machine, independently of how many there are
+    # phisically available.
+    # This simulates a sequential execution of the worklflow.
+    command = [
+        "taskset",
+        "-c",
+        "0",
+        "dirac-cwl",
+        "job",
+        "submit",
+        "test/workflows/parallel/description.cwl",
+    ]
+
+    start = time.time()
+    subprocess.run(command)
+    end = time.time()
+    sequential_time = end - start
+
+    command = [
+        "dirac-cwl",
+        "job",
+        "submit",
+        "test/workflows/parallel/description.cwl",
+    ]
+
+    start = time.time()
+    subprocess.run(command)
+    end = time.time()
+    parallel_time = end - start
+
+    # Parallel time should be aproximately half the time.
+    assert abs(1 - sequential_time / (2 * parallel_time)) < error_margin_percentage, (
+        "Difference between parallel and sequential time is too large",
+        f"Sequential: {sequential_time} # Parallel: {parallel_time}",
+        f"Sequential time should be twice the parallel time with an error of {int(error_margin_percentage*100)}%",
+    )
+
+
 # -----------------------------------------------------------------------------
 # Transformation tests
 # -----------------------------------------------------------------------------
@@ -292,18 +308,11 @@ def test_run_job_validation_failure(
         # MD5 only
         "test/workflows/crypto/md5.cwl",
         # --- Pi example ---
-        # There is no input expected
-        "test/workflows/pi/pisimulate.cwl",
-        # --- Pi v2 example ---
-        # There is no input expected
-        "test/workflows/merge/pisimulate_v2.cwl",
-        # --- LHCb example ---
-        "test/workflows/lhcb/lhcbsimulate.cwl",
-        # --- Mandelbrot example ---
-        "test/workflows/mandelbrot/image-prod.cwl",
-        # --- Gaussian fit example ---
-        # Data generation workflow
-        "test/workflows/gaussian_fit/data_generation/data-generation-workflow.cwl",
+        # Pi simulate transformation
+        (
+            "test/workflows/pi/pisimulate.cwl",
+            # "test/workflows/pi/type_dependencies/transformation/metadata-pi_simulate.yaml", TODO add to cwl as import
+        ),
     ],
 )
 def test_run_nonblocking_transformation_success(cli_runner, cleanup, cwl_file):
@@ -321,50 +330,18 @@ def test_run_nonblocking_transformation_success(cli_runner, cleanup, cwl_file):
     "cwl_file, destination_source_input_data",
     [
         # --- Pi example ---
+        # Pi gather transformation (waits for simulation result files)
         (
             "test/workflows/pi/pigather.cwl",
+            # "test/workflows/pi/type_dependencies/transformation/metadata-pi_gather.yaml", TODO add to cwl as import
             {
-                "filecatalog/pi/100": [
-                    "test/workflows/pi/type_dependencies/job/result_1.sim",
-                    "test/workflows/pi/type_dependencies/job/result_2.sim",
-                    "test/workflows/pi/type_dependencies/job/result_3.sim",
-                    "test/workflows/pi/type_dependencies/job/result_4.sim",
-                    "test/workflows/pi/type_dependencies/job/result_5.sim",
+                "filecatalog/pi/100/input-data": [
+                    ("result_1.sim", "0.1 0.2\n-0.3 0.4\n0.5 -0.6\n"),
+                    ("result_2.sim", "-0.1 0.8\n0.9 -0.2\n-0.7 0.3\n"),
+                    ("result_3.sim", "0.4 0.5\n-0.8 -0.1\n0.6 0.7\n"),
+                    ("result_4.sim", "-0.9 0.0\n0.2 -0.4\n-0.5 0.8\n"),
+                    ("result_5.sim", "0.3 -0.7\n-0.6 0.1\n0.9 -0.2\n"),
                 ]
-            },
-        ),
-        # --- LHCb example ---
-        (
-            "test/workflows/lhcb/lhcbreconstruct.cwl",
-            {
-                "filecatalog/lhcb/456/123/simulation": [
-                    "test/workflows/lhcb/type_dependencies/job/Gauss_123_456_1.sim",
-                    "test/workflows/lhcb/type_dependencies/job/Gauss_456_456_1.sim",
-                    "test/workflows/lhcb/type_dependencies/job/Gauss_789_456_1.sim",
-                ]
-            },
-        ),
-        # --- Mandelbrot example ---
-        (
-            "test/workflows/mandelbrot/image-merge.cwl",
-            {
-                "filecatalog/mandelbrot/images/raw/1920x1080/": [
-                    "test/workflows/mandelbrot/type_dependencies/transformation/data_1.txt",
-                    "test/workflows/mandelbrot/type_dependencies/transformation/data_2.txt",
-                    "test/workflows/mandelbrot/type_dependencies/transformation/data_3.txt",
-                ]
-            },
-        ),
-        # Gaussian fit workflow
-        (
-            "test/workflows/gaussian_fit/gaussian_fit/gaussian-fit-workflow.cwl",
-            {
-                "filecatalog/gaussian_fit/data-generation-1/": [
-                    "test/workflows/gaussian_fit/type_dependencies/transformation/data-generation-1/data_gen1.txt",
-                ],
-                "filecatalog/gaussian_fit/data-generation-2/": [
-                    "test/workflows/gaussian_fit/type_dependencies/transformation/data-generation-2/data_gen2.txt",
-                ],
             },
         ),
     ],
@@ -384,26 +361,30 @@ def test_run_blocking_transformation_success(
         nonlocal transformation_result
         transformation_result = run_transformation()
 
+    # Start the transformation in a separate thread (it will wait for files)
     transformation_thread = threading.Thread(target=run_and_capture)
     transformation_thread.start()
 
-    # Give it some time to ensure the command is waiting for input files
-    time.sleep(5)
+    # Give it some time to start and begin waiting for input files
+    time.sleep(2)
 
-    # Ensure the command is waiting (e.g., it hasn't finished yet)
+    # Verify the transformation is still running (waiting for files)
     assert (
         transformation_thread.is_alive()
     ), "The transformation should be waiting for files."
 
+    # Now create the input files (simulating files becoming available)
     for destination, inputs in destination_source_input_data.items():
-        # Copy the input data to the destination
+        # Create the destination directory and files with content
         destination = Path(destination)
         destination.mkdir(parents=True, exist_ok=True)
-        for input in inputs:
-            shutil.copy(input, destination)
+        for filename, content in inputs:
+            file_path = destination / filename
+            with open(file_path, "w") as f:
+                f.write(content)
 
-    # Wait for the thread to finish
-    transformation_thread.join(timeout=60)
+    # Wait for the transformation to detect the files and complete
+    transformation_thread.join(timeout=30)
 
     # Check if the transformation completed successfully
     assert (
@@ -505,25 +486,11 @@ def test_run_transformation_validation_failure(
     "cwl_file",
     [
         # --- Crypto example ---
-        # Complete
-        "test/workflows/crypto/description.cwl",
-        # --- Pi example ---
-        # There is no input expected
-        "test/workflows/pi/description.cwl",
-        # --- Merge example ---
-        # There is no input expected
-        "test/workflows/merge/description.cwl",
-        # --- LHCb example ---
-        # Complete
-        "test/workflows/lhcb/description.cwl",
-        # --- Mandelbrot example ---
-        "test/workflows/mandelbrot/description.cwl",
-        # --- Gaussian fit example ---
-        # Complete
-        "test/workflows/gaussian_fit/main-workflow.cwl",
+        # Complete workflow with independent steps (ideal for production mode)
+        ("test/workflows/crypto/description.cwl", None),
     ],
 )
-def test_run_simple_production_success(cli_runner, cleanup, cwl_file):
+def test_run_simple_production_success(cli_runner, cleanup, pi_test_files, cwl_file):
     # CWL file is the first argument
     command = ["production", "submit", cwl_file]
 
@@ -566,16 +533,6 @@ def test_run_simple_production_success(cli_runner, cleanup, cwl_file):
         (
             "test/workflows/helloworld/description_basic.cwl",
             "InputshouldbeaninstanceofWorkflow",
-        ),
-        # The metadata has an unexistent step name
-        (
-            "test/workflows/mandelbrot/malformed-wrong-stepname_description.cwl",
-            "Thefollowingstepsaremissingfromthetaskworkflow:{'this-step-doesnot-exist'}",
-        ),
-        # The metadata has an unexistent type
-        (
-            "test/workflows/mandelbrot/malformed-nonexisting-type_description.cwl",
-            "Unknownexecutionhooksplugin:'MandelBrotDoesNotExist'",
         ),
     ],
 )

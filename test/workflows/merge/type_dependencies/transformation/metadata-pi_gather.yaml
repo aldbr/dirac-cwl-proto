@@ -1,7 +1,0 @@
-$namespaces:
-  dirac: "test/workflows/test_meta/schemas/dirac-metadata.json"
-dirac:execution-hooks:
-  hook_plugin: PiGatherPlugin
-  configuration:
-    num_points: 1000
-    input-data: 2

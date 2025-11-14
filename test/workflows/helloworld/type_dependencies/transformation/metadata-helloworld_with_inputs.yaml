@@ -1,4 +1,4 @@
 $namespaces:
   dirac: "test/workflows/test_meta/schemas/dirac-metadata.json"
 dirac:execution-hooks:
-  hook_plugin: UserPlugin
+  hook_plugin: QueryBased

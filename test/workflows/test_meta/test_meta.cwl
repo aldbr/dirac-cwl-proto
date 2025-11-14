@@ -10,10 +10,10 @@ outputs: []
 baseCommand: ["echo", "Hello World"]
 
 $namespaces:
-  dirac: "test/workflows/test_meta/schemas/dirac-metadata.json" # Generated schema from Pydantic models
+  dirac: "./schemas/dirac-metadata.json#" # Generated schema from Pydantic models
 hints:
   dirac:execution-hooks:
-    hook_plugin: UserPlugin
+    hook_plugin: "QueryBased"
     configuration:
       campaign: PROD5
       site: LaPalma
