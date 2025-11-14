@@ -6,6 +6,9 @@ requirements:
     coresMin: 2
     ramMin: 1024
 
+hints:
+  $import: "type_dependencies/transformation/metadata-pi_simulate.yaml"
+
 inputs:
   num-points:
     type: int

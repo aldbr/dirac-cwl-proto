@@ -83,7 +83,8 @@ async def submit_job_client(
 
     # Extract and validate dirac hints; unknown hints are logged as warnings.
     try:
-        job_metadata, job_scheduling = extract_dirac_hints(task)
+        # TODO: is this necessary here to only check if they're valid?
+        _ = extract_dirac_hints(task)
     except Exception as exc:
         console.print(
             f"[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Invalid DIRAC hints:\n{exc}"
@@ -104,17 +105,6 @@ async def submit_job_client(
                 )
                 return typer.Exit(code=1)
 
-            overrides = parameter.pop("cwltool:overrides", {})
-            if overrides:
-                override_hints = overrides[next(iter(overrides))].get("hints", {})
-                if override_hints:
-                    job_scheduling = job_scheduling.model_copy(
-                        update=override_hints.pop("dirac:scheduling", {})
-                    )
-                    job_metadata = job_metadata.model_copy(
-                        update=override_hints.pop("dirac:execution-hooks", {})
-                    )
-
             # Prepare files for the ISB
             isb_file_paths = prepare_input_sandbox(parameter)
 
@@ -131,12 +121,7 @@ async def submit_job_client(
                 f"\t[green]:heavy_check_mark:[/green] Parameter {parameter_p}"
             )
 
-    job = JobSubmissionModel(
-        task=task,
-        parameters=parameters,
-        scheduling=job_scheduling,
-        execution_hooks=job_metadata,
-    )
+    job = JobSubmissionModel(task=task, parameters=parameters)
     console.print(
         "[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Job(s) validated."
     )
@@ -175,8 +160,6 @@ def validate_jobs(job: JobSubmissionModel) -> list[JobSubmissionModel]:
                 JobSubmissionModel(
                     task=job.task,
                     parameters=[parameter],
-                    scheduling=job.scheduling,
-                    execution_hooks=job.execution_hooks,
                 )
             )
     console.print(
