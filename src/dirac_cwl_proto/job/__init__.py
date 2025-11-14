@@ -34,7 +34,6 @@ from dirac_cwl_proto.execution_hooks.core import (
 from dirac_cwl_proto.submission_models import (
     JobInputModel,
     JobSubmissionModel,
-    extract_dirac_hints,
 )
 
 app = typer.Typer()
@@ -81,16 +80,6 @@ def submit_job_client(
         return typer.Exit(code=1)
 
     console.print(f"\t[green]:heavy_check_mark:[/green] Task {task_path}")
-
-    # Extract and validate dirac hints; unknown hints are logged as warnings.
-    try:
-        job_metadata, job_scheduling = extract_dirac_hints(task)
-    except Exception as exc:
-        console.print(
-            f"[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Invalid DIRAC hints:\n{exc}"
-        )
-        return typer.Exit(code=1)
-
     console.print("\t[green]:heavy_check_mark:[/green] Metadata")
     console.print("\t[green]:heavy_check_mark:[/green] Description")
 
@@ -104,17 +93,6 @@ def submit_job_client(
                     f"[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to validate the parameter:\n{ex}"
                 )
                 return typer.Exit(code=1)
-
-            overrides = parameter.pop("cwltool:overrides", {})
-            if overrides:
-                override_hints = overrides[next(iter(overrides))].get("hints", {})
-                if override_hints:
-                    job_scheduling = job_scheduling.model_copy(
-                        update=override_hints.pop("dirac:scheduling", {})
-                    )
-                    job_metadata = job_metadata.model_copy(
-                        update=override_hints.pop("dirac:execution-hooks", {})
-                    )
 
             # Upload the local files to the sandbox store
             sandbox_id = upload_local_input_files(parameter)
