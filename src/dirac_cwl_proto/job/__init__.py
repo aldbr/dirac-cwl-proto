@@ -28,7 +28,6 @@ from dirac_cwl_proto.job.submission_clients import (
 from dirac_cwl_proto.submission_models import (
     JobInputModel,
     JobSubmissionModel,
-    extract_dirac_hints,
 )
 
 app = AsyncTyper()
@@ -80,17 +79,6 @@ async def submit_job_client(
         return typer.Exit(code=1)
 
     console.print(f"\t[green]:heavy_check_mark:[/green] Task {task_path}")
-
-    # Extract and validate dirac hints; unknown hints are logged as warnings.
-    try:
-        # TODO: is this necessary here to only check if they're valid?
-        _ = extract_dirac_hints(task)
-    except Exception as exc:
-        console.print(
-            f"[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Invalid DIRAC hints:\n{exc}"
-        )
-        return typer.Exit(code=1)
-
     console.print("\t[green]:heavy_check_mark:[/green] Hints")
 
     # Extract parameters if any
