@@ -58,7 +58,7 @@ class JobSubmissionModel(BaseModel):
             raise TypeError(f"Cannot serialize type {type(value)}")
 
     @model_validator(mode="before")
-    def validate_hints(self, values):
+    def validate_hints(cls, values):
         task = values.get("task")
         _ = extract_dirac_hints(task)
 
