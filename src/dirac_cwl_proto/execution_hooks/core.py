@@ -20,7 +20,6 @@ from typing import (
     Self,
     Sequence,
     TypeVar,
-    Union,
     cast,
 )
 
@@ -37,8 +36,8 @@ from ruamel.yaml import YAML
 
 from dirac_cwl_proto.commands import PostProcessCommand, PreProcessCommand
 from dirac_cwl_proto.core.exceptions import WorkflowProcessingException
-from dirac_cwl_proto.execution_hooks.DataManagement.data_manager import DataManager
-from dirac_cwl_proto.execution_hooks.DataManagement.sandbox import (
+from dirac_cwl_proto.execution_hooks.data_management.data_manager import DataManager
+from dirac_cwl_proto.execution_hooks.data_management.sandbox import (
     upload_files_as_sandbox,
 )
 
@@ -69,11 +68,6 @@ class ExecutionHooksBasePlugin(BaseModel):
     vo: ClassVar[Optional[str]] = None
     version: ClassVar[str] = "1.0.0"
     description: ClassVar[str] = "Base metadata model"
-
-    campaign: Optional[str] = None
-    site: Optional[str] = None
-    data_type: Optional[str] = None
-    base_path: Path = Path("/")
 
     output_paths: Dict[str, Any] = {}
     output_sandbox: list[str] = []
@@ -305,49 +299,6 @@ class ExecutionHooksBasePlugin(BaseModel):
             outputted_files[output] = file_paths
         return outputted_files
 
-    def get_input_query(
-        self, input_name: str, **kwargs: Any
-    ) -> Union[Path, List[Path], None]:
-        """Generate LFN-based input query path.
-
-        Accepts and ignores extra kwargs for interface compatibility.
-        """
-        # Build LFN: /base_path/vo/campaign/site/data_type/input_name
-        path_parts = []
-
-        if self.vo:
-            path_parts.append(self.vo)
-
-        if self.campaign:
-            path_parts.append(self.campaign)
-        if self.site:
-            path_parts.append(self.site)
-        if self.data_type:
-            path_parts.append(self.data_type)
-
-        if len(path_parts) > 0:  # More than just VO
-            return self.base_path / Path(*path_parts) / Path(input_name)
-
-        return self.base_path / Path(input_name)
-
-    def get_output_query(self, output_name: str, **kwargs: Any) -> Optional[Path]:
-        """Generate LFN-based output path.
-
-        Accepts and ignores extra kwargs for interface compatibility.
-        """
-        # Output path: /grid/data/vo/outputs/campaign/site
-        output_base = self.base_path
-        if self.vo:
-            output_base = output_base / self.vo
-        output_base = output_base / "outputs"
-
-        if self.campaign:
-            output_base = output_base / self.campaign
-        if self.site:
-            output_base = output_base / self.site
-
-        return output_base
-
     def store_output(
         self,
         output_name: str,
@@ -390,10 +341,8 @@ class ExecutionHooksBasePlugin(BaseModel):
                 src_path = [src_path]
             upload_files_as_sandbox(src_path)
         else:
-            if self.output_paths and output_name in self.output_paths:
-                lfn = self.output_paths[output_name]
-            else:
-                lfn = self.get_output_query(output_name)
+            lfn = self.output_paths.get(output_name, None)
+
             if lfn:
                 if isinstance(src_path, str) or isinstance(src_path, Path):
                     src_path = [src_path]

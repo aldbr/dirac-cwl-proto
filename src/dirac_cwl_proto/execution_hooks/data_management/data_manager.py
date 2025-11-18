@@ -2,7 +2,9 @@ from pathlib import Path
 
 from DIRAC.Resources.Storage.FileStorage import FileStorage  # type: ignore[import-untyped]
 
-from dirac_cwl_proto.execution_hooks.DataManagement.file_catalog import LocalFileCatalog
+from dirac_cwl_proto.execution_hooks.data_management.file_catalog import (
+    LocalFileCatalog,
+)
 
 
 class DataManager:
@@ -33,37 +35,6 @@ class DataManager:
             )
         else:
             self.file_catalog = None
-
-    def get_replicas_from_directory(self, directory):
-        """Retrieve replica information for all files in a directory.
-
-        Parameters
-        ----------
-        directory : str | Path
-            Directory path to query.
-
-        Notes
-        -----
-        Currently unimplemented.
-        """
-        pass
-
-    def get_files_from_directory(
-        self,
-        directory,
-    ):
-        """List files available within a directory.
-
-        Parameters
-        ----------
-        directory : str | Path
-            Path of the directory to inspect.
-
-        Notes
-        -----
-        Currently unimplemented.
-        """
-        pass
 
     def get_file(self, lfn, destinationDir=".", sourceSE=None):
         """Download a file (or files) from a DIRAC Storage Element.
@@ -146,38 +117,6 @@ class DataManager:
         # TODO use file catalog as well
         return self.put(lfn, fileName, diracSE, path)
 
-    def remove_file(self, lfn, force=None):
-        """Remove a file from the storage element and catalog.
-
-        Parameters
-        ----------
-        lfn : str
-            Logical File Name of the file to remove.
-        force : bool, optional
-            Whether to forcibly remove the file even if inconsistencies occur.
-
-        Notes
-        -----
-        Currently unimplemented.
-        """
-        pass
-
-    def remove_replica(self, storageElementName, lfn):
-        """Remove a specific replica of a file from a storage element.
-
-        Parameters
-        ----------
-        storageElementName : str
-            Name of the storage element.
-        lfn : str
-            Logical File Name of the file replica to remove.
-
-        Notes
-        -----
-        Currently unimplemented.
-        """
-        pass
-
     def put(self, lfn, fileName, diracSE=None, path=None):
         """Upload a file to the storage element.
 
@@ -221,5 +160,3 @@ class DataManager:
         if self.file_catalog:
             return self.file_catalog.get_replicas(lfns)
         return None
-
-    # TODO: check if other methods are needed

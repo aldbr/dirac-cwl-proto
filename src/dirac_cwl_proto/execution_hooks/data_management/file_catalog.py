@@ -56,7 +56,6 @@ class LocalFileCatalog(FileCatalogInterface):
     def get_replicas(self, lfns, **kwargs):
         return {lfn: {"local": str(lfn).removeprefix("lfn:")} for lfn in lfns}
 
-    # TODO
     def add_file(self, lfns: str | list, **kwargs) -> dict:
         raise NotImplementedError
 

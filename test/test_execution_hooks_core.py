@@ -62,56 +62,6 @@ class TestExecutionHook:
         processor.post_process(Path("/tmp"))  # Should not raise exception
 
 
-# class TestDataCatalogInterface:
-#     """Test the DataCatalogInterface abstract base class."""
-
-#     def test_abstract_methods(self):
-#         """Test that DataCatalogInterface cannot be instantiated directly."""
-#         with pytest.raises(TypeError):
-#             DataCatalogInterface()
-
-#     def test_concrete_implementation(self):
-#         """Test that concrete implementations work correctly."""
-
-#         class ConcreteCatalog(DataCatalogInterface):
-#             def get_input_query(
-#                 self, input_name: str, **kwargs: Any
-#             ) -> Union[Path, List[Path], None]:
-#                 return Path(f"/data/{input_name}")
-
-#             def get_output_query(
-#                 self, output_name: str, **kwargs: Any
-#             ) -> Optional[Path]:
-#                 return Path(f"/output/{output_name}")
-
-#             def store_output(
-#                 self, output_name: str, **kwargs: Any
-#             ) -> None:
-#                 pass
-
-#         catalog = ConcreteCatalog()
-
-#         # Test get_input_query
-#         result = catalog.get_input_query("test_input")
-#         assert result == Path("/data/test_input")
-
-#         # Test get_output_query
-#         result = catalog.get_output_query("test_output")
-#         assert result == Path("/output/test_output")
-
-#         # Test store_output
-#         catalog.store_output("test_output")  # Should not raise an error
-
-
-# class TestSandboxInterface:
-#     """Test the SandboxInterface base class."""
-
-#     def test_output_query(self):
-#         sandbox = SandboxInterface()
-#         output_path = sandbox.get_output_path("1337")
-#         assert output_path == Path("sandboxstore/output_sandbox_1337.tar.gz")
-
-
 class TestExecutionHookExtended:
     """Test the ExecutionHooksBasePlugin foundation class methods."""
 
@@ -151,10 +101,6 @@ class TestExecutionHookExtended:
 
         # Use a temp directory for the data catalog to avoid system path issues
         model = TestModel(base_path=tmp_path)
-
-        # Test DataCatalogInterface methods
-        assert str(model.get_input_query("test")) == str(tmp_path / "test")
-        assert str(model.get_output_query("test")) == str(tmp_path / "outputs")
 
         # Test store_output raises RuntimeError when src_path is missing
         with pytest.raises(RuntimeError, match="src_path parameter required"):
@@ -205,10 +151,6 @@ class TestExecutionHookExtended:
         assert data == {
             "field": "test",
             "value": 42,
-            "base_path": Path("/"),
-            "campaign": None,
-            "data_type": None,
-            "site": None,
             "output_paths": {},
             "output_sandbox": [],
         }
