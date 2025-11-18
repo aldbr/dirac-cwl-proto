@@ -88,13 +88,12 @@ def pi_test_files():
         ),
         # --- Test metadata example ---
         # A string input is passed
-        # (
-        # TODO doesn't work since it doesn't override anymore
-        # "test/workflows/test_meta/test_meta.cwl",
-        # [
-        #     "test/workflows/test_meta/override_dirac_hints.yaml",
-        # ],
-        # ),
+        (
+            "test/workflows/test_meta/test_meta.cwl",
+            [
+                "test/workflows/test_meta/override_dirac_hints.yaml",
+            ],
+        ),
         # --- Crypto example ---
         # Complete
         (

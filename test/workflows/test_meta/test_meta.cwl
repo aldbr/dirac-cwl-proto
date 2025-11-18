@@ -17,7 +17,10 @@ $schemas:
 
 hints:
   - class: dirac:ExecutionHooksHint
-    hook_plugin: "QueryBased" # should be overrided by inputs with cwl:override (how?)
+    # TODO: initial value is "QueryBased" (?):
+    # it should be overrided by inputs with cwl:override (how?)
+    # to make the test work, we'll put QueryBasedPlugin for now.
+    hook_plugin: "QueryBasedPlugin"
     configuration:
       campaign: PROD5
       site: LaPalma
