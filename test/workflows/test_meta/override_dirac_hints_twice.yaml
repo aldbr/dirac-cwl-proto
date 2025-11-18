@@ -1,12 +1,12 @@
 cwltool:overrides:
   test_meta.cwl:
     hints:
-      dirac:execution-hooks:
+      - class: dirac:ExecutionHooksHint
         hook_plugin: 'QueryBasedPlugin'
         configuration:
           site: 'Paranal'
 
-      dirac:scheduling:
+      - class: dirac:SchedulingHint
         platform: x86_64
         priority: 5
         sites: [ 'CSCS', 'PIC' ]
@@ -14,12 +14,12 @@ cwltool:overrides:
 cwltool:overrides:
   test_meta.cwl:
     hints:
-      dirac:execution-hooks:
+      - class: dirac:ExecutionHooksHint
         hook_plugin: 'QueryBasedPlugin'
         configuration:
           site: 'LaPalma'
 
-      dirac:scheduling:
+      - class: dirac:SchedulingHint
         platform: arm64
         priority: 3
         sites: [ 'CSCS', 'PIC' ]

@@ -6,6 +6,12 @@ requirements:
     coresMin: 2
     ramMin: 1024
 
+$namespaces:
+  dirac: "../../schemas/dirac-metadata.json#/$defs/"
+
+$schemas:
+  - "../../schemas/dirac-metadata.json"
+
 hints:
   $import: "type_dependencies/transformation/metadata-pi_simulate.yaml"
 
@@ -22,4 +28,4 @@ outputs:
     outputBinding:
       glob: "result*.sim"
 
-baseCommand: [pi-simulate]
+baseCommand: [ pi-simulate ]

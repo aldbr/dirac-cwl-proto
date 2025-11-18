@@ -1,4 +1,3 @@
-$namespaces:
-  dirac: "test/workflows/test_meta/schemas/dirac-metadata.json"
-dirac:execution-hooks:
-  hook_plugin: QueryBased
+# TODO: what is the purpose of this file? Should it be imported in description_with_inputs.cwl?
+dirac:ExecutionHooksHint:
+  hook_plugin: QueryBasedPlugin

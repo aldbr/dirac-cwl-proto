@@ -6,6 +6,12 @@ requirements:
     coresMin: 1
     ramMin: 1024
 
+$namespaces:
+  dirac: "../../schemas/dirac-metadata.json#/$defs/"
+
+$schemas:
+  - "../../schemas/dirac-metadata.json"
+
 hints:
   $import: "type_dependencies/transformation/metadata-pi_gather.yaml"
 
@@ -21,4 +27,4 @@ outputs:
     outputBinding:
       glob: "result*.sim"
 
-baseCommand: [pi-gather]
+baseCommand: [ pi-gather ]

@@ -1,6 +1,4 @@
-$namespaces:
-  dirac: "test/workflows/test_meta/schemas/dirac-metadata.json"
-dirac:execution-hooks:
+- class: dirac:ExecutionHooksHint
   hook_plugin: QueryBasedPlugin
   group_size:
     input-data: 5
