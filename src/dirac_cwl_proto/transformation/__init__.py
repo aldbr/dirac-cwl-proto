@@ -21,6 +21,7 @@ from dirac_cwl_proto.execution_hooks import (
     SchedulingHint,
     TransformationExecutionHooksHint,
 )
+from dirac_cwl_proto.execution_hooks.plugins.core import QueryBasedPlugin
 from dirac_cwl_proto.job import submit_job_router
 from dirac_cwl_proto.submission_models import (
     JobInputModel,
@@ -150,6 +151,7 @@ def submit_transformation_router(transformation: TransformationSubmissionModel) 
         for input_name, group_size in transformation.execution_hooks.group_size.items():
             # Get input query
             logger.info(f"\t- Getting input query for {input_name}...")
+            assert isinstance(transformation_metadata, QueryBasedPlugin)
             input_query = transformation_metadata.get_input_query(input_name)
             if not input_query:
                 raise RuntimeError("Input query not found.")

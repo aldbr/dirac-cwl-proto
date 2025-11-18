@@ -1,5 +1,5 @@
 """
-CLI interface to run a  as a job.
+CLI interface to run a workflow as a job.
 """
 
 import logging
