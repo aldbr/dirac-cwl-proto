@@ -46,7 +46,7 @@ def pi_test_files():
         result_file = job_dir / f"result_{i}.sim"
         with open(result_file, "w") as f:
             # Create different sample data for each file
-            f.write(f"0.{i} 0.{i+1}\n-0.{i+2} 0.{i+3}\n0.{i+4} -0.{i+5}\n")
+            f.write(f"0.{i} 0.{i + 1}\n-0.{i + 2} 0.{i + 3}\n0.{i + 4} -0.{i + 5}\n")
         result_files.append(result_file)
 
     yield
@@ -282,7 +282,7 @@ def test_run_job_parallely():
     assert abs(1 - sequential_time / (2 * parallel_time)) < error_margin_percentage, (
         "Difference between parallel and sequential time is too large",
         f"Sequential: {sequential_time} # Parallel: {parallel_time}",
-        f"Sequential time should be twice the parallel time with an error of {int(error_margin_percentage*100)}%",
+        f"Sequential time should be twice the parallel time with an error of {int(error_margin_percentage * 100)}%",
     )
 
 

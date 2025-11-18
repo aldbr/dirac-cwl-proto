@@ -61,7 +61,6 @@ class JobSubmissionModel(BaseModel):
     def validate_hints(cls, values):
         task = values.get("task")
         _ = extract_dirac_hints(task)
-
         return values
 
 

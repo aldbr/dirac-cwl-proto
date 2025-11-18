@@ -366,7 +366,7 @@ class SchedulingHint(BaseModel, Hint):
 
         hints = getattr(cwl_object, "hints", []) or []
         for hint in hints:
-            if hint.get("class") == "dirac:scheduling":
+            if hint.get("class") == "dirac:SchedulingHint":
                 hint_data = {k: v for k, v in hint.items() if k != "class"}
                 descriptor = descriptor.model_copy(update=hint_data)
 
@@ -494,7 +494,7 @@ class ExecutionHooksHint(BaseModel, Hint):
         descriptor = cls()
         hints = getattr(cwl_object, "hints", []) or []
         for hint in hints:
-            if hint.get("class") == "dirac:execution-hooks":
+            if hint.get("class") == "dirac:ExecutionHooksHint":
                 hint_data = {k: v for k, v in hint.items() if k != "class"}
                 descriptor = descriptor.model_copy(update=hint_data)
         return descriptor

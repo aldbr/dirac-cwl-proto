@@ -1,7 +1,5 @@
-$namespaces:
-  dirac: "./schemas/dirac-metadata.json"
 cwltool:overrides:
-  test_meta.cwl#:
+  test_meta.cwl:
     hints:
       dirac:execution-hooks:
         hook_plugin: 'QueryBasedPlugin'
@@ -11,10 +9,10 @@ cwltool:overrides:
       dirac:scheduling:
         platform: x86_64
         priority: 5
-        sites: ['CSCS', 'PIC']
+        sites: [ 'CSCS', 'PIC' ]
 
 cwltool:overrides:
-  test_meta.cwl#:
+  test_meta.cwl:
     hints:
       dirac:execution-hooks:
         hook_plugin: 'QueryBasedPlugin'
@@ -24,4 +22,4 @@ cwltool:overrides:
       dirac:scheduling:
         platform: arm64
         priority: 3
-        sites: ['CSCS', 'PIC']
+        sites: [ 'CSCS', 'PIC' ]
