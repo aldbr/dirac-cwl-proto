@@ -98,27 +98,6 @@ class ProductionSubmissionModel(BaseModel):
 
     task: Workflow
 
-    @model_validator(mode="before")
-    def validate_steps_metadata(cls, values):
-        task = values.get("task")
-        if task and task.hints:
-            # Extract the available steps in the task
-            task_steps = {step.id.split("#")[-1] for step in task.steps}
-            metadata_keys = {
-                hint["class"]
-                for hint in task.hints
-                if "class" in hint and hint["class"] != "$namespaces"
-            }
-
-            # Check if all metadata keys exist in the task's workflow steps
-            missing_steps = metadata_keys - task_steps
-            if missing_steps:
-                raise ValueError(
-                    f"The following steps are missing from the task workflow: {missing_steps}"
-                )
-
-        return values
-
     @field_serializer("task")
     def serialize_task(self, value):
         if isinstance(value, (ExpressionTool, CommandLineTool, Workflow)):

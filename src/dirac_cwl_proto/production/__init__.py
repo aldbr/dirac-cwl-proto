@@ -138,28 +138,13 @@ def _get_transformations(
     """
     # Create a subworkflow and a transformation for each step
     transformations = []
-    configuration = _get_configuration(production.task)
+    # TODO: check usage:
+    #  configuration = _get_configuration(production.task)
 
     for step in production.task.steps:
         step_task = _create_subworkflow(
             step, str(production.task.cwlVersion), production.task.inputs
         )
-        if step_task.hints is None:
-            step_task.hints = []
-
-        # Get the execution_hooks & description for the step
-        step_id = step.id.split("#")[-1]
-        if production.task.hints is not None:
-            for hint in production.task.hints:
-                if hint["class"] == "$namespaces":
-                    step_task.hints.append(hint)
-                if hint["class"] == step_id:
-                    execution_hook_hint = {
-                        **hint.pop("dirac:execution-hooks"),
-                        "class": "dirac:execution-hooks",
-                        "configuration": configuration,
-                    }
-                    step_task.hints.append(execution_hook_hint)
 
         transformations.append(
             TransformationSubmissionModel(
