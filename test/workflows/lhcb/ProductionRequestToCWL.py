@@ -200,6 +200,20 @@ def _getWorkflowInputs(production: dict[str, Any], event_type: dict[str, Any]) -
         app_name = first_app.get("name", "") if isinstance(first_app, dict) else first_app.split("/")[0]
         is_gauss = app_name.lower() == "gauss"
 
+    # Production identification inputs
+    workflow_inputs["production-id"] = WorkflowInputParameter(
+        type_="int",
+        id="production-id",
+        default=12345,
+        doc="Production ID"
+    )
+    workflow_inputs["prod-job-id"] = WorkflowInputParameter(
+        type_="int",
+        id="prod-job-id",
+        default=6789,
+        doc="Production Job ID"
+    )
+
     if is_gauss:
         # Gauss-specific inputs with default values
         workflow_inputs[RUN_NUMBER] = WorkflowInputParameter(
@@ -226,6 +240,12 @@ def _getWorkflowInputs(production: dict[str, Any], event_type: dict[str, Any]) -
             default="pool_xml_catalog.xml",
             doc="Pool XML catalog file name"
         )
+        workflow_inputs["histogram"] = WorkflowInputParameter(
+            type_="boolean",
+            id="histogram",
+            default=False,
+            doc="Enable histogram output"
+        )
     else:
         # For non-Gauss starts, we need input data
         workflow_inputs["input-data"] = WorkflowInputParameter(
@@ -238,25 +258,19 @@ def _getWorkflowInputs(production: dict[str, Any], event_type: dict[str, Any]) -
             id=POOL_XML,
             doc="Pool XML catalog file"
         )
+        workflow_inputs[NUMBER_OF_EVENTS] = WorkflowInputParameter(
+            type_="int",
+            id=NUMBER_OF_EVENTS,
+            default=event_type.get("num_test_events", 10),
+            doc="Number of events to process"
+        )
 
     # Common dynamic inputs with defaults
-    workflow_inputs["number-of-processors"] = WorkflowInputParameter(
-        type_="int",
-        id="number-of-processors",
-        default=1,
-        doc="Number of CPU cores to use"
-    )
     workflow_inputs["output-prefix"] = WorkflowInputParameter(
         type_="string",
         id="output-prefix",
         default=event_type.get("id", "output"),
         doc="Prefix for output file names"
-    )
-    workflow_inputs["histogram"] = WorkflowInputParameter(
-        type_="boolean",
-        id="histogram",
-        default=False,
-        doc="Enable histogram output"
     )
 
     return workflow_inputs
@@ -442,14 +456,47 @@ def _buildCommandLineTool(
 ) -> CommandLineTool:
     """Build a CommandLineTool for a step using command-line wrapper."""
 
-    config_filename = "configuration.json"
+    # Determine if this is a Gauss step
+    application = step.get("application", {})
+    if isinstance(application, str):
+        app_name = application.split("/")[0]
+    else:
+        app_name = application.get("name", "unknown")
+    is_gauss = app_name.lower() == "gauss"
+
+    # Clean application name for filename (remove special characters)
+    cleaned_app_name = app_name.replace("/", "").replace(" ", "")
+
+    # Step number is 1-indexed
+    step_number = step_index + 1
+
+    # Generate prodConf filename with format: prodConf_{app}_{prodid:08d}_{jobi:08d}_{step}.json
+    # Production ID and job ID will be substituted at runtime using CWL expressions
+    config_filename_expr = f'$(\"prodConf_{cleaned_app_name}_\" + String(inputs[\"production-id\"]).padStart(8, \"0\") + \"_\" + String(inputs[\"prod-job-id\"]).padStart(8, \"0\") + \"_{step_number}.json\")'
 
     # Build input parameters with command-line bindings
     input_parameters = []
 
+    # Production identification inputs (needed for filename generation)
+    input_parameters.append(
+        CommandInputParameter(
+            id="production-id",
+            type_="int",
+        )
+    )
+    input_parameters.append(
+        CommandInputParameter(
+            id="prod-job-id",
+            type_="int",
+        )
+    )
+
     # Add inputs based on what's in workflow_inputs
     for input_id in workflow_inputs.keys():
-        if input_id == "input-data":
+        if input_id in ["production-id", "prod-job-id"]:
+            # Already added above
+            continue
+        elif input_id == "input-data":
             if step_index > 0:
                 # For steps after Gauss, input data comes from previous step (PFN paths)
                 input_parameters.append(
@@ -484,7 +531,8 @@ def _buildCommandLineTool(
                     inputBinding=CommandLineBinding(prefix="--run-number"),
                 )
             )
-        elif input_id == FIRST_EVENT_NUMBER:
+        elif input_id == FIRST_EVENT_NUMBER and is_gauss:
+            # Only add first-event-number for Gauss steps
             input_parameters.append(
                 CommandInputParameter(
                     id=FIRST_EVENT_NUMBER,
@@ -500,14 +548,6 @@ def _buildCommandLineTool(
                     inputBinding=CommandLineBinding(prefix="--number-of-events"),
                 )
             )
-        elif input_id == "number-of-processors":
-            input_parameters.append(
-                CommandInputParameter(
-                    id="number-of-processors",
-                    type_="int",
-                    inputBinding=CommandLineBinding(prefix="--number-of-processors"),
-                )
-            )
         elif input_id == "output-prefix":
             input_parameters.append(
                 CommandInputParameter(
@@ -516,7 +556,8 @@ def _buildCommandLineTool(
                     inputBinding=CommandLineBinding(prefix="--output-prefix"),
                 )
             )
-        elif input_id == "histogram":
+        elif input_id == "histogram" and is_gauss:
+            # Only add histogram for Gauss steps
             input_parameters.append(
                 CommandInputParameter(
                     id="histogram",
@@ -530,16 +571,23 @@ def _buildCommandLineTool(
     from ruamel.yaml.scalarstring import LiteralScalarString
     config_json = LiteralScalarString(json.dumps(prod_conf, indent=2))
 
-    # Use InitialWorkDirRequirement to write the base config
+    # Use InitialWorkDirRequirement to write the base config with dynamic filename
     requirements = [
         InitialWorkDirRequirement(
             listing=[
                 Dirent(
-                    entryname=config_filename,
+                    entryname=config_filename_expr,
                     entry=config_json,
                 )
             ]
-        )
+        ),
+        # Add ResourceRequirement for cores (default to 1)
+        ResourceRequirement(
+            coresMin=1,
+            coresMax=1,
+        ),
+        # Need StepInputExpressionRequirement for the filename expression
+        StepInputExpressionRequirement(),
     ]
 
     # Build output parameters
@@ -550,7 +598,7 @@ def _buildCommandLineTool(
         inputs=input_parameters,
         outputs=output_parameters,
         baseCommand=["dirac-run-lbprodrun-app"],
-        arguments=[config_filename],
+        arguments=[config_filename_expr],
         requirements=requirements,
     )
 
@@ -622,13 +670,47 @@ def _buildStepInputs(
     """Build step inputs, linking to workflow inputs or previous steps."""
     step_inputs = []
 
+    # Determine if this is a Gauss step
+    application = step.get("application", {})
+    if isinstance(application, str):
+        app_name = application.split("/")[0]
+    else:
+        app_name = application.get("name", "unknown")
+    is_gauss = app_name.lower() == "gauss"
+
+    # Always add production-id and prod-job-id
+    step_inputs.append(
+        WorkflowStepInput(
+            id="production-id",
+            source="production-id",
+        )
+    )
+    step_inputs.append(
+        WorkflowStepInput(
+            id="prod-job-id",
+            source="prod-job-id",
+        )
+    )
+
     for input_id, wf_input in workflow_inputs.items():
+        # Skip production IDs as they're already added
+        if input_id in ["production-id", "prod-job-id"]:
+            continue
+
+        # Skip first-event-number for non-Gauss steps
+        if input_id == FIRST_EVENT_NUMBER and not is_gauss:
+            continue
+
+        # Skip histogram for non-Gauss steps
+        if input_id == "histogram" and not is_gauss:
+            continue
+
         source = wf_input.id
         value_from = None
 
         if input_id == "output-prefix":
-            # Add step index to output prefix
-            value_from = f'$(inputs["output-prefix"])_{step_index}'
+            # Add step index to output prefix (1-indexed)
+            value_from = f'$(inputs["output-prefix"])_{step_index + 1}'
         elif input_id == "input-data":
             # Link to previous step's output if not first step
             if step_index > 0:
@@ -664,6 +746,10 @@ def _getWorkflowStaticInputs(production: dict[str, Any], event_type: dict[str, A
     """Get static input values for CWL execution."""
     static_inputs = {}
 
+    # Production identification inputs (defaults for testing)
+    static_inputs["production-id"] = 12345
+    static_inputs["prod-job-id"] = 6789
+
     # Check if first step is Gauss
     steps = production.get("steps", [])
     is_gauss = False
@@ -678,14 +764,14 @@ def _getWorkflowStaticInputs(production: dict[str, Any], event_type: dict[str, A
         static_inputs[FIRST_EVENT_NUMBER] = 1  # Default first event
         static_inputs[NUMBER_OF_EVENTS] = event_type.get("num_test_events", 10)
         static_inputs[POOL_XML] = "pool_xml_catalog.xml"  # String for Gauss
+        static_inputs["histogram"] = False
     else:
         # For non-Gauss, would need actual input files
         static_inputs[POOL_XML] = {"class": "File", "path": "pool_xml_catalog.xml"}
+        static_inputs[NUMBER_OF_EVENTS] = event_type.get("num_test_events", 10)
 
     # Common dynamic inputs with defaults
-    static_inputs["number-of-processors"] = 1
     static_inputs["output-prefix"] = event_type.get("id", "output")
-    static_inputs["histogram"] = False
 
     return static_inputs
 

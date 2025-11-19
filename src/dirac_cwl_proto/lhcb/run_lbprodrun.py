@@ -57,11 +57,12 @@ def main():
         paths = json.loads(Path(args.pfn_paths).read_text())
         config["input"]["files"] = paths
 
-    # Write updated configuration
-    output_config = Path("runtime_config.json")
+    # Write updated configuration back to the original file
+    # The config file already has the correct prodConf_App_PPPPPPPP_JJJJJJJJ_N.json format
+    output_config = Path(args.config_file)
     output_config.write_text(json.dumps(config, indent=2))
 
-    # Run lb-prod-run
+    # Run lb-prod-run with the merged configuration
     result = subprocess.run(["lb-prod-run", str(output_config)])
     sys.exit(result.returncode)
 
