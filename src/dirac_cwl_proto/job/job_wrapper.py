@@ -80,30 +80,25 @@ class JobWrapper:
             YAML().dump(task_dict, task_file)
         command.append(str(task_path.name))
 
-        if arguments:
-            if arguments.sandbox:
-                # Download the files from the sandbox store
-                logger.info("Downloading the files from the sandbox store...")
-                self.__download_input_sandbox(arguments, self.job_path)
-                logger.info("Files downloaded successfully!")
+        if arguments and arguments.sandbox:
+            # Download the files from the sandbox store
+            logger.info("Downloading the files from the sandbox store...")
+            self.__download_input_sandbox(arguments, self.job_path)
+            logger.info("Files downloaded successfully!")
 
-            # Disabled for now
-            # # Download input data from the file catalog
-            # logger.info("Downloading input data from the file catalog...")
-            # self.__download_input_data(arguments, self.job_path)
-            # logger.info("Input data downloaded successfully!")
-
-            # Prepare the parameters for cwltool
-            logger.info("Preparing the parameters for cwltool...")
-            parameter_dict = save(cast(Saveable, arguments.cwl))
-            parameter_path = self.job_path / "parameter.cwl"
-            with open(parameter_path, "w") as parameter_file:
-                YAML().dump(parameter_dict, parameter_file)
-            command.append(str(parameter_path.name))
         if self.runtime_metadata:
             return self.runtime_metadata.pre_process(
                 executable, arguments, self.job_path, command
             )
+        else:  # done in execution hooks otherwise
+            if arguments:
+                # Prepare the parameters for cwltool
+                logger.info("Preparing the parameters for cwltool...")
+                parameter_dict = save(cast(Saveable, arguments.cwl))
+                parameter_path = self.job_path / "parameter.cwl"
+                with open(parameter_path, "w") as parameter_file:
+                    YAML().dump(parameter_dict, parameter_file)
+                command.append(str(parameter_path.name))
 
         return command
 
@@ -126,7 +121,7 @@ class JobWrapper:
         logger.info(stderr)
 
         if self.runtime_metadata:
-            return self.runtime_metadata.post_process(self.job_path)
+            return self.runtime_metadata.post_process(self.job_path, stdout=stdout)
 
         return True
 
