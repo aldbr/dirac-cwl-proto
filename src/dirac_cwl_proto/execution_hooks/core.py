@@ -6,12 +6,15 @@ metadata plugin system in DIRAC/DIRACX.
 
 from __future__ import annotations
 
+import importlib
 import logging
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, ClassVar, Dict, List, Mapping, Optional, TypeVar, Union
 
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
+
+from dirac_cwl_proto.commands import JobProcessorBase
 
 logger = logging.getLogger(__name__)
 
@@ -367,6 +370,40 @@ class SchedulingHint(BaseModel, Hint):
         hints = getattr(cwl_object, "hints", []) or []
         for hint in hints:
             if hint.get("class") == "dirac:scheduling":
+                hint_data = {k: v for k, v in hint.items() if k != "class"}
+                descriptor = descriptor.model_copy(update=hint_data)
+
+        return descriptor
+
+
+class PrePostProcessingHint(BaseModel, Hint):
+    """"""
+
+    model_config = ConfigDict(extra="forbid", validate_assignment=True)
+
+    jobType: Optional[str] = Field(default=None, description="")
+
+    def instantiate(self, jobWrapper) -> JobProcessorBase:
+        if self.jobType is None:
+            return JobProcessorBase(jobWrapper=None)
+
+        if not isinstance(self.jobType, str) or "/" not in self.jobType:
+            raise Exception("JobType must be a string in the format: {VO}/{JobType}")
+
+        vo, _type = self.jobType.split("/")
+        jobTypesModule = importlib.import_module(f"dirac_cwl_proto.commands.{vo}")
+        jobTypeClass = getattr(jobTypesModule, _type)
+
+        return jobTypeClass(jobWrapper)
+
+    @classmethod
+    def from_cwl(cls, cwl_object: Any) -> "PrePostProcessingHint":
+        """Extract task descriptor from CWL hints."""
+        descriptor = cls()
+
+        hints = getattr(cwl_object, "hints", []) or []
+        for hint in hints:
+            if hint.get("class") == "dirac:jobProcessing":
                 hint_data = {k: v for k, v in hint.items() if k != "class"}
                 descriptor = descriptor.model_copy(update=hint_data)
 

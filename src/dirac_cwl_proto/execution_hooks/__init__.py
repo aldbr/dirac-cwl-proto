@@ -11,6 +11,7 @@ from .core import (
     DataCatalogInterface,
     ExecutionHooksBasePlugin,
     ExecutionHooksHint,
+    PrePostProcessingHint,
     SchedulingHint,
     TransformationExecutionHooksHint,
 )
@@ -36,6 +37,7 @@ __all__ = [
     "TransformationExecutionHooksHint",
     "ExecutionHooksBasePlugin",
     "SchedulingHint",
+    "PrePostProcessingHint",
     "DataCatalogInterface",
     "ExecutionHooksPluginRegistry",
     "get_registry",

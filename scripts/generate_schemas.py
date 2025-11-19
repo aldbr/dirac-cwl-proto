@@ -40,6 +40,7 @@ def collect_pydantic_models() -> Dict[str, Any]:
         from dirac_cwl_proto.execution_hooks.core import (
             ExecutionHooksBasePlugin,
             ExecutionHooksHint,
+            PrePostProcessingHint,
             SchedulingHint,
             TransformationExecutionHooksHint,
         )
@@ -50,6 +51,7 @@ def collect_pydantic_models() -> Dict[str, Any]:
                 "ExecutionHooksHint": ExecutionHooksHint,
                 "SchedulingHint": SchedulingHint,
                 "TransformationExecutionHooksHint": TransformationExecutionHooksHint,
+                "PrePostProcessingHint": PrePostProcessingHint,
             }
         )
         logger.info("Collected core metadata models")

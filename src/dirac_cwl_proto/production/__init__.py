@@ -22,6 +22,7 @@ from ruamel.yaml import YAML
 from schema_salad.exceptions import ValidationException
 
 from dirac_cwl_proto.execution_hooks import (
+    PrePostProcessingHint,
     SchedulingHint,
     TransformationExecutionHooksHint,
 )
@@ -87,16 +88,21 @@ def submit_production_client(
 
     production_step_execution_hooks = {}
     production_step_scheduling = {}
+    production_step_jobProcessing = {}
     for step_name, step_data in steps_metadata.items():
         # Extract metadata and scheduling from step_data
         metadata_config = step_data.get("execution-hooks", {})
         scheduling_config = step_data.get("scheduling", {})
+        jobProcessing_config = step_data.get("jobProcessing", {})
 
         # Create TransformationExecutionHooksHint with the metadata
         production_step_execution_hooks[step_name] = TransformationExecutionHooksHint(
             **metadata_config
         )
         production_step_scheduling[step_name] = SchedulingHint(**scheduling_config)
+        production_step_jobProcessing[step_name] = SchedulingHint(
+            **jobProcessing_config
+        )
     console.print("\t[green]:heavy_check_mark:[/green] Metadata")
 
     # Create the production
@@ -104,6 +110,7 @@ def submit_production_client(
         task=task,
         steps_execution_hooks=production_step_execution_hooks,
         steps_scheduling=production_step_scheduling,
+        steps_jobProcessing=production_step_jobProcessing,
     )
     console.print(
         "[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Production validated."
@@ -188,6 +195,10 @@ def _get_transformations(
             step_id,
             SchedulingHint(),
         )
+        step_jobProcessing: PrePostProcessingHint = production.steps_jobProcessing.get(
+            step_id,
+            PrePostProcessingHint(),
+        )
         step_data.configuration.update(configuration)
 
         transformations.append(
@@ -195,6 +206,7 @@ def _get_transformations(
                 task=step_task,
                 execution_hooks=step_data,
                 scheduling=step_scheduling,
+                jobProcessing=step_jobProcessing,
             )
         )
     return transformations
