@@ -90,11 +90,22 @@ def pi_test_files():
         # A string input is passed
         ("test/workflows/test_meta/test_meta.cwl", []),
         # --- Test outputs override example ---
-        # A string input is passed
+        # No hint
+        (
+            "test/workflows/test_outputs/test_outputs.cwl",
+            [],
+        ),
+        # Override output to sandbox
         (
             "test/workflows/test_outputs/test_outputs.cwl",
             [
                 "test/workflows/test_outputs/override_output.yaml",
+            ],
+        ),
+        # Override output to datacatalog
+        (
+            "test/workflows/test_outputs/test_outputs.cwl",
+            [
                 "test/workflows/test_outputs/override_output2.yaml",
             ],
         ),
