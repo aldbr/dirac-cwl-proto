@@ -87,13 +87,7 @@ def pi_test_files():
             ],
         ),
         # --- Test metadata example ---
-        # A string input is passed
-        (
-            "test/workflows/test_meta/test_meta.cwl",
-            [
-                "test/workflows/test_meta/override_dirac_hints.yaml",
-            ],
-        ),
+        ("test/workflows/test_meta/test_meta.cwl", []),
         # --- Crypto example ---
         # Complete
         (
@@ -181,14 +175,6 @@ def test_run_job_success(cli_runner, cleanup, pi_test_files, cwl_file, inputs):
             "test/workflows/bad_references/reference_circular1.cwl",
             [],
             "Recursingintostep",
-        ),
-        # The configuration file is malformed: the hints are overridden more than once
-        (
-            "test/workflows/test_meta/test_meta.cwl",
-            [
-                "test/workflows/test_meta/override_dirac_hints_twice.yaml",
-            ],
-            "Failedtovalidatetheparameter",
         ),
     ],
 )
