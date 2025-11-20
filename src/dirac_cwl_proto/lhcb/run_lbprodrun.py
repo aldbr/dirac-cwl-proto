@@ -9,8 +9,12 @@ from pathlib import Path
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Run LbProdRun with CWL inputs")
+    parser = argparse.ArgumentParser(description="LbProdRun Wrapper for DIRAC CWL")
     parser.add_argument("config_file", help="Base configuration JSON file")
+    parser.add_argument("--production-id", type=int, required=True, default=12345, help="Production ID")
+    parser.add_argument("--prod-job-id", type=int, required=True, default=6789, help="Production Job ID")
+    parser.add_argument("--step-id", type=int, required=True, help="Step ID")
+
     parser.add_argument("--lfn-paths", help="Input LFN paths (JSON file)")
     parser.add_argument("--pfn-paths", help="Input PFN paths (JSON file)")
     parser.add_argument("--pool-xml-catalog", help="Pool XML catalog file")
@@ -57,9 +61,11 @@ def main():
         paths = json.loads(Path(args.pfn_paths).read_text())
         config["input"]["files"] = paths
 
-    # Write updated configuration back to the original file
-    # The config file already has the correct prodConf_App_PPPPPPPP_JJJJJJJJ_N.json format
-    output_config = Path(args.config_file)
+    app_name = config["application"]["name"]
+    cleaned_appname = app_name.replace("/", "").replace(" ", "")
+
+    config_filename = f"prodConf_{cleaned_appname}_{args.production_id:08d}_{args.prod_job_id:08d}_{args.step_id}.json"
+    output_config = Path(config_filename)
     output_config.write_text(json.dumps(config, indent=2))
 
     # Run lb-prod-run with the merged configuration
