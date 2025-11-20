@@ -611,7 +611,7 @@ def _buildOutputParameters(step: dict[str, Any]) -> list[CommandOutputParameter]
     for output in output_types:
         output_type = output.get("type")
         if output_type:
-            output_globs.append(f"*{output_type}")
+            output_globs.append(f"*.{output_type.lower()}")
 
     if output_globs:
         output_parameters.append(
@@ -639,7 +639,7 @@ def _buildOutputParameters(step: dict[str, Any]) -> list[CommandOutputParameter]
                     "prodConf*.py",
                     "summary*.xml",
                     "prmon*",
-                    f"{app_name.replace('/', '')}*.log",
+                    f"{app_name.replace('/', '').replace(' ', '')}*.log",
                 ]
             ),
         )
