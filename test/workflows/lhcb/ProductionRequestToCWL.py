@@ -36,6 +36,7 @@ from cwl_utils.parser.cwl_v1_2 import (
     MultipleInputFeatureRequirement,
     ResourceRequirement,
     StepInputExpressionRequirement,
+    InlineJavascriptRequirement,
     Workflow,
     WorkflowInputParameter,
     WorkflowOutputParameter,
@@ -174,6 +175,7 @@ def _buildCWLWorkflow(
         requirements=[
             MultipleInputFeatureRequirement(),
             StepInputExpressionRequirement(),
+            InlineJavascriptRequirement(),
             resource_requirement,
         ],
         inputs=list(workflow_inputs.values()),
@@ -266,12 +268,11 @@ def _getWorkflowInputs(production: dict[str, Any], event_type: dict[str, Any]) -
         )
 
     # Common dynamic inputs with defaults
-    workflow_inputs["output-prefix"] = WorkflowInputParameter(
-        type_="string",
-        id="output-prefix",
-        default=event_type.get("id", "output"),
-        doc="Prefix for output file names"
-    )
+    # workflow_inputs["output-prefix"] = WorkflowInputParameter(
+    #     type_="string",
+    #     id="output-prefix",
+    #     doc="Prefix for output file names",
+    # )
 
     return workflow_inputs
 
@@ -381,19 +382,13 @@ def _generateProdConf(production: dict[str, Any], step: dict[str, Any], step_ind
         "application": {
             "name": app_name,
             "version": app_version,
-            "number_of_processors": 1,  # Will be overridden by dynamic input
+            # "number_of_processors": 1,  # Will be overridden by dynamic input
             "data_pkgs": data_pkgs,
         },
         "options": {},
         "db_tags": {},
-        "input": {
-            "files": [],  # Will be provided via command line
-            "xml_file_catalog": "pool_xml_catalog.xml",  # Default name
-        },
-        "output": {
-            "prefix": "",  # Will be provided via command line
-            "types": [],
-        },
+        "input": {},
+        "output": {},
     }
 
     # Add binary tag if specified
@@ -469,26 +464,17 @@ def _buildCommandLineTool(
 
     # Build input parameters with command-line bindings
     input_parameters = []
-
-    # Production identification inputs (needed for filename generation)
     input_parameters.append(
         CommandInputParameter(
-            id="production-id",
-            type_="int",
-            inputBinding=CommandLineBinding(prefix="--production-id"),
-        )
-    )
-    input_parameters.append(
-        CommandInputParameter(
-            id="prod-job-id",
-            type_="int",
-            inputBinding=CommandLineBinding(prefix="--prod-job-id"),
+            id="output-prefix",
+            type_="string",
+            inputBinding=CommandLineBinding(prefix="--output-prefix"),
         )
     )
 
     # Add inputs based on what's in workflow_inputs
     for input_id in workflow_inputs.keys():
-        if input_id in ["production-id", "prod-job-id"]:
+        if input_id in ["production-id", "prod-job-id", "output-prefix"]:
             # Already added above
             continue
         elif input_id == "input-data":
@@ -543,14 +529,6 @@ def _buildCommandLineTool(
                     inputBinding=CommandLineBinding(prefix="--number-of-events"),
                 )
             )
-        elif input_id == "output-prefix":
-            input_parameters.append(
-                CommandInputParameter(
-                    id="output-prefix",
-                    type_="string",
-                    inputBinding=CommandLineBinding(prefix="--output-prefix"),
-                )
-            )
         elif input_id == "histogram" and is_gauss:
             # Only add histogram for Gauss steps
             input_parameters.append(
@@ -594,7 +572,7 @@ def _buildCommandLineTool(
         inputs=input_parameters,
         outputs=output_parameters,
         baseCommand=["dirac-run-lbprodrun-app"],
-        arguments=[initial_prod_conf, "--step-id", str(step_number)],
+        arguments=[initial_prod_conf],
         requirements=requirements,
     )
 
@@ -687,6 +665,13 @@ def _buildStepInputs(
             source="prod-job-id",
         )
     )
+    step_inputs.append(
+        WorkflowStepInput(
+            id="output-prefix",
+            valueFrom=f'$(inputs["production-id"].toString().padStart(8, "0"))_$(inputs["prod-job-id"].toString().padStart(8, "0"))_{step_index + 1}',
+        )
+    )
+
 
     for input_id, wf_input in workflow_inputs.items():
         # Skip production IDs as they're already added
@@ -704,10 +689,7 @@ def _buildStepInputs(
         source = wf_input.id
         value_from = None
 
-        if input_id == "output-prefix":
-            # Add step index to output prefix (1-indexed)
-            value_from = f'$(inputs["output-prefix"])_{step_index + 1}'
-        elif input_id == "input-data":
+        if input_id == "input-data":
             # Link to previous step's output if not first step
             if step_index > 0:
                 prev_step_name = step_names[step_index - 1]
@@ -767,7 +749,7 @@ def _getWorkflowStaticInputs(production: dict[str, Any], event_type: dict[str, A
         static_inputs[NUMBER_OF_EVENTS] = event_type.get("num_test_events", 10)
 
     # Common dynamic inputs with defaults
-    static_inputs["output-prefix"] = event_type.get("id", "output")
+    # static_inputs["output-prefix"] = event_type.get("id", "output")
 
     return static_inputs
 
