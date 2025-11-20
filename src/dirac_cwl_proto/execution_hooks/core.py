@@ -6,9 +6,9 @@ metadata plugin system in DIRAC/DIRACX.
 
 from __future__ import annotations
 
-import importlib
 import logging
 from abc import ABC, abstractmethod
+from importlib.metadata import entry_points
 from pathlib import Path
 from typing import Any, ClassVar, Dict, List, Mapping, Optional, TypeVar, Union
 
@@ -387,12 +387,12 @@ class PrePostProcessingHint(BaseModel, Hint):
         if self.jobType is None:
             return JobProcessorBase(jobWrapper=None)
 
-        if not isinstance(self.jobType, str) or "/" not in self.jobType:
-            raise Exception("JobType must be a string in the format: {VO}/{JobType}")
-
-        vo, _type = self.jobType.split("/")
-        jobTypesModule = importlib.import_module(f"dirac_cwl_proto.commands.{vo}")
-        jobTypeClass = getattr(jobTypesModule, _type)
+        jobTypeMap = entry_points(group="modules.jobTypes")
+        try:
+            jobTypeClass = jobTypeMap[self.jobType].load()
+        except KeyError:
+            logger.error(f"Job Type '{self.jobType}' not found at EntyPoint map")
+            raise
 
         return jobTypeClass(jobWrapper)
 
