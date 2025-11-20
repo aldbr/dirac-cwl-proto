@@ -323,13 +323,13 @@ class TestPrePostProcessingHints:
     def test_execution(self, mocker):
         import os
 
-        from dirac_cwl_proto.commands.generic.jobTypes import TestingJobType
+        from dirac_cwl_proto.commands.jobTypes import TestingJobType
 
         with tempfile.TemporaryDirectory() as _dir:
             workflowMock = mocker.Mock()
             workflowMock.job_path = _dir
 
-            hint = PrePostProcessingHint(jobType="generic/TestingJobType")
+            hint = PrePostProcessingHint(jobType="TestingJobType")
             jobProcessor = hint.instantiate(workflowMock)
 
             # It instantiated the correct JobType
@@ -341,20 +341,26 @@ class TestPrePostProcessingHints:
                 "foo",
                 "bar",
             ]
+            filenamesOutputs = []
+
             for output in outputs:
-                with open(tempfile.mktemp(suffix=".txt", dir=_dir), "w") as f:
+                filename = tempfile.mktemp(suffix=".txt", dir=_dir)
+                with open(filename, "w") as f:
                     f.write(output)
+                filenamesOutputs.append(f"############ {filename}")
+
+            outputs.extend(filenamesOutputs)
 
             jobProcessor.pre_process()
 
-            # It created the file from the command generic/downloadConfig.py (from the pre_process step)
+            # It created the file from the command downloadConfig.py (from the pre_process step)
             assert "content.cfg" in os.listdir(_dir)
-            # It didn't created the file from the command generic/groupOutputs.py (from the post_process step)
+            # It didn't created the file from the command groupOutputs.py (from the post_process step)
             assert "group.out" not in os.listdir(_dir)
 
             jobProcessor.post_process()
 
-            # It created the file from the command generic/groupOutputs.py (from the post_process step)
+            # It created the file from the command groupOutputs.py (from the post_process step)
             assert "group.out" in os.listdir(_dir)
 
             fileOutput = ""
@@ -364,3 +370,10 @@ class TestPrePostProcessingHints:
             # The output contains the output from the files created previously
             for output in outputs:
                 assert f"{output}\n" in fileOutput
+
+    def test_jobTypeNotFound(self, mocker):
+        workflowMock = mocker.Mock()
+
+        hint = PrePostProcessingHint(jobType="NonExistentJobType")
+        with pytest.raises(KeyError):
+            hint.instantiate(workflowMock)
