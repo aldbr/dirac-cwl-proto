@@ -464,15 +464,8 @@ def _buildCommandLineTool(
         app_name = application.get("name", "unknown")
     is_gauss = app_name.lower() == "gauss"
 
-    # Clean application name for filename (remove special characters)
-    cleaned_app_name = app_name.replace("/", "").replace(" ", "")
-
     # Step number is 1-indexed
     step_number = step_index + 1
-
-    # Generate prodConf filename with format: prodConf_{app}_{prodid:08d}_{jobi:08d}_{step}.json
-    # Production ID and job ID will be substituted at runtime using CWL expressions
-    config_filename_expr = f'$(\"prodConf_{cleaned_app_name}_\" + String(inputs[\"production-id\"]).padStart(8, \"0\") + \"_\" + String(inputs[\"prod-job-id\"]).padStart(8, \"0\") + \"_{step_number}.json\")'
 
     # Build input parameters with command-line bindings
     input_parameters = []
@@ -482,12 +475,14 @@ def _buildCommandLineTool(
         CommandInputParameter(
             id="production-id",
             type_="int",
+            inputBinding=CommandLineBinding(prefix="--production-id"),
         )
     )
     input_parameters.append(
         CommandInputParameter(
             id="prod-job-id",
             type_="int",
+            inputBinding=CommandLineBinding(prefix="--prod-job-id"),
         )
     )
 
@@ -572,11 +567,12 @@ def _buildCommandLineTool(
     config_json = LiteralScalarString(json.dumps(prod_conf, indent=2))
 
     # Use InitialWorkDirRequirement to write the base config with dynamic filename
+    initial_prod_conf = f"initialProdConf_{step_number}.json"
     requirements = [
         InitialWorkDirRequirement(
             listing=[
                 Dirent(
-                    entryname=config_filename_expr,
+                    entryname=initial_prod_conf,
                     entry=config_json,
                 )
             ]
@@ -598,7 +594,7 @@ def _buildCommandLineTool(
         inputs=input_parameters,
         outputs=output_parameters,
         baseCommand=["dirac-run-lbprodrun-app"],
-        arguments=[config_filename_expr],
+        arguments=[initial_prod_conf, "--step-id", str(step_number)],
         requirements=requirements,
     )
 
