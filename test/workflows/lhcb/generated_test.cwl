@@ -1,4 +1,4 @@
-id: _:60bf889b-e511-4247-b78f-70b12b9616ac
+id: _:c9c5a208-aaa2-4c3f-a9da-9477c3997fd1
 class: Workflow
 label: RD_Lb2pKpipiMuMu_Run2_Run3 2016 pp MagUp
 doc: |-
@@ -65,13 +65,11 @@ cwlVersion: v1.2
 steps:
 - id: Sim10f_-_2016_-_Beam6500GeV_-_MagUp_-_Pythia8
   in:
-  - id: production-id
-    source: production-id
-  - id: prod-job-id
-    source: prod-job-id
   - id: output-prefix
-    valueFrom: $(inputs["production-id"].toString().padStart(8, "0"))_$(inputs["prod-job-id"].toString().padStart(8, 
-      "0"))_1
+    source:
+    - production-id
+    - prod-job-id
+    valueFrom: $(self[0].toString().padStart(8, "0"))_$(self[1].toString().padStart(8, "0"))_1
   - id: run-number
     source: run-number
   - id: first-event-number
@@ -87,7 +85,7 @@ steps:
   - id: others
   - id: pool-xml-catalog-out
   run:
-    id: _:243310a4-a280-4169-8053-2c81a8d6222b
+    id: _:a7a4c3db-dc94-450c-a7f7-36f13c28de96
     class: CommandLineTool
     inputs:
     - id: output-prefix
@@ -186,13 +184,11 @@ steps:
     - initialProdConf_1.json
 - id: Digi15_for_2016_spillover
   in:
-  - id: production-id
-    source: production-id
-  - id: prod-job-id
-    source: prod-job-id
   - id: output-prefix
-    valueFrom: $(inputs["production-id"].toString().padStart(8, "0"))_$(inputs["prod-job-id"].toString().padStart(8, 
-      "0"))_2
+    source:
+    - production-id
+    - prod-job-id
+    valueFrom: $(self[0].toString().padStart(8, "0"))_$(self[1].toString().padStart(8, "0"))_2
   - id: run-number
     source: run-number
   - id: number-of-events
@@ -204,7 +200,7 @@ steps:
   - id: others
   - id: pool-xml-catalog-out
   run:
-    id: _:9a123a1e-1df7-4b0a-9e23-f5fd29ee87f9
+    id: _:6dd1bf06-6573-42fe-8c34-a90ae519b8fc
     class: CommandLineTool
     inputs:
     - id: output-prefix
@@ -286,13 +282,11 @@ steps:
     - initialProdConf_2.json
 - id: L0_emulation_for_2016_-_TCK_0x160F
   in:
-  - id: production-id
-    source: production-id
-  - id: prod-job-id
-    source: prod-job-id
   - id: output-prefix
-    valueFrom: $(inputs["production-id"].toString().padStart(8, "0"))_$(inputs["prod-job-id"].toString().padStart(8, 
-      "0"))_3
+    source:
+    - production-id
+    - prod-job-id
+    valueFrom: $(self[0].toString().padStart(8, "0"))_$(self[1].toString().padStart(8, "0"))_3
   - id: run-number
     source: run-number
   - id: number-of-events
@@ -304,7 +298,7 @@ steps:
   - id: others
   - id: pool-xml-catalog-out
   run:
-    id: _:911434d3-18e8-45c3-8ced-fe117969301b
+    id: _:dd74ccdb-26b8-43eb-8a27-a64e7dd12e05
     class: CommandLineTool
     inputs:
     - id: output-prefix
@@ -387,13 +381,11 @@ steps:
     - initialProdConf_3.json
 - id: TCK-0x5138160F__HLT1__Flagged_for_2016
   in:
-  - id: production-id
-    source: production-id
-  - id: prod-job-id
-    source: prod-job-id
   - id: output-prefix
-    valueFrom: $(inputs["production-id"].toString().padStart(8, "0"))_$(inputs["prod-job-id"].toString().padStart(8, 
-      "0"))_4
+    source:
+    - production-id
+    - prod-job-id
+    valueFrom: $(self[0].toString().padStart(8, "0"))_$(self[1].toString().padStart(8, "0"))_4
   - id: run-number
     source: run-number
   - id: number-of-events
@@ -405,7 +397,7 @@ steps:
   - id: others
   - id: pool-xml-catalog-out
   run:
-    id: _:c5aa5bb6-f69c-4973-836b-f8eb48dc85e2
+    id: _:d2e27b93-457b-4c2d-8b4a-369a019f9d1e
     class: CommandLineTool
     inputs:
     - id: output-prefix
@@ -487,13 +479,11 @@ steps:
     - initialProdConf_4.json
 - id: TCK-0x6139160F__HLT2__Flagged_for_2016
   in:
-  - id: production-id
-    source: production-id
-  - id: prod-job-id
-    source: prod-job-id
   - id: output-prefix
-    valueFrom: $(inputs["production-id"].toString().padStart(8, "0"))_$(inputs["prod-job-id"].toString().padStart(8, 
-      "0"))_5
+    source:
+    - production-id
+    - prod-job-id
+    valueFrom: $(self[0].toString().padStart(8, "0"))_$(self[1].toString().padStart(8, "0"))_5
   - id: run-number
     source: run-number
   - id: number-of-events
@@ -505,7 +495,7 @@ steps:
   - id: others
   - id: pool-xml-catalog-out
   run:
-    id: _:88ad400f-454d-48f4-8205-4333b2fed3c4
+    id: _:2d21ca04-65e3-4901-a66d-b7bffde34455
     class: CommandLineTool
     inputs:
     - id: output-prefix
@@ -587,13 +577,11 @@ steps:
     - initialProdConf_5.json
 - id: Reco16_for_MC_2016
   in:
-  - id: production-id
-    source: production-id
-  - id: prod-job-id
-    source: prod-job-id
   - id: output-prefix
-    valueFrom: $(inputs["production-id"].toString().padStart(8, "0"))_$(inputs["prod-job-id"].toString().padStart(8, 
-      "0"))_6
+    source:
+    - production-id
+    - prod-job-id
+    valueFrom: $(self[0].toString().padStart(8, "0"))_$(self[1].toString().padStart(8, "0"))_6
   - id: run-number
     source: run-number
   - id: number-of-events
@@ -605,7 +593,7 @@ steps:
   - id: others
   - id: pool-xml-catalog-out
   run:
-    id: _:35b3f1d8-7bb7-4ed4-9321-38ec09659074
+    id: _:4aa18a1c-0643-4254-9beb-0ce642ff9d14
     class: CommandLineTool
     inputs:
     - id: output-prefix
@@ -686,13 +674,11 @@ steps:
     - initialProdConf_6.json
 - id: Turbo_lines__MC__for_2016_Turbo03a
   in:
-  - id: production-id
-    source: production-id
-  - id: prod-job-id
-    source: prod-job-id
   - id: output-prefix
-    valueFrom: $(inputs["production-id"].toString().padStart(8, "0"))_$(inputs["prod-job-id"].toString().padStart(8, 
-      "0"))_7
+    source:
+    - production-id
+    - prod-job-id
+    valueFrom: $(self[0].toString().padStart(8, "0"))_$(self[1].toString().padStart(8, "0"))_7
   - id: run-number
     source: run-number
   - id: number-of-events
@@ -704,7 +690,7 @@ steps:
   - id: others
   - id: pool-xml-catalog-out
   run:
-    id: _:81d8e023-556e-4edd-aed6-f47474867fb6
+    id: _:6930ce1e-7f1f-4d6d-8f2d-9c1fb429a2cd
     class: CommandLineTool
     inputs:
     - id: output-prefix
@@ -787,13 +773,11 @@ steps:
     - initialProdConf_7.json
 - id: Stripping28r2p2NoPrescalingFlagged_for_2016
   in:
-  - id: production-id
-    source: production-id
-  - id: prod-job-id
-    source: prod-job-id
   - id: output-prefix
-    valueFrom: $(inputs["production-id"].toString().padStart(8, "0"))_$(inputs["prod-job-id"].toString().padStart(8, 
-      "0"))_8
+    source:
+    - production-id
+    - prod-job-id
+    valueFrom: $(self[0].toString().padStart(8, "0"))_$(self[1].toString().padStart(8, "0"))_8
   - id: run-number
     source: run-number
   - id: number-of-events
@@ -805,7 +789,7 @@ steps:
   - id: others
   - id: pool-xml-catalog-out
   run:
-    id: _:64a61849-aa3b-4d6f-a860-52a3d8970e62
+    id: _:5545e102-f90b-4f60-8b6e-2c800bed4faa
     class: CommandLineTool
     inputs:
     - id: output-prefix
@@ -889,13 +873,11 @@ steps:
     - initialProdConf_8.json
 - id: Merge_for_ALLSTREAMS_DST
   in:
-  - id: production-id
-    source: production-id
-  - id: prod-job-id
-    source: prod-job-id
   - id: output-prefix
-    valueFrom: $(inputs["production-id"].toString().padStart(8, "0"))_$(inputs["prod-job-id"].toString().padStart(8, 
-      "0"))_9
+    source:
+    - production-id
+    - prod-job-id
+    valueFrom: $(self[0].toString().padStart(8, "0"))_$(self[1].toString().padStart(8, "0"))_9
   - id: run-number
     source: run-number
   - id: number-of-events
@@ -907,7 +889,7 @@ steps:
   - id: others
   - id: pool-xml-catalog-out
   run:
-    id: _:6851966d-19d5-48da-a47d-fc7048f33b94
+    id: _:e2adb355-0f50-4b62-be2d-c8afb9d52660
     class: CommandLineTool
     inputs:
     - id: output-prefix

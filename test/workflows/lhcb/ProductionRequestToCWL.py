@@ -44,6 +44,7 @@ from cwl_utils.parser.cwl_v1_2 import (
     WorkflowStepInput,
     WorkflowStepOutput,
 )
+from ruamel.yaml.scalarstring import LiteralScalarString
 
 
 # Constants
@@ -170,7 +171,7 @@ def _buildCWLWorkflow(
     cwl_workflow = Workflow(
         cwlVersion="v1.2",
         label=production_name,
-        doc="\n".join(doc_lines),
+        doc=LiteralScalarString("\n".join(doc_lines)),
         steps=cwl_steps,
         requirements=[
             MultipleInputFeatureRequirement(),
@@ -541,7 +542,6 @@ def _buildCommandLineTool(
 
     # Create readable multi-line JSON string for base configuration
     # Use a LiteralScalarString to preserve formatting in YAML output
-    from ruamel.yaml.scalarstring import LiteralScalarString
     config_json = LiteralScalarString(json.dumps(prod_conf, indent=2))
 
     # Use InitialWorkDirRequirement to write the base config with dynamic filename
@@ -652,30 +652,19 @@ def _buildStepInputs(
         app_name = application.get("name", "unknown")
     is_gauss = app_name.lower() == "gauss"
 
-    # Always add production-id and prod-job-id
-    step_inputs.append(
-        WorkflowStepInput(
-            id="production-id",
-            source="production-id",
-        )
-    )
-    step_inputs.append(
-        WorkflowStepInput(
-            id="prod-job-id",
-            source="prod-job-id",
-        )
-    )
+    # Add output-prefix computed from production-id and prod-job-id
+    # Use multiple sources and valueFrom to compute the prefix
     step_inputs.append(
         WorkflowStepInput(
             id="output-prefix",
-            valueFrom=f'$(inputs["production-id"].toString().padStart(8, "0"))_$(inputs["prod-job-id"].toString().padStart(8, "0"))_{step_index + 1}',
+            source=["production-id", "prod-job-id"],
+            valueFrom=f'$(self[0].toString().padStart(8, "0"))_$(self[1].toString().padStart(8, "0"))_{step_index + 1}',
         )
     )
 
-
     for input_id, wf_input in workflow_inputs.items():
-        # Skip production IDs as they're already added
-        if input_id in ["production-id", "prod-job-id"]:
+        # Skip production IDs and output-prefix as they're already handled above
+        if input_id in ["production-id", "prod-job-id", "output-prefix"]:
             continue
 
         # Skip first-event-number for non-Gauss steps
