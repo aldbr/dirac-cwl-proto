@@ -238,10 +238,9 @@ def _getWorkflowInputs(production: dict[str, Any], event_type: dict[str, Any]) -
             doc="Number of events to generate"
         )
         workflow_inputs[POOL_XML] = WorkflowInputParameter(
-            type_="string",
+            type_="File?",
             id=POOL_XML,
-            default="pool_xml_catalog.xml",
-            doc="Pool XML catalog file name"
+            doc="Pool XML catalog file (optional)"
         )
         workflow_inputs["histogram"] = WorkflowInputParameter(
             type_="boolean",
@@ -279,33 +278,54 @@ def _getWorkflowInputs(production: dict[str, Any], event_type: dict[str, Any]) -
 
 
 def _getWorkflowOutputs(steps: list[dict[str, Any]]) -> list[WorkflowOutputParameter]:
-    """Define the workflow-level outputs."""
+    """Define the workflow-level outputs based on output file visibility flags."""
     workflow_outputs = []
 
-    # Collect outputs from the last step
-    if steps:
-        last_step = steps[-1]
-        step_name = _sanitizeStepName(last_step.get("name", f"step_{len(steps) - 1}"))
+    # Collect outputs from steps that have visible output files
+    for step_index, step in enumerate(steps):
+        # Check if any output file in this step is marked as visible
+        visible_outputs = [out for out in step.get("output", []) if out.get("visible", False)]
 
-        # Output data files
-        workflow_outputs.append(
-            WorkflowOutputParameter(
-                type_="File[]",
-                id="output-data",
-                label="Output Data",
-                outputSource=f"{step_name}/output-data",
+        if visible_outputs:
+            step_name = _sanitizeStepName(step.get("name", f"step_{step_index}"))
+
+            # Get output types for labels
+            output_types = [out.get("type", "").upper() for out in visible_outputs]
+            output_label = ", ".join(output_types) if output_types else "Output Data"
+
+            # Create unique output ID using step index
+            output_id = f"output-data-step-{step_index + 1}"
+
+            # Output data files for this visible step
+            workflow_outputs.append(
+                WorkflowOutputParameter(
+                    type_="File[]",
+                    id=output_id,
+                    label=f"{output_label}",
+                    outputSource=f"{step_name}/output-data",
+                )
             )
-        )
 
-        # Other outputs (logs, summary files, etc.)
+    # Collect "others" outputs (logs, summaries) from ALL steps for log storage
+    for step_index, step in enumerate(steps):
+        step_name = _sanitizeStepName(step.get("name", f"step_{step_index}"))
+
+        # Create unique ID for each step's logs
+        others_id = f"others-step-{step_index + 1}"
+
         workflow_outputs.append(
             WorkflowOutputParameter(
                 type_="File[]",
-                id="others",
-                label="Other outputs (logs, summaries)",
+                id=others_id,
+                label=f"Logs and summaries (step {step_index + 1})",
                 outputSource=f"{step_name}/others",
             )
         )
+
+    # Always add pool XML catalog from the last step
+    if steps:
+        last_step = steps[-1]
+        last_step_name = _sanitizeStepName(last_step.get("name", f"step_{len(steps) - 1}"))
 
         # Pool XML catalog
         workflow_outputs.append(
@@ -313,7 +333,7 @@ def _getWorkflowOutputs(steps: list[dict[str, Any]]) -> list[WorkflowOutputParam
                 type_="File",
                 id=POOL_XML_OUT,
                 label="Pool XML Catalog",
-                outputSource=f"{step_name}/{POOL_XML_OUT}",
+                outputSource=f"{last_step_name}/{POOL_XML_OUT}",
             )
         )
 
@@ -463,6 +483,9 @@ def _buildCommandLineTool(
     # Step number is 1-indexed
     step_number = step_index + 1
 
+    # pool_xml_catalog filename
+    pool_xml_filename = "pool_xml_catalog.xml"
+
     # Build input parameters with command-line bindings
     input_parameters = []
     input_parameters.append(
@@ -498,11 +521,13 @@ def _buildCommandLineTool(
                     )
                 )
         elif input_id == POOL_XML:
+            # Pool XML catalog is copied via InitialWorkDirRequirement, not passed as CLI arg
+            # Only add as input parameter (no inputBinding) so it can be used in InitialWorkDirRequirement
             input_parameters.append(
                 CommandInputParameter(
                     id=POOL_XML,
-                    type_="File" if step_index > 0 else "string",
-                    inputBinding=CommandLineBinding(prefix="--pool-xml-catalog"),
+                    type_="File?" if step_index == 0 else "File",
+                    # No inputBinding - we copy it via InitialWorkDirRequirement instead
                 )
             )
         elif input_id == RUN_NUMBER:
@@ -546,15 +571,28 @@ def _buildCommandLineTool(
 
     # Use InitialWorkDirRequirement to write the base config with dynamic filename
     initial_prod_conf = f"initialProdConf_{step_number}.json"
+
+    # Build the listing for InitialWorkDirRequirement
+    initial_workdir_listing = [
+        Dirent(
+            entryname=initial_prod_conf,
+            entry=config_json,
+        )
+    ]
+
+    # For all steps, copy pool_xml_catalog if provided
+    # For the first step, this input is optional (File?) - if provided, copy it; otherwise Gauss creates it
+    # For subsequent steps, this will be a required File from the previous step that should be copied
+    # We always add the copy directive - if the input is null/missing, the file won't be created
+    initial_workdir_listing.append(
+        Dirent(
+            entryname=pool_xml_filename,
+            entry=f"$(inputs['{POOL_XML}'])",
+        )
+    )
+
     requirements = [
-        InitialWorkDirRequirement(
-            listing=[
-                Dirent(
-                    entryname=initial_prod_conf,
-                    entry=config_json,
-                )
-            ]
-        ),
+        InitialWorkDirRequirement(listing=initial_workdir_listing),
         # Add ResourceRequirement for cores (default to 1)
         ResourceRequirement(
             coresMin=1,

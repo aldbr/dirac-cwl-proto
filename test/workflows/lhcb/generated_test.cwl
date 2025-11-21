@@ -1,4 +1,4 @@
-id: _:c9c5a208-aaa2-4c3f-a9da-9477c3997fd1
+id: _:75f8efbb-e5a1-49b7-91d8-fe840bf0aa67
 class: Workflow
 label: RD_Lb2pKpipiMuMu_Run2_Run3 2016 pp MagUp
 doc: |-
@@ -34,20 +34,51 @@ inputs:
   default: 10
   type: int
 - id: pool-xml-catalog
-  doc: Pool XML catalog file name
-  default: pool_xml_catalog.xml
-  type: string
+  doc: Pool XML catalog file (optional)
+  type: File?
 - id: histogram
   doc: Enable histogram output
   default: false
   type: boolean
 outputs:
-- id: output-data
-  label: Output Data
+- id: output-data-step-9
+  label: ALLSTREAMS.DST
   outputSource: Merge_for_ALLSTREAMS_DST/output-data
   type: File[]
-- id: others
-  label: Other outputs (logs, summaries)
+- id: others-step-1
+  label: Logs and summaries (step 1)
+  outputSource: Sim10f_-_2016_-_Beam6500GeV_-_MagUp_-_Pythia8/others
+  type: File[]
+- id: others-step-2
+  label: Logs and summaries (step 2)
+  outputSource: Digi15_for_2016_spillover/others
+  type: File[]
+- id: others-step-3
+  label: Logs and summaries (step 3)
+  outputSource: L0_emulation_for_2016_-_TCK_0x160F/others
+  type: File[]
+- id: others-step-4
+  label: Logs and summaries (step 4)
+  outputSource: TCK-0x5138160F__HLT1__Flagged_for_2016/others
+  type: File[]
+- id: others-step-5
+  label: Logs and summaries (step 5)
+  outputSource: TCK-0x6139160F__HLT2__Flagged_for_2016/others
+  type: File[]
+- id: others-step-6
+  label: Logs and summaries (step 6)
+  outputSource: Reco16_for_MC_2016/others
+  type: File[]
+- id: others-step-7
+  label: Logs and summaries (step 7)
+  outputSource: Turbo_lines__MC__for_2016_Turbo03a/others
+  type: File[]
+- id: others-step-8
+  label: Logs and summaries (step 8)
+  outputSource: Stripping28r2p2NoPrescalingFlagged_for_2016/others
+  type: File[]
+- id: others-step-9
+  label: Logs and summaries (step 9)
   outputSource: Merge_for_ALLSTREAMS_DST/others
   type: File[]
 - id: pool-xml-catalog-out
@@ -85,7 +116,7 @@ steps:
   - id: others
   - id: pool-xml-catalog-out
   run:
-    id: _:a7a4c3db-dc94-450c-a7f7-36f13c28de96
+    id: _:fa1ae7a3-a29d-4620-aaaa-1e2cfdda23e8
     class: CommandLineTool
     inputs:
     - id: output-prefix
@@ -105,9 +136,7 @@ steps:
       inputBinding:
         prefix: --number-of-events
     - id: pool-xml-catalog
-      type: string
-      inputBinding:
-        prefix: --pool-xml-catalog
+      type: File?
     - id: histogram
       type: boolean
       inputBinding:
@@ -174,6 +203,8 @@ steps:
               ]
             }
           }
+      - entryname: pool_xml_catalog.xml
+        entry: $(inputs['pool-xml-catalog'])
     - class: ResourceRequirement
       coresMin: 1
       coresMax: 1
@@ -200,7 +231,7 @@ steps:
   - id: others
   - id: pool-xml-catalog-out
   run:
-    id: _:6dd1bf06-6573-42fe-8c34-a90ae519b8fc
+    id: _:f7eca1e8-bceb-486d-838d-6e4a792e4246
     class: CommandLineTool
     inputs:
     - id: output-prefix
@@ -217,8 +248,6 @@ steps:
         prefix: --number-of-events
     - id: pool-xml-catalog
       type: File
-      inputBinding:
-        prefix: --pool-xml-catalog
     outputs:
     - id: output-data
       type: File[]
@@ -272,6 +301,8 @@ steps:
               ]
             }
           }
+      - entryname: pool_xml_catalog.xml
+        entry: $(inputs['pool-xml-catalog'])
     - class: ResourceRequirement
       coresMin: 1
       coresMax: 1
@@ -298,7 +329,7 @@ steps:
   - id: others
   - id: pool-xml-catalog-out
   run:
-    id: _:dd74ccdb-26b8-43eb-8a27-a64e7dd12e05
+    id: _:1b6a425c-201e-4ad2-98d1-8970872c3899
     class: CommandLineTool
     inputs:
     - id: output-prefix
@@ -315,8 +346,6 @@ steps:
         prefix: --number-of-events
     - id: pool-xml-catalog
       type: File
-      inputBinding:
-        prefix: --pool-xml-catalog
     outputs:
     - id: output-data
       type: File[]
@@ -371,6 +400,8 @@ steps:
               ]
             }
           }
+      - entryname: pool_xml_catalog.xml
+        entry: $(inputs['pool-xml-catalog'])
     - class: ResourceRequirement
       coresMin: 1
       coresMax: 1
@@ -397,7 +428,7 @@ steps:
   - id: others
   - id: pool-xml-catalog-out
   run:
-    id: _:d2e27b93-457b-4c2d-8b4a-369a019f9d1e
+    id: _:b47589a9-f337-4e3b-a7db-c510b922fd94
     class: CommandLineTool
     inputs:
     - id: output-prefix
@@ -414,8 +445,6 @@ steps:
         prefix: --number-of-events
     - id: pool-xml-catalog
       type: File
-      inputBinding:
-        prefix: --pool-xml-catalog
     outputs:
     - id: output-data
       type: File[]
@@ -469,6 +498,8 @@ steps:
               ]
             }
           }
+      - entryname: pool_xml_catalog.xml
+        entry: $(inputs['pool-xml-catalog'])
     - class: ResourceRequirement
       coresMin: 1
       coresMax: 1
@@ -495,7 +526,7 @@ steps:
   - id: others
   - id: pool-xml-catalog-out
   run:
-    id: _:2d21ca04-65e3-4901-a66d-b7bffde34455
+    id: _:f3991aa6-633b-4028-98dc-2d06ae27192d
     class: CommandLineTool
     inputs:
     - id: output-prefix
@@ -512,8 +543,6 @@ steps:
         prefix: --number-of-events
     - id: pool-xml-catalog
       type: File
-      inputBinding:
-        prefix: --pool-xml-catalog
     outputs:
     - id: output-data
       type: File[]
@@ -567,6 +596,8 @@ steps:
               ]
             }
           }
+      - entryname: pool_xml_catalog.xml
+        entry: $(inputs['pool-xml-catalog'])
     - class: ResourceRequirement
       coresMin: 1
       coresMax: 1
@@ -593,7 +624,7 @@ steps:
   - id: others
   - id: pool-xml-catalog-out
   run:
-    id: _:4aa18a1c-0643-4254-9beb-0ce642ff9d14
+    id: _:d98039ea-c015-40ab-8cbf-da562f996862
     class: CommandLineTool
     inputs:
     - id: output-prefix
@@ -610,8 +641,6 @@ steps:
         prefix: --number-of-events
     - id: pool-xml-catalog
       type: File
-      inputBinding:
-        prefix: --pool-xml-catalog
     outputs:
     - id: output-data
       type: File[]
@@ -664,6 +693,8 @@ steps:
               ]
             }
           }
+      - entryname: pool_xml_catalog.xml
+        entry: $(inputs['pool-xml-catalog'])
     - class: ResourceRequirement
       coresMin: 1
       coresMax: 1
@@ -690,7 +721,7 @@ steps:
   - id: others
   - id: pool-xml-catalog-out
   run:
-    id: _:6930ce1e-7f1f-4d6d-8f2d-9c1fb429a2cd
+    id: _:572405f8-84af-48f5-a05c-e037021604c6
     class: CommandLineTool
     inputs:
     - id: output-prefix
@@ -707,8 +738,6 @@ steps:
         prefix: --number-of-events
     - id: pool-xml-catalog
       type: File
-      inputBinding:
-        prefix: --pool-xml-catalog
     outputs:
     - id: output-data
       type: File[]
@@ -763,6 +792,8 @@ steps:
               ]
             }
           }
+      - entryname: pool_xml_catalog.xml
+        entry: $(inputs['pool-xml-catalog'])
     - class: ResourceRequirement
       coresMin: 1
       coresMax: 1
@@ -789,7 +820,7 @@ steps:
   - id: others
   - id: pool-xml-catalog-out
   run:
-    id: _:5545e102-f90b-4f60-8b6e-2c800bed4faa
+    id: _:0428e9e0-5b02-4a7d-a0a2-78292f85b653
     class: CommandLineTool
     inputs:
     - id: output-prefix
@@ -806,8 +837,6 @@ steps:
         prefix: --number-of-events
     - id: pool-xml-catalog
       type: File
-      inputBinding:
-        prefix: --pool-xml-catalog
     outputs:
     - id: output-data
       type: File[]
@@ -863,6 +892,8 @@ steps:
               ]
             }
           }
+      - entryname: pool_xml_catalog.xml
+        entry: $(inputs['pool-xml-catalog'])
     - class: ResourceRequirement
       coresMin: 1
       coresMax: 1
@@ -889,7 +920,7 @@ steps:
   - id: others
   - id: pool-xml-catalog-out
   run:
-    id: _:e2adb355-0f50-4b62-be2d-c8afb9d52660
+    id: _:3c8e5351-79b8-4c69-84f1-61fc1c5da945
     class: CommandLineTool
     inputs:
     - id: output-prefix
@@ -906,8 +937,6 @@ steps:
         prefix: --number-of-events
     - id: pool-xml-catalog
       type: File
-      inputBinding:
-        prefix: --pool-xml-catalog
     outputs:
     - id: output-data
       type: File[]
@@ -963,6 +992,8 @@ steps:
               ]
             }
           }
+      - entryname: pool_xml_catalog.xml
+        entry: $(inputs['pool-xml-catalog'])
     - class: ResourceRequirement
       coresMin: 1
       coresMax: 1

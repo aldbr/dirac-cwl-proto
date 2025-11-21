@@ -13,14 +13,13 @@ def main():
     parser.add_argument("config_file", help="Base configuration JSON file")
     parser.add_argument("--lfn-paths", help="Input LFN paths (JSON file)")
     parser.add_argument("--pfn-paths", help="Input PFN paths (JSON file)")
-    parser.add_argument("--pool-xml-catalog", help="Pool XML catalog file")
+    parser.add_argument("--pool-xml-catalog", default="pool_xml_catalog.xml", help="Pool XML catalog file")
     parser.add_argument("--run-number", type=int, help="Run number")
     parser.add_argument("--first-event-number", type=int, help="First event number")
     parser.add_argument("--number-of-events", type=int, help="Number of events")
     parser.add_argument("--number-of-processors", type=int, help="Number of processors")
     parser.add_argument("--output-prefix", help="Output file prefix")
     parser.add_argument("--histogram", action="store_true", help="Enable histogram output")
-    parser.add_argument("--output-type", help="Override output type")
 
     args = parser.parse_args()
 
