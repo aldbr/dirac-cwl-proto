@@ -79,7 +79,7 @@ class JobWrapper:
             if not file.path:
                 raise NotImplementedError("File path is not defined.")
 
-            input_path = Path(file.path)
+            input_path = Path(str(file.path).removeprefix("file://"))
             shutil.copy(input_path, job_path / input_path.name)
             file.path = file.path.split("/")[-1]
 
