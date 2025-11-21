@@ -19,7 +19,6 @@ from pydantic import BaseModel, ConfigDict, field_serializer, model_validator
 
 from dirac_cwl_proto.execution_hooks import (
     ExecutionHooksHint,
-    PrePostProcessingHint,
     SchedulingHint,
     TransformationExecutionHooksHint,
 )
@@ -52,7 +51,6 @@ class JobSubmissionModel(BaseModel):
     task: CommandLineTool | Workflow | ExpressionTool
     parameters: list[JobInputModel] | None = None
     scheduling: SchedulingHint
-    jobProcessing: PrePostProcessingHint
     execution_hooks: ExecutionHooksHint
 
     @field_serializer("task")
@@ -77,7 +75,6 @@ class TransformationSubmissionModel(BaseModel):
     task: CommandLineTool | Workflow | ExpressionTool
     execution_hooks: TransformationExecutionHooksHint
     scheduling: SchedulingHint
-    jobProcessing: PrePostProcessingHint
 
     @field_serializer("task")
     def serialize_task(self, value):
@@ -103,8 +100,6 @@ class ProductionSubmissionModel(BaseModel):
     steps_execution_hooks: dict[str, TransformationExecutionHooksHint]
     # Key: step name, Value: scheduling configuration for a transformation
     steps_scheduling: dict[str, SchedulingHint] = {}
-
-    steps_jobProcessing: dict[str, PrePostProcessingHint] = {}
 
     @model_validator(mode="before")
     def validate_steps_metadata(cls, values):
@@ -140,7 +135,7 @@ class ProductionSubmissionModel(BaseModel):
 
 def extract_dirac_hints(
     cwl: Any,
-) -> tuple[ExecutionHooksHint, SchedulingHint, PrePostProcessingHint]:
+) -> tuple[ExecutionHooksHint, SchedulingHint]:
     """Thin wrapper that returns (ExecutionHooksHint, SchedulingHint, PrePostProcessingHint).
 
     Prefer the class-factory APIs `ExecutionHooksHint.from_cwl` and
@@ -150,5 +145,4 @@ def extract_dirac_hints(
     return (
         ExecutionHooksHint.from_cwl(cwl),
         SchedulingHint.from_cwl(cwl),
-        PrePostProcessingHint.from_cwl(cwl),
     )

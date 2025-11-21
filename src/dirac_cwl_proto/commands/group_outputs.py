@@ -2,18 +2,17 @@ import glob
 import os
 
 from dirac_cwl_proto.commands import CommandBase
-from dirac_cwl_proto.job.job_wrapper import JobWrapper
 
 
 class GroupOutputs(CommandBase):
-    def execute(self, job_wrapper: JobWrapper):
+    def execute(self, job_path, **kwargs):
         groupedOutputs = "group.out"
-        outputPath = os.path.join(job_wrapper.job_path, groupedOutputs)
+        outputPath = os.path.join(job_path, groupedOutputs)
         outputFiles = ["*.out", "*.txt"]
 
         with open(outputPath, "w", encoding="utf-8") as fIn:
             for fileType in outputFiles:
-                extension = f"{job_wrapper.job_path}/{fileType}"
+                extension = f"{job_path}/{fileType}"
                 for file in glob.glob(extension):
                     if file == outputPath:
                         continue

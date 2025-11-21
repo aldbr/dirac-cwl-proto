@@ -83,7 +83,7 @@ async def submit_job_client(
 
     # Extract and validate dirac hints; unknown hints are logged as warnings.
     try:
-        job_metadata, job_scheduling, job_processing = extract_dirac_hints(task)
+        job_metadata, job_scheduling = extract_dirac_hints(task)
     except Exception as exc:
         console.print(
             f"[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Invalid DIRAC hints:\n{exc}"
@@ -114,9 +114,6 @@ async def submit_job_client(
                     job_metadata = job_metadata.model_copy(
                         update=override_hints.pop("dirac:execution-hooks", {})
                     )
-                    job_processing = job_processing.model_copy(
-                        update=override_hints.pop("dirac:jobProcessing", {})
-                    )
 
             # Prepare files for the ISB
             isb_file_paths = prepare_input_sandbox(parameter)
@@ -139,7 +136,6 @@ async def submit_job_client(
         parameters=parameters,
         scheduling=job_scheduling,
         execution_hooks=job_metadata,
-        jobProcessing=job_processing,
     )
     console.print(
         "[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Job(s) validated."
@@ -181,7 +177,6 @@ def validate_jobs(job: JobSubmissionModel) -> list[JobSubmissionModel]:
                     parameters=[parameter],
                     scheduling=job.scheduling,
                     execution_hooks=job.execution_hooks,
-                    jobProcessing=job.jobProcessing,
                 )
             )
     console.print(

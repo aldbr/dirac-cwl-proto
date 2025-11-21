@@ -170,13 +170,8 @@ class JobWrapper:
         self.job_path.mkdir(parents=True, exist_ok=True)
 
         try:
-            jobProcessor = job.jobProcessing.instantiate(self)
-
             # Pre-process the job
             logger.info("Pre-processing Task...")
-            jobProcessor.pre_process()
-            # If we add to JobWrapper class the 'task' and 'parameters' attributes, it could be accessed
-            #  by the jobProcessor and process this with a single pre_process function
             command = self._pre_process(
                 job.task,
                 job.parameters[0] if job.parameters else None,
@@ -199,9 +194,6 @@ class JobWrapper:
             # Post-process the job
             logger.info("Post-processing Task...")
 
-            # If we add to JobWrapper class a 'result' attribute, it could be accessed
-            #  by the jobProcessor and process this with a single post_process function
-            jobProcessor.post_process()
             if self._post_process(
                 result.returncode,
                 result.stdout,

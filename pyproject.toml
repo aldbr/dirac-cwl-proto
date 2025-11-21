@@ -47,7 +47,7 @@ pi-simulate = "dirac_cwl_proto.modules.pi_simulate:app"
 pi-gather = "dirac_cwl_proto.modules.pi_gather:app"
 
 [project.entry-points."modules.jobTypes"]
-TestingJobType = "dirac_cwl_proto.commands.jobTypes:TestingJobType"
+TestingJobType = "dirac_cwl_proto.commands.job_types:TestingJobType"
 
 [tool.setuptools_scm]
 
