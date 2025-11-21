@@ -47,9 +47,9 @@ def collect_pydantic_models() -> Dict[str, Any]:
         models.update(
             {
                 "ExecutionHooksBasePlugin": ExecutionHooksBasePlugin,
-                "ExecutionHooksHint": ExecutionHooksHint,
-                "SchedulingHint": SchedulingHint,
-                "TransformationExecutionHooksHint": TransformationExecutionHooksHint,
+                "ExecutionHooks": ExecutionHooksHint,
+                "Scheduling": SchedulingHint,
+                "TransformationExecutionHooks": TransformationExecutionHooksHint,
             }
         )
         logger.info("Collected core metadata models")

@@ -46,7 +46,7 @@ def pi_test_files():
         result_file = job_dir / f"result_{i}.sim"
         with open(result_file, "w") as f:
             # Create different sample data for each file
-            f.write(f"0.{i} 0.{i+1}\n-0.{i+2} 0.{i+3}\n0.{i+4} -0.{i+5}\n")
+            f.write(f"0.{i} 0.{i + 1}\n-0.{i + 2} 0.{i + 3}\n0.{i + 4} -0.{i + 5}\n")
         result_files.append(result_file)
 
     yield
@@ -87,13 +87,7 @@ def pi_test_files():
             ],
         ),
         # --- Test metadata example ---
-        # A string input is passed
-        (
-            "test/workflows/test_meta/test_meta.cwl",
-            [
-                "test/workflows/test_meta/override_dirac_hints.yaml",
-            ],
-        ),
+        ("test/workflows/test_meta/test_meta.cwl", []),
         # --- Crypto example ---
         # Complete
         (
@@ -182,14 +176,6 @@ def test_run_job_success(cli_runner, cleanup, pi_test_files, cwl_file, inputs):
             [],
             "Recursingintostep",
         ),
-        # The configuration file is malformed: the hints are overridden more than once
-        (
-            "test/workflows/test_meta/test_meta.cwl",
-            [
-                "test/workflows/test_meta/override_dirac_hints_twice.yaml",
-            ],
-            "Failedtovalidatetheparameter",
-        ),
     ],
 )
 def test_run_job_validation_failure(
@@ -248,7 +234,7 @@ def test_run_job_parallely():
 
     # This command forces the process 'dirac-cwl' to execute ONLY in
     # one core of the machine, independently of how many there are
-    # phisically available.
+    # physically available.
     # This simulates a sequential execution of the worklflow.
     command = [
         "taskset",
@@ -281,7 +267,7 @@ def test_run_job_parallely():
     assert abs(1 - sequential_time / (2 * parallel_time)) < error_margin_percentage, (
         "Difference between parallel and sequential time is too large",
         f"Sequential: {sequential_time} # Parallel: {parallel_time}",
-        f"Sequential time should be twice the parallel time with an error of {int(error_margin_percentage*100)}%",
+        f"Sequential time should be twice the parallel time with an error of {int(error_margin_percentage * 100)}%",
     )
 
 
@@ -291,38 +277,30 @@ def test_run_job_parallely():
 
 
 @pytest.mark.parametrize(
-    "cwl_file, metadata",
+    "cwl_file",
     [
         # --- Hello World example ---
         # There is no input expected
-        ("test/workflows/helloworld/description_basic.cwl", None),
+        "test/workflows/helloworld/description_basic.cwl",
         # --- Crypto example ---
         # Complete
-        ("test/workflows/crypto/description.cwl", None),
+        "test/workflows/crypto/description.cwl",
         # Caesar only
-        ("test/workflows/crypto/caesar.cwl", None),
+        "test/workflows/crypto/caesar.cwl",
         # ROT13 only
-        ("test/workflows/crypto/rot13.cwl", None),
+        "test/workflows/crypto/rot13.cwl",
         # Base64 only
-        ("test/workflows/crypto/base64.cwl", None),
+        "test/workflows/crypto/base64.cwl",
         # MD5 only
-        ("test/workflows/crypto/md5.cwl", None),
+        "test/workflows/crypto/md5.cwl",
         # --- Pi example ---
         # Pi simulate transformation
-        (
-            "test/workflows/pi/pisimulate.cwl",
-            "test/workflows/pi/type_dependencies/transformation/metadata-pi_simulate.yaml",
-        ),
+        "test/workflows/pi/pisimulate.cwl",
     ],
 )
-def test_run_nonblocking_transformation_success(
-    cli_runner, cleanup, cwl_file, metadata
-):
+def test_run_nonblocking_transformation_success(cli_runner, cleanup, cwl_file):
     # CWL file is the first argument
     command = ["transformation", "submit", cwl_file]
-    # Add the metadata file
-    if metadata:
-        command.extend(["--metadata-path", metadata])
 
     result = cli_runner.invoke(app, command)
     clean_output = strip_ansi_codes(result.stdout)
@@ -332,13 +310,12 @@ def test_run_nonblocking_transformation_success(
 
 
 @pytest.mark.parametrize(
-    "cwl_file, metadata, destination_source_input_data",
+    "cwl_file, destination_source_input_data",
     [
         # --- Pi example ---
         # Pi gather transformation (waits for simulation result files)
         (
             "test/workflows/pi/pigather.cwl",
-            "test/workflows/pi/type_dependencies/transformation/metadata-pi_gather.yaml",
             {
                 "filecatalog/pi/100/input-data": [
                     ("result_1.sim", "0.1 0.2\n-0.3 0.4\n0.5 -0.6\n"),
@@ -352,13 +329,11 @@ def test_run_nonblocking_transformation_success(
     ],
 )
 def test_run_blocking_transformation_success(
-    cli_runner, cleanup, cwl_file, metadata, destination_source_input_data
+    cli_runner, cleanup, cwl_file, destination_source_input_data
 ):
     # Define a function to run the transformation command and return the result
     def run_transformation():
         command = ["transformation", "submit", cwl_file]
-        if metadata:
-            command.extend(["--metadata-path", metadata])
         return cli_runner.invoke(app, command)
 
     # Start running the transformation in a separate thread and capture the result
@@ -404,46 +379,39 @@ def test_run_blocking_transformation_success(
 
 
 @pytest.mark.parametrize(
-    "cwl_file, metadata, expected_error",
+    "cwl_file, expected_error",
     [
         # The description file is malformed: class attribute is unknown
         (
             "test/workflows/malformed_description/description_malformed_class.cwl",
-            None,
             "`class`containsundefinedreferenceto",
         ),
         # The description file is malformed: baseCommand is unknown
         (
             "test/workflows/malformed_description/description_malformed_command.cwl",
-            None,
             "invalidfield`baseComand`",
         ),
         # The description file points to a non-existent file (subworkflow)
         (
             "test/workflows/bad_references/reference_doesnotexists.cwl",
-            [],
             "Nosuchfileordirectory",
         ),
         # The description file points to another file point to it (circular dependency)
         (
             "test/workflows/bad_references/reference_circular1.cwl",
-            [],
             "Recursingintostep",
         ),
         # The description file points to itself (another circular dependency)
         (
             "test/workflows/bad_references/reference_circular1.cwl",
-            [],
             "Recursingintostep",
         ),
     ],
 )
 def test_run_transformation_validation_failure(
-    cli_runner, cwl_file, cleanup, metadata, expected_error
+    cli_runner, cwl_file, cleanup, expected_error
 ):
     command = ["transformation", "submit", cwl_file]
-    if metadata:
-        command.extend(["--metadata-path", metadata])
     result = cli_runner.invoke(app, command)
     clean_stdout = strip_ansi_codes(result.stdout)
     assert (
@@ -497,21 +465,16 @@ def test_run_transformation_validation_failure(
 
 
 @pytest.mark.parametrize(
-    "cwl_file, metadata",
+    "cwl_file",
     [
         # --- Crypto example ---
         # Complete workflow with independent steps (ideal for production mode)
-        ("test/workflows/crypto/description.cwl", None),
+        "test/workflows/crypto/description.cwl"
     ],
 )
-def test_run_simple_production_success(
-    cli_runner, cleanup, pi_test_files, cwl_file, metadata
-):
+def test_run_simple_production_success(cli_runner, cleanup, pi_test_files, cwl_file):
     # CWL file is the first argument
     command = ["production", "submit", cwl_file]
-    # Add the metadata file
-    if metadata:
-        command.extend(["--steps-metadata-path", metadata])
 
     result = cli_runner.invoke(app, command)
     clean_output = strip_ansi_codes(result.stdout)
@@ -521,52 +484,44 @@ def test_run_simple_production_success(
 
 
 @pytest.mark.parametrize(
-    "cwl_file, metadata, expected_error",
+    "cwl_file, expected_error",
     [
         # The description file is malformed: class attribute is unknown
         (
             "test/workflows/malformed_description/description_malformed_class.cwl",
-            None,
             "`class`containsundefinedreferenceto",
         ),
         # The description file is malformed: baseCommand is unknown
         (
             "test/workflows/malformed_description/description_malformed_command.cwl",
-            None,
             "invalidfield`baseComand`",
         ),
         # The description file points to a non-existent file (subworkflow)
         (
             "test/workflows/bad_references/reference_doesnotexists.cwl",
-            [],
             "Nosuchfileordirectory",
         ),
         # The description file points to another file point to it (circular dependency)
         (
             "test/workflows/bad_references/reference_circular1.cwl",
-            [],
             "Recursingintostep",
         ),
         # The description file points to itself (another circular dependency)
         (
             "test/workflows/bad_references/reference_circular1.cwl",
-            [],
             "Recursingintostep",
         ),
         # The workflow is a CommandLineTool instead of a Workflow
         (
             "test/workflows/helloworld/description_basic.cwl",
-            None,
             "InputshouldbeaninstanceofWorkflow",
         ),
     ],
 )
 def test_run_production_validation_failure(
-    cli_runner, cleanup, cwl_file, metadata, expected_error
+    cli_runner, cleanup, cwl_file, expected_error
 ):
     command = ["production", "submit", cwl_file]
-    if metadata:
-        command.extend(["--steps-metadata-path", metadata])
     result = cli_runner.invoke(app, command)
 
     clean_stdout = strip_ansi_codes(result.stdout)

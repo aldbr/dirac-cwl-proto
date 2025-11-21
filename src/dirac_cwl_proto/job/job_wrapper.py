@@ -21,6 +21,7 @@ from cwl_utils.parser.cwl_v1_2 import (
 from rich.text import Text
 from ruamel.yaml import YAML
 
+from dirac_cwl_proto.execution_hooks import ExecutionHooksHint
 from dirac_cwl_proto.execution_hooks.core import ExecutionHooksBasePlugin
 from dirac_cwl_proto.submission_models import (
     JobInputModel,
@@ -161,8 +162,9 @@ class JobWrapper:
         logger = logging.getLogger("JobWrapper")
         # Instantiate runtime metadata from the serializable descriptor and
         # the job context so implementations can access task inputs/overrides.
+        job_execution_hooks = ExecutionHooksHint.from_cwl(job.task)
         self.runtime_metadata = (
-            job.execution_hooks.to_runtime(job) if job.execution_hooks else None
+            job_execution_hooks.to_runtime(job) if job_execution_hooks else None
         )
 
         # Isolate the job in a specific directory

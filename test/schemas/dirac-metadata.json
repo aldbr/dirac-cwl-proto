@@ -1,18 +1,11 @@
 {
   "$defs": {
-    "ExecutionHooksBasePlugin": {
-      "description": "Base metadata model for DIRAC jobs",
-      "dirac_description": "Base metadata model",
-      "dirac_vo": null,
-      "properties": {},
-      "title": "DIRAC Metadata Model",
-      "type": "object"
-    },
-    "ExecutionHooksHint": {
+    "ExecutionHooks": {
       "additionalProperties": true,
       "description": "Data management configuration for DIRAC jobs",
       "properties": {
         "configuration": {
+          "additionalProperties": true,
           "description": "Additional parameters for metadata plugins",
           "title": "Configuration",
           "type": "object"
@@ -27,10 +20,19 @@
       "title": "DIRAC Data Manager",
       "type": "object"
     },
+    "ExecutionHooksBasePlugin": {
+      "description": "Base metadata model for DIRAC jobs",
+      "dirac_description": "Base metadata model",
+      "dirac_vo": null,
+      "properties": {},
+      "title": "DIRAC Metadata Model",
+      "type": "object"
+    },
     "JobInputModel": {
       "description": "Input data and sandbox files for a job execution.",
       "properties": {
         "cwl": {
+          "additionalProperties": true,
           "title": "Cwl",
           "type": "object"
         },
@@ -58,29 +60,11 @@
     },
     "JobSubmissionModel": {
       "$defs": {
-        "ExecutionHooksHint": {
-          "additionalProperties": true,
-          "description": "Data management configuration for DIRAC jobs",
-          "properties": {
-            "configuration": {
-              "description": "Additional parameters for metadata plugins",
-              "title": "Configuration",
-              "type": "object"
-            },
-            "hook_plugin": {
-              "default": "QueryBasedPlugin",
-              "description": "Registry key for the metadata implementation class",
-              "title": "Hook Plugin",
-              "type": "string"
-            }
-          },
-          "title": "DIRAC Data Manager",
-          "type": "object"
-        },
         "JobInputModel": {
           "description": "Input data and sandbox files for a job execution.",
           "properties": {
             "cwl": {
+              "additionalProperties": true,
               "title": "Cwl",
               "type": "object"
             },
@@ -105,56 +89,10 @@
           ],
           "title": "JobInputModel",
           "type": "object"
-        },
-        "SchedulingHint": {
-          "additionalProperties": false,
-          "description": "Descriptor for job execution configuration.",
-          "properties": {
-            "platform": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "description": "Target platform (e.g., 'DIRAC', 'DIRACX')",
-              "title": "Platform"
-            },
-            "priority": {
-              "default": 10,
-              "description": "Job priority (higher values = higher priority)",
-              "title": "Priority",
-              "type": "integer"
-            },
-            "sites": {
-              "anyOf": [
-                {
-                  "items": {
-                    "type": "string"
-                  },
-                  "type": "array"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "description": "Candidate execution sites",
-              "title": "Sites"
-            }
-          },
-          "title": "SchedulingHint",
-          "type": "object"
         }
       },
       "description": "Job definition sent to the router.",
       "properties": {
-        "execution_hooks": {
-          "$ref": "#/$defs/ExecutionHooksHint"
-        },
         "parameters": {
           "anyOf": [
             {
@@ -170,18 +108,13 @@
           "default": null,
           "title": "Parameters"
         },
-        "scheduling": {
-          "$ref": "#/$defs/SchedulingHint"
-        },
         "task": {
           "anyOf": [],
           "title": "Task"
         }
       },
       "required": [
-        "task",
-        "scheduling",
-        "execution_hooks"
+        "task"
       ],
       "title": "JobSubmissionModel",
       "type": "object"
@@ -190,28 +123,13 @@
       "additionalProperties": false,
       "description": "Schema for ProductionSubmissionModel with CWL type references",
       "properties": {
-        "steps_execution_hooks": {
-          "additionalProperties": {
-            "$ref": "#/$defs/TransformationExecutionHooksHint"
-          },
-          "description": "Dictionary mapping strings to TransformationExecutionHooksHint",
-          "type": "object"
-        },
-        "steps_scheduling": {
-          "additionalProperties": {
-            "$ref": "#/$defs/SchedulingHint"
-          },
-          "description": "Dictionary mapping strings to SchedulingHint",
-          "type": "object"
-        },
         "task": {
           "$ref": "https://json.schemastore.org/cwl-workflow.json",
           "description": "CWL Workflow definition"
         }
       },
       "required": [
-        "task",
-        "steps_execution_hooks"
+        "task"
       ],
       "title": "ProductionSubmissionModel",
       "type": "object"
@@ -270,7 +188,7 @@
       "title": "DIRAC Metadata Model",
       "type": "object"
     },
-    "SchedulingHint": {
+    "Scheduling": {
       "additionalProperties": false,
       "description": "Descriptor for job execution configuration.",
       "properties": {
@@ -313,11 +231,12 @@
       "title": "SchedulingHint",
       "type": "object"
     },
-    "TransformationExecutionHooksHint": {
+    "TransformationExecutionHooks": {
       "additionalProperties": true,
       "description": "Data management configuration for DIRAC jobs",
       "properties": {
         "configuration": {
+          "additionalProperties": true,
           "description": "Additional parameters for metadata plugins",
           "title": "Configuration",
           "type": "object"
@@ -349,103 +268,15 @@
       "type": "object"
     },
     "TransformationSubmissionModel": {
-      "$defs": {
-        "SchedulingHint": {
-          "additionalProperties": false,
-          "description": "Descriptor for job execution configuration.",
-          "properties": {
-            "platform": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "description": "Target platform (e.g., 'DIRAC', 'DIRACX')",
-              "title": "Platform"
-            },
-            "priority": {
-              "default": 10,
-              "description": "Job priority (higher values = higher priority)",
-              "title": "Priority",
-              "type": "integer"
-            },
-            "sites": {
-              "anyOf": [
-                {
-                  "items": {
-                    "type": "string"
-                  },
-                  "type": "array"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "description": "Candidate execution sites",
-              "title": "Sites"
-            }
-          },
-          "title": "SchedulingHint",
-          "type": "object"
-        },
-        "TransformationExecutionHooksHint": {
-          "additionalProperties": true,
-          "description": "Data management configuration for DIRAC jobs",
-          "properties": {
-            "configuration": {
-              "description": "Additional parameters for metadata plugins",
-              "title": "Configuration",
-              "type": "object"
-            },
-            "group_size": {
-              "anyOf": [
-                {
-                  "additionalProperties": {
-                    "type": "integer"
-                  },
-                  "type": "object"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "description": "Input grouping configuration for transformation jobs",
-              "title": "Group Size"
-            },
-            "hook_plugin": {
-              "default": "QueryBasedPlugin",
-              "description": "Registry key for the metadata implementation class",
-              "title": "Hook Plugin",
-              "type": "string"
-            }
-          },
-          "title": "DIRAC Data Manager",
-          "type": "object"
-        }
-      },
       "description": "Transformation definition sent to the router.",
       "properties": {
-        "execution_hooks": {
-          "$ref": "#/$defs/TransformationExecutionHooksHint"
-        },
-        "scheduling": {
-          "$ref": "#/$defs/SchedulingHint"
-        },
         "task": {
           "anyOf": [],
           "title": "Task"
         }
       },
       "required": [
-        "task",
-        "execution_hooks",
-        "scheduling"
+        "task"
       ],
       "title": "TransformationSubmissionModel",
       "type": "object"
