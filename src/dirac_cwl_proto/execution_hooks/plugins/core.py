@@ -53,4 +53,5 @@ class QueryBasedPlugin(ExecutionHooksBasePlugin):
             base_path=self.query_root,
         )
 
-        self.job_type_processor = obtain_job_processor(self.job_type)
+        if self.job_type:
+            self.job_type_processor = obtain_job_processor(self.job_type)
