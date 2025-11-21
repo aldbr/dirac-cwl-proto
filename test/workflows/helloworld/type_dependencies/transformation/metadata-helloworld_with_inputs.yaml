@@ -1,3 +1,0 @@
-# TODO: what is the purpose of this file? Should it be imported in description_with_inputs.cwl?
-dirac:ExecutionHooks:
-  hook_plugin: QueryBasedPlugin
