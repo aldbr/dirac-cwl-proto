@@ -20,6 +20,7 @@ from pydantic import BaseModel, ConfigDict, field_serializer, model_validator
 from dirac_cwl_proto.execution_hooks import (
     ExecutionHooksHint,
     SchedulingHint,
+    TransformationExecutionHooksHint,
 )
 
 # -----------------------------------------------------------------------------
@@ -60,7 +61,7 @@ class JobSubmissionModel(BaseModel):
     @model_validator(mode="before")
     def validate_hints(cls, values):
         task = values.get("task")
-        _ = extract_dirac_hints(task)
+        ExecutionHooksHint.from_cwl(task), SchedulingHint.from_cwl(task)
         return values
 
 
@@ -84,6 +85,12 @@ class TransformationSubmissionModel(BaseModel):
         else:
             raise TypeError(f"Cannot serialize type {type(value)}")
 
+    @model_validator(mode="before")
+    def validate_hints(cls, values):
+        task = values.get("task")
+        TransformationExecutionHooksHint.from_cwl(task), SchedulingHint.from_cwl(task)
+        return values
+
 
 # -----------------------------------------------------------------------------
 # Production models
@@ -104,18 +111,3 @@ class ProductionSubmissionModel(BaseModel):
             return save(value)
         else:
             raise TypeError(f"Cannot serialize type {type(value)}")
-
-
-# -----------------------------------------------------------------------------
-# Module helpers
-# -----------------------------------------------------------------------------
-
-
-def extract_dirac_hints(cwl: Any) -> tuple[ExecutionHooksHint, SchedulingHint]:
-    """Thin wrapper that returns (ExecutionHooksHint, SchedulingHint).
-
-    Prefer the class-factory APIs `ExecutionHooksHint.from_cwl` and
-    `SchedulingHint.from_cwl` for new code. This helper remains for
-    convenience.
-    """
-    return ExecutionHooksHint.from_cwl(cwl), SchedulingHint.from_cwl(cwl)
