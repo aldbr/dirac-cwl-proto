@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Wrapper for lb-prod-run that handles CWL inputs and configuration merging."""
-
+import asyncio
 import argparse
 import json
 import subprocess
@@ -50,12 +50,11 @@ def main():
 
     if args.lfn_paths:
         paths = json.loads(Path(args.lfn_paths).read_text())
-        config["input"]["files"] = paths
+        config["input"]["files"] = [f"LFN:{path}" for path in paths]
 
     if args.pfn_paths:
         paths = json.loads(Path(args.pfn_paths).read_text())
-        config["input"]["files"] = paths
-
+        config["input"]["files"] = [f"PFN:{path}" for path in paths]
     app_name = config["application"]["name"]
     cleaned_appname = app_name.replace("/", "").replace(" ", "")
 
@@ -64,8 +63,71 @@ def main():
     output_config.write_text(json.dumps(config, indent=2))
 
     # Run lb-prod-run with the merged configuration
-    result = subprocess.run(["lb-prod-run", str(output_config)])
-    sys.exit(result.returncode)
+    returncode, _, _ = asyncio.run(
+        run_lbprodrun(
+            application_log=f"{cleaned_appname}_{args.output_prefix}.log",
+            prodconf_file=config_filename,
+        )
+    )
+    sys.exit(returncode)
+
+
+async def run_lbprodrun(
+    application_log: str,
+    prodconf_file: str,
+):
+    """Run the application using lb-prod-run"""
+    command = ["lb-prod-run", prodconf_file, "--prmon", "--verbose"]
+
+    stdout = ""
+    stderr = ""
+
+    proc = await asyncio.create_subprocess_exec(
+        *command,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    stdout_fh = open(application_log, "a")
+    stderr_fh = stdout_fh
+
+    try:
+        await asyncio.gather(
+            handle_output(proc.stdout, stdout_fh),
+            handle_output(proc.stderr, stderr_fh),
+            proc.wait(),
+        )
+    finally:
+        if stdout_fh:
+            stdout_fh.close()
+        if stderr_fh and stdout_fh != stderr_fh:
+            stderr_fh.close()
+    returncode = proc.returncode
+    return (returncode, stdout, stderr)
+
+
+async def readlines(stream: asyncio.StreamReader, chunk_size: int = 4096, errors: str = "backslashreplace"):
+    """Read lines from a stream"""
+    buffer = b""
+    while not stream.at_eof():
+        chunk = await stream.read(chunk_size)
+        if not chunk:
+            break
+        buffer += chunk
+        while b"\n" in buffer:
+            line, buffer = buffer.split(b"\n", 1)
+            yield line.decode(errors=errors)
+    if buffer:
+        yield buffer.decode(errors=errors)
+
+
+async def handle_output(stream: asyncio.StreamReader, fh):
+    """Process output of lb-prod-run."""
+    async for line in readlines(stream):
+        if "INFO Evt" in line or "Reading Event record" in line or "lb-run" in line:
+            # These ones will appear in the std.out log too
+            print(line.rstrip())
+        if fh:
+            fh.write(line + "\n")
 
 
 if __name__ == "__main__":
