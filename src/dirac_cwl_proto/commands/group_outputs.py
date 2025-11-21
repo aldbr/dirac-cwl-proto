@@ -5,6 +5,11 @@ from dirac_cwl_proto.commands import CommandBase
 
 
 class GroupOutputs(CommandBase):
+    """Example command that merges all of the outputs in a singular file.
+
+    This command is expected to be executed during the post-processing stage.
+    """
+
     def execute(self, job_path, **kwargs):
         groupedOutputs = "group.out"
         outputPath = os.path.join(job_path, groupedOutputs)

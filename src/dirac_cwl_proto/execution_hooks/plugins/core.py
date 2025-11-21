@@ -39,7 +39,9 @@ class QueryBasedPlugin(ExecutionHooksBasePlugin):
     data_type: Optional[str] = Field(
         default=None, description="Data type classification"
     )
-    job_type: Optional[str] = Field(default=None, description="")
+    job_type: Optional[str] = Field(
+        default=None, description="Job type for pre-processing and post-processing"
+    )
 
     def __init__(self, **data):
         super().__init__(**data)
@@ -50,4 +52,5 @@ class QueryBasedPlugin(ExecutionHooksBasePlugin):
             data_type=self.data_type,
             base_path=self.query_root,
         )
+
         self.job_type_processor = obtain_job_processor(self.job_type)

@@ -13,7 +13,7 @@ from typing import Any, ClassVar, Dict, List, Mapping, Optional, TypeVar, Union
 
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
 
-from dirac_cwl_proto.commands import JobProcessorBase
+from dirac_cwl_proto.commands import JobTypeProcessorBase
 
 logger = logging.getLogger(__name__)
 
@@ -243,7 +243,7 @@ class ExecutionHooksBasePlugin(BaseModel):
     _data_catalog: Optional[DataCatalogInterface] = PrivateAttr(
         default_factory=lambda: DefaultDataCatalogInterface()
     )
-    _job_type_processor: Optional[JobProcessorBase] = PrivateAttr(default=None)
+    _job_type_processor: Optional[JobTypeProcessorBase] = PrivateAttr(default=None)
 
     @property
     def data_catalog(self) -> Optional[DataCatalogInterface]:
@@ -256,13 +256,13 @@ class ExecutionHooksBasePlugin(BaseModel):
         self._data_catalog = value
 
     @property
-    def job_type_processor(self) -> Optional[JobProcessorBase]:
-        """Get the data catalog interface."""
+    def job_type_processor(self) -> Optional[JobTypeProcessorBase]:
+        """Get the job processor interface."""
         return self._job_type_processor
 
     @job_type_processor.setter
-    def job_type_processor(self, value: JobProcessorBase) -> None:
-        """Set the data catalog interface."""
+    def job_type_processor(self, value: JobTypeProcessorBase) -> None:
+        """Set the job processor interface."""
         self._job_type_processor = value
 
     def __init__(self, **data):
