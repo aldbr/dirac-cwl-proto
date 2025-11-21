@@ -40,6 +40,7 @@ def main():
         logging.info("Job done.")
     else:
         logging.info("Job failed.")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
