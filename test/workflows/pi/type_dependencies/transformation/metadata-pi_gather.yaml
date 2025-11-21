@@ -1,4 +1,4 @@
-- class: dirac:ExecutionHooksHint
+- class: dirac:ExecutionHooks
   hook_plugin: QueryBasedPlugin
   group_size:
     input-data: 5

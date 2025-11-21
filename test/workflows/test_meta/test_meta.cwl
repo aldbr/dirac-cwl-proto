@@ -16,13 +16,13 @@ $schemas:
   - "../../schemas/dirac-metadata.json"
 
 hints:
-  - class: dirac:ExecutionHooksHint
+  - class: dirac:ExecutionHooks
     hook_plugin: "QueryBasedPlugin"
     configuration:
       campaign: PROD5
       site: LaPalma
 
-  - class: dirac:SchedulingHint
+  - class: dirac:Scheduling
     platform: x86_64
     priority: 10
     sites: null
