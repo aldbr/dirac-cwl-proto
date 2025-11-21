@@ -13,6 +13,8 @@ from typing import Any, ClassVar, Dict, List, Mapping, Optional, TypeVar, Union
 
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
 
+from dirac_cwl_proto.commands import JobTypeProcessorBase
+
 logger = logging.getLogger(__name__)
 
 # TypeVar for generic class methods
@@ -241,6 +243,7 @@ class ExecutionHooksBasePlugin(BaseModel):
     _data_catalog: Optional[DataCatalogInterface] = PrivateAttr(
         default_factory=lambda: DefaultDataCatalogInterface()
     )
+    _job_type_processor: Optional[JobTypeProcessorBase] = PrivateAttr(default=None)
 
     @property
     def data_catalog(self) -> Optional[DataCatalogInterface]:
@@ -251,6 +254,16 @@ class ExecutionHooksBasePlugin(BaseModel):
     def data_catalog(self, value: DataCatalogInterface) -> None:
         """Set the data catalog interface."""
         self._data_catalog = value
+
+    @property
+    def job_type_processor(self) -> Optional[JobTypeProcessorBase]:
+        """Get the job processor interface."""
+        return self._job_type_processor
+
+    @job_type_processor.setter
+    def job_type_processor(self, value: JobTypeProcessorBase) -> None:
+        """Set the job processor interface."""
+        self._job_type_processor = value
 
     def __init__(self, **data):
         """Initialize with data catalog interface."""
@@ -279,6 +292,9 @@ class ExecutionHooksBasePlugin(BaseModel):
         List[str]
             Modified command list.
         """
+        if self.job_type_processor:
+            self.job_type_processor.pre_process(job_path, **kwargs)
+
         return command
 
     def post_process(self, job_path: Path, **kwargs: Any) -> bool:
@@ -289,6 +305,9 @@ class ExecutionHooksBasePlugin(BaseModel):
         job_path : Path
             Path to the job working directory.
         """
+        if self.job_type_processor:
+            self.job_type_processor.post_process(job_path, **kwargs)
+
         return True
 
     def get_input_query(
@@ -400,6 +419,11 @@ class ExecutionHooksHint(BaseModel, Hint):
     # Enhanced fields for submission functionality
     configuration: Dict[str, Any] = Field(
         default_factory=dict, description="Additional parameters for metadata plugins"
+    )
+
+    job_type: Optional[str] = Field(
+        default=None,
+        description="",
     )
 
     def model_copy(

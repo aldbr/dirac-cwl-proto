@@ -133,11 +133,16 @@ class ProductionSubmissionModel(BaseModel):
 # -----------------------------------------------------------------------------
 
 
-def extract_dirac_hints(cwl: Any) -> tuple[ExecutionHooksHint, SchedulingHint]:
-    """Thin wrapper that returns (ExecutionHooksHint, SchedulingHint).
+def extract_dirac_hints(
+    cwl: Any,
+) -> tuple[ExecutionHooksHint, SchedulingHint]:
+    """Thin wrapper that returns (ExecutionHooksHint, SchedulingHint, PrePostProcessingHint).
 
     Prefer the class-factory APIs `ExecutionHooksHint.from_cwl` and
     `SchedulingHint.from_cwl` for new code. This helper remains for
     convenience.
     """
-    return ExecutionHooksHint.from_cwl(cwl), SchedulingHint.from_cwl(cwl)
+    return (
+        ExecutionHooksHint.from_cwl(cwl),
+        SchedulingHint.from_cwl(cwl),
+    )

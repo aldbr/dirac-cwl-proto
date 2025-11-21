@@ -14,6 +14,7 @@ from ..core import (
     DefaultDataCatalogInterface,
     ExecutionHooksBasePlugin,
 )
+from ..utils import obtain_job_processor
 
 
 class QueryBasedPlugin(ExecutionHooksBasePlugin):
@@ -38,6 +39,9 @@ class QueryBasedPlugin(ExecutionHooksBasePlugin):
     data_type: Optional[str] = Field(
         default=None, description="Data type classification"
     )
+    job_type: Optional[str] = Field(
+        default=None, description="Job type for pre-processing and post-processing"
+    )
 
     def __init__(self, **data):
         super().__init__(**data)
@@ -48,3 +52,6 @@ class QueryBasedPlugin(ExecutionHooksBasePlugin):
             data_type=self.data_type,
             base_path=self.query_root,
         )
+
+        if self.job_type:
+            self.job_type_processor = obtain_job_processor(self.job_type)

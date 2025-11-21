@@ -97,6 +97,7 @@ def submit_production_client(
             **metadata_config
         )
         production_step_scheduling[step_name] = SchedulingHint(**scheduling_config)
+
     console.print("\t[green]:heavy_check_mark:[/green] Metadata")
 
     # Create the production
