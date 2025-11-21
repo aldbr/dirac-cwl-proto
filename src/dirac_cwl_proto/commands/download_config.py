@@ -4,7 +4,7 @@ from dirac_cwl_proto.commands import CommandBase
 
 
 class DownloadConfig(CommandBase):
-    """Example command that creates a file with the name of 'content.cfg'.
+    """Example command that creates a file with named 'content.cfg'.
 
     This command is expected to be executed during the pre-processing stage.
     """

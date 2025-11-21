@@ -9,11 +9,11 @@ logger = logging.getLogger(__name__)
 class CommandBase(ABC):
     """Base abstract class for pre/post-processing tasks.
 
-    New commands should inherit this class and implement the execute function.
+    New commands should inherit this class and implement the 'execute' function.
 
-    This commands could be programmed to be executed only in one stage, (pre-process or post-process) or in both stages.
+    This commands could be programmed to be executed only in one stage (pre-process or post-process) or in both stages.
     For example, a command could write in a file when it got called. This command could be executed both at the
-    pre-process and post-process stages marking the beggining and end of the job executed.
+    pre-processing and post-processing stages marking the beginning and end of the job executed.
     """
 
     @abstractmethod
@@ -22,9 +22,9 @@ class CommandBase(ABC):
 
 
 class JobTypeProcessorBase:
-    """Base class for processing groups of commands during preprocess and postprocess stages depending.
+    """Base class for processing groups of commands during pre-processing and post-processing stages.
 
-    Job types should inherit this class and modify ONLY the lists of pre-process and post-process commands.
+    Job types should inherit this class and modify ONLY the lists of pre-processing and post-processing commands.
     The commands MUST be in the desired order of execution.
 
     The lists contain command TYPES, not instances.

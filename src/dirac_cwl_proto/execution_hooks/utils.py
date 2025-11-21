@@ -10,10 +10,10 @@ def obtain_job_processor(job_type: str) -> JobTypeProcessorBase:
         job_type (str): Name of the Job Type that should be in the entry-points map
 
     Returns:
-        JobTypeProcessorBase: Subclass of JobTypeProcessorBase specified at the entry-points map
+        JobTypeProcessorBase: Subclass of JobTypeProcessorBase specified in the entry-points map
 
     Raises:
-        KeyError: If the job_type is not at the group "modules.jobTypes" in the entry-points map.
+        KeyError: If job_type is not at the group "modules.jobTypes" in the entry-points map.
 
         ValueError: If the loaded class does not inherit JobTypeProcessorBase
     """
