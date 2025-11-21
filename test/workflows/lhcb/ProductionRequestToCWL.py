@@ -280,6 +280,8 @@ def _getWorkflowInputs(production: dict[str, Any], event_type: dict[str, Any]) -
 def _getWorkflowOutputs(steps: list[dict[str, Any]]) -> list[WorkflowOutputParameter]:
     """Define the workflow-level outputs based on output file visibility flags."""
     workflow_outputs = []
+    allOutputSources = []
+    otherOutputSources = []
 
     # Collect outputs from steps that have visible output files
     for step_index, step in enumerate(steps):
@@ -288,39 +290,36 @@ def _getWorkflowOutputs(steps: list[dict[str, Any]]) -> list[WorkflowOutputParam
 
         if visible_outputs:
             step_name = _sanitizeStepName(step.get("name", f"step_{step_index}"))
-
-            # Get output types for labels
-            output_types = [out.get("type", "").upper() for out in visible_outputs]
-            output_label = ", ".join(output_types) if output_types else "Output Data"
-
-            # Create unique output ID using step index
-            output_id = f"output-data-step-{step_index + 1}"
-
-            # Output data files for this visible step
-            workflow_outputs.append(
-                WorkflowOutputParameter(
-                    type_="File[]",
-                    id=output_id,
-                    label=f"{output_label}",
-                    outputSource=f"{step_name}/output-data",
-                )
-            )
+            allOutputSources.append(f"{step_name}/output-data")
 
     # Collect "others" outputs (logs, summaries) from ALL steps for log storage
     for step_index, step in enumerate(steps):
         step_name = _sanitizeStepName(step.get("name", f"step_{step_index}"))
+        otherOutputSources.append(f"{step_name}/others")
 
-        # Create unique ID for each step's logs
-        others_id = f"others-step-{step_index + 1}"
 
-        workflow_outputs.append(
-            WorkflowOutputParameter(
-                type_="File[]",
-                id=others_id,
-                label=f"Logs and summaries (step {step_index + 1})",
-                outputSource=f"{step_name}/others",
-            )
+    # Output data files for this visible step
+    workflow_outputs.append(
+        WorkflowOutputParameter(
+            type_="File[]",
+            id="output-data",
+            label="Output Data",
+            outputSource=allOutputSources,
+            linkMerge="merge_flattened",
         )
+    )
+
+    # Other outputs (logs, summaries) from all steps
+    # Generally uploaded to some LogSE or the job sandbox
+    workflow_outputs.append(
+        WorkflowOutputParameter(
+            type_="File[]",
+            id="others",
+            label="Logs and summaries",
+            outputSource=otherOutputSources,
+            linkMerge="merge_flattened",
+        )
+    )
 
     # Always add pool XML catalog from the last step
     if steps:
