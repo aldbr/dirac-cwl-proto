@@ -11,14 +11,14 @@ from pathlib import Path
 def main():
     parser = argparse.ArgumentParser(description="LbProdRun Wrapper for DIRAC CWL")
     parser.add_argument("config_file", help="Base configuration JSON file")
-    parser.add_argument("--lfn-paths", help="Input LFN paths (JSON file)")
-    parser.add_argument("--pfn-paths", help="Input PFN paths (JSON file)")
+    parser.add_argument("--input-files", help="Input paths that are resolved from direct local file paths (txt file)")
     parser.add_argument("--pool-xml-catalog", default="pool_xml_catalog.xml", help="Pool XML catalog file")
     parser.add_argument("--run-number", type=int, help="Run number")
     parser.add_argument("--first-event-number", type=int, help="First event number")
     parser.add_argument("--number-of-events", type=int, help="Number of events")
     parser.add_argument("--number-of-processors", type=int, help="Number of processors")
     parser.add_argument("--output-prefix", help="Output file prefix")
+    parser.add_argument("--event-type", help="Event type ID for Gauss")
     parser.add_argument("--histogram", action="store_true", help="Enable histogram output")
 
     args = parser.parse_args()
@@ -48,13 +48,21 @@ def main():
     if args.pool_xml_catalog:
         config["input"]["xml_file_catalog"] = Path(args.pool_xml_catalog).name
 
-    if args.lfn_paths:
-        paths = json.loads(Path(args.lfn_paths).read_text())
-        config["input"]["files"] = [f"LFN:{path}" for path in paths]
-
-    if args.pfn_paths:
-        paths = json.loads(Path(args.pfn_paths).read_text())
-        config["input"]["files"] = [f"PFN:{path}" for path in paths]
+    if args.input_files:
+        paths = Path(args.input_files).read_text().splitlines()
+        config["input"]["files"] = [f"PFN:{path.strip()}" for path in paths]
+    
+    # check the options files for @{eventType} if application is Gauss
+    if config["application"]["name"].lower() == "gauss":
+        options = config["options"].get("files", [])
+        if isinstance(options, list):
+            if not [opt for opt in options if "@{eventType}" in opt]:
+                raise ValueError("For Gauss, at least one option file path must contain the '@{eventType}' placeholder.")
+        if args.event_type is None:
+            raise ValueError("Event type ID must be provided for Gauss application.")
+        # substitute event type in options
+        config["options"]["files"] = [opt.replace("@{eventType}", args.event_type) for opt in options]
+        
     app_name = config["application"]["name"]
     cleaned_appname = app_name.replace("/", "").replace(" ", "")
 

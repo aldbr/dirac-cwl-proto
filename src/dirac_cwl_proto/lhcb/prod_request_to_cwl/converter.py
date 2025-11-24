@@ -26,6 +26,7 @@ from typing import Any
 
 import yaml
 from cwl_utils.parser.cwl_v1_2 import (
+    CommandInputEnumSchema,
     CommandInputParameter,
     CommandLineBinding,
     CommandLineTool,
@@ -33,6 +34,7 @@ from cwl_utils.parser.cwl_v1_2 import (
     CommandOutputParameter,
     Dirent,
     InitialWorkDirRequirement,
+    InputEnumSchema,
     MultipleInputFeatureRequirement,
     ResourceRequirement,
     StepInputExpressionRequirement,
@@ -50,20 +52,20 @@ from ruamel.yaml.scalarstring import LiteralScalarString
 # Constants
 POOL_XML = "pool-xml-catalog"
 POOL_XML_OUT = f"{POOL_XML}-out"
+EVENT_TYPE = "event-type"
 RUN_NUMBER = "run-number"
 FIRST_EVENT_NUMBER = "first-event-number"
 NUMBER_OF_EVENTS = "number-of-events"
 
 
 def fromProductionRequestYAMLToCWL(
-    yaml_path: Path, production_name: str | None = None, event_type: str | None = None
+    yaml_path: Path, production_name: str | None = None
 ) -> tuple[Workflow, dict[str, Any], dict[str, Any]]:
     """
     Convert an LHCb Production Request YAML file into a CWL Workflow.
 
     :param yaml_path: Path to the production request YAML file
     :param production_name: Name of the production to convert (if multiple in file)
-    :param event_type: Event type ID to use for simulation
     :return: Tuple of (CWL Workflow, CWL inputs dict, production metadata dict)
     """
     # Load and parse YAML
@@ -98,27 +100,12 @@ def fromProductionRequestYAMLToCWL(
     if not event_types:
         raise ValueError("No event types found in production")
 
-    selected_event_type = None
-    if event_type:
-        for et in event_types:
-            if et.get("id") == event_type:
-                selected_event_type = et
-                break
-        if not selected_event_type:
-            available = [et.get("id") for et in event_types]
-            raise ValueError(f"Event type '{event_type}' not found. Available: {available}")
-    else:
-        if len(event_types) > 1:
-            available = [et.get("id") for et in event_types]
-            raise ValueError(f"Multiple event types found, please specify one: {available}")
-        selected_event_type = event_types[0]
-
     # Build the CWL workflow
-    return _buildCWLWorkflow(production_dict, selected_event_type)
+    return _buildCWLWorkflow(production_dict)
 
 
 def _buildCWLWorkflow(
-    production: dict[str, Any], event_type: dict[str, Any]
+    production: dict[str, Any]
 ) -> tuple[Workflow, dict[str, Any], dict[str, Any]]:
     """Build a CWL workflow from a production dictionary."""
 
@@ -126,7 +113,7 @@ def _buildCWLWorkflow(
     steps = production.get("steps", [])
 
     # Define workflow inputs
-    workflow_inputs = _getWorkflowInputs(production, event_type)
+    workflow_inputs = _getWorkflowInputs(production)
 
     # Define workflow outputs
     workflow_outputs = _getWorkflowOutputs(steps)
@@ -149,7 +136,6 @@ def _buildCWLWorkflow(
     # Build documentation with embedded metadata
     prod_metadata = {
         "production-name": production_name,
-        "event-type": event_type.get("id"),
         "mc-config-version": production.get("mc_config_version"),
         "sim-condition": production.get("sim_condition"),
     }
@@ -158,7 +144,7 @@ def _buildCWLWorkflow(
         f"LHCb Production Workflow: {production_name}",
         "",
         "Metadata:",
-        f"  Event Type: {event_type.get('id')}",
+        f"  Event Types:\n    - {'\n    - '.join(f'{evttype['id']}: {evttype['num_events']} events' for evttype in production.get('event_types'))}",
         f"  MC Config Version: {production.get('mc_config_version')}",
         f"  Simulation Condition: {production.get('sim_condition')}",
         "",
@@ -168,7 +154,11 @@ def _buildCWLWorkflow(
     ]
 
     # Create the workflow with embedded metadata
+    # Create a readable workflow ID from the production name
+    workflow_id = _sanitizeStepName(production_name)
+
     cwl_workflow = Workflow(
+        id=workflow_id,
         cwlVersion="v1.2",
         label=production_name,
         doc=LiteralScalarString("\n".join(doc_lines)),
@@ -186,12 +176,12 @@ def _buildCWLWorkflow(
     # Note: cwl_inputs and prod_metadata are now optional
     # The workflow is self-contained with defaults and embedded metadata
     # These are returned for backward compatibility and optional use
-    cwl_inputs = _getWorkflowStaticInputs(production, event_type)
+    cwl_inputs = _getWorkflowStaticInputs(production)
 
     return cwl_workflow, cwl_inputs, prod_metadata
 
 
-def _getWorkflowInputs(production: dict[str, Any], event_type: dict[str, Any]) -> dict[str, WorkflowInputParameter]:
+def _getWorkflowInputs(production: dict[str, Any]) -> dict[str, WorkflowInputParameter]:
     """Define the workflow-level inputs with default values."""
     workflow_inputs = {}
 
@@ -219,6 +209,29 @@ def _getWorkflowInputs(production: dict[str, Any], event_type: dict[str, Any]) -
 
     if is_gauss:
         # Gauss-specific inputs with default values
+        # Create enum type for event-type to restrict to valid event types
+        event_types = production.get("event_types", [])
+        event_type_ids = [str(evt["id"]) for evt in event_types]
+
+        if event_type_ids:
+            # Create an enum schema with the valid event type IDs
+            event_type_enum = InputEnumSchema(
+                type_="enum",
+                symbols=event_type_ids,
+                name="EventTypeEnum",
+            )
+            workflow_inputs[EVENT_TYPE] = WorkflowInputParameter(
+                type_=event_type_enum,
+                id=EVENT_TYPE,
+                doc="Event type to be generated"
+            )
+        else:
+            # Fallback to int if no event types are specified
+            workflow_inputs[EVENT_TYPE] = WorkflowInputParameter(
+                type_="int",
+                id=EVENT_TYPE,
+                doc="Event type to be generated"
+            )
         workflow_inputs[RUN_NUMBER] = WorkflowInputParameter(
             type_="int",
             id=RUN_NUMBER,
@@ -234,7 +247,7 @@ def _getWorkflowInputs(production: dict[str, Any], event_type: dict[str, Any]) -
         workflow_inputs[NUMBER_OF_EVENTS] = WorkflowInputParameter(
             type_="int",
             id=NUMBER_OF_EVENTS,
-            default=event_type.get("num_test_events", 10),
+            default=10,
             doc="Number of events to generate"
         )
         workflow_inputs[POOL_XML] = WorkflowInputParameter(
@@ -263,16 +276,9 @@ def _getWorkflowInputs(production: dict[str, Any], event_type: dict[str, Any]) -
         workflow_inputs[NUMBER_OF_EVENTS] = WorkflowInputParameter(
             type_="int",
             id=NUMBER_OF_EVENTS,
-            default=event_type.get("num_test_events", 10),
+            default=10,
             doc="Number of events to process"
         )
-
-    # Common dynamic inputs with defaults
-    # workflow_inputs["output-prefix"] = WorkflowInputParameter(
-    #     type_="string",
-    #     id="output-prefix",
-    #     doc="Prefix for output file names",
-    # )
 
     return workflow_inputs
 
@@ -354,7 +360,7 @@ def _buildCWLStep(
     prod_conf = _generateProdConf(production, step, step_index)
 
     # Build command line tool
-    command_tool = _buildCommandLineTool(step, step_index, prod_conf, workflow_inputs)
+    command_tool = _buildCommandLineTool(step, step_index, prod_conf, workflow_inputs, step_name)
 
     # Build step inputs
     step_inputs = _buildStepInputs(step, step_index, workflow_inputs, step_names)
@@ -428,11 +434,11 @@ def _generateProdConf(production: dict[str, Any], step: dict[str, Any], step_ind
         # LbExec or other structured format
         prod_conf["options"] = options
     elif isinstance(options, list):
-        # Legacy format - list of option files
-        event_type_id = production.get("event_types", [{}])[0].get("id", "")
-        # Replace @{eventType} placeholder
-        processed_options = [opt.replace("@{eventType}", event_type_id) for opt in options]
-        prod_conf["options"]["files"] = processed_options
+        # Ensure @{eventType} placeholder is present
+        # lb-prod-run will substitute it at runtime
+        if not [opt for opt in options if "@{eventType}" in opt] and app_name.lower() == "gauss":
+            raise ValueError("For Gauss, at least one option file path must contain the '@{eventType}' placeholder.")
+        prod_conf["options"]["files"] = options
         if processing_pass:
             prod_conf["options"]["processing_pass"] = processing_pass
         if options_format:
@@ -468,6 +474,7 @@ def _buildCommandLineTool(
     step_index: int,
     prod_conf: dict[str, Any],
     workflow_inputs: dict[str, WorkflowInputParameter],
+    step_name: str,
 ) -> CommandLineTool:
     """Build a CommandLineTool for a step using command-line wrapper."""
 
@@ -494,6 +501,17 @@ def _buildCommandLineTool(
             inputBinding=CommandLineBinding(prefix="--output-prefix"),
         )
     )
+
+    # For non-first steps, always add input-data parameter (receives output from previous step)
+    # We'll create a manifest file via InitialWorkDirRequirement to avoid command-line length limits
+    if step_index > 0:
+        input_parameters.append(
+            CommandInputParameter(
+                id="input-data",
+                type_="File[]",
+                # No inputBinding here - we'll handle it via InitialWorkDirRequirement
+            )
+        )
 
     # Add inputs based on what's in workflow_inputs
     for input_id in workflow_inputs.keys():
@@ -537,6 +555,32 @@ def _buildCommandLineTool(
                     inputBinding=CommandLineBinding(prefix="--run-number"),
                 )
             )
+        elif input_id == EVENT_TYPE and is_gauss:
+            # Get the workflow input to check if it's an enum type
+            wf_input = workflow_inputs[EVENT_TYPE]
+            if isinstance(wf_input.type_, InputEnumSchema):
+                # Create a CommandInputEnumSchema with the same symbols
+                cmd_enum = CommandInputEnumSchema(
+                    type_="enum",
+                    symbols=wf_input.type_.symbols,
+                    name=f"{step_name}_EventTypeEnum",
+                    inputBinding=CommandLineBinding(prefix="--event-type"),
+                )
+                input_parameters.append(
+                    CommandInputParameter(
+                        id=EVENT_TYPE,
+                        type_=cmd_enum,
+                    )
+                )
+            else:
+                # Fallback to string if not an enum
+                input_parameters.append(
+                    CommandInputParameter(
+                        id=EVENT_TYPE,
+                        type_="string",
+                        inputBinding=CommandLineBinding(prefix="--event-type"),
+                    )
+                )
         elif input_id == FIRST_EVENT_NUMBER and is_gauss:
             # Only add first-event-number for Gauss steps
             input_parameters.append(
@@ -590,6 +634,19 @@ def _buildCommandLineTool(
         )
     )
 
+    # For non-first steps, create an input files manifest to avoid command-line length limits
+    # This manifest will contain one file path per line
+    if step_index > 0:
+        input_files_manifest = f"inputFiles_{step_number}.txt"
+        # Use a simpler JavaScript expression that maps over the files and joins with newlines
+        input_files_expr = "$(inputs['input-data'].map(function(f) { return f.path; }).join('\\n'))"
+        initial_workdir_listing.append(
+            Dirent(
+                entryname=input_files_manifest,
+                entry=input_files_expr,
+            )
+        )
+
     requirements = [
         InitialWorkDirRequirement(listing=initial_workdir_listing),
         # Add ResourceRequirement for cores (default to 1)
@@ -599,17 +656,29 @@ def _buildCommandLineTool(
         ),
         # Need StepInputExpressionRequirement for the filename expression
         StepInputExpressionRequirement(),
+        # Need InlineJavascriptRequirement for JavaScript expressions in InitialWorkDirRequirement
+        InlineJavascriptRequirement(),
     ]
 
     # Build output parameters
     output_parameters = _buildOutputParameters(step)
 
     # Create the CommandLineTool using the wrapper
+    # Use step name as the tool ID for readability
+    tool_id = f"{step_name}_tool"
+
+    # Build arguments - add input files manifest for non-first steps
+    arguments = [initial_prod_conf]
+    if step_index > 0:
+        input_files_manifest = f"inputFiles_{step_number}.txt"
+        arguments.extend(["--input-files", input_files_manifest])
+
     return CommandLineTool(
+        id=tool_id,
         inputs=input_parameters,
         outputs=output_parameters,
         baseCommand=["dirac-run-lbprodrun-app"],
-        arguments=[initial_prod_conf],
+        arguments=arguments,
         requirements=requirements,
     )
 
@@ -699,13 +768,31 @@ def _buildStepInputs(
         )
     )
 
+    # For non-first steps, always add input-data from previous step
+    if step_index > 0:
+        prev_step_name = step_names[step_index - 1]
+        step_inputs.append(
+            WorkflowStepInput(
+                id="input-data",
+                source=f"{prev_step_name}/output-data",
+            )
+        )
+
     for input_id, wf_input in workflow_inputs.items():
         # Skip production IDs and output-prefix as they're already handled above
         if input_id in ["production-id", "prod-job-id", "output-prefix"]:
             continue
 
+        # Skip input-data as it's already handled above for non-first steps
+        if input_id == "input-data":
+            continue
+
         # Skip first-event-number for non-Gauss steps
         if input_id == FIRST_EVENT_NUMBER and not is_gauss:
+            continue
+
+        # Skip event-type for non-Gauss steps
+        if input_id == EVENT_TYPE and not is_gauss:
             continue
 
         # Skip histogram for non-Gauss steps
@@ -715,12 +802,7 @@ def _buildStepInputs(
         source = wf_input.id
         value_from = None
 
-        if input_id == "input-data":
-            # Link to previous step's output if not first step
-            if step_index > 0:
-                prev_step_name = step_names[step_index - 1]
-                source = f"{prev_step_name}/output-data"
-        elif input_id == POOL_XML:
+        if input_id == POOL_XML:
             # Link to previous step's pool XML if not first step
             if step_index > 0:
                 prev_step_name = step_names[step_index - 1]
@@ -746,7 +828,7 @@ def _buildStepOutputs(step: dict[str, Any]) -> list[WorkflowStepOutput]:
     ]
 
 
-def _getWorkflowStaticInputs(production: dict[str, Any], event_type: dict[str, Any]) -> dict[str, Any]:
+def _getWorkflowStaticInputs(production: dict[str, Any]) -> dict[str, Any]:
     """Get static input values for CWL execution."""
     static_inputs = {}
 
@@ -766,16 +848,13 @@ def _getWorkflowStaticInputs(production: dict[str, Any], event_type: dict[str, A
         # Gauss-specific static inputs
         static_inputs[RUN_NUMBER] = 1  # Default run number
         static_inputs[FIRST_EVENT_NUMBER] = 1  # Default first event
-        static_inputs[NUMBER_OF_EVENTS] = event_type.get("num_test_events", 10)
+        static_inputs[NUMBER_OF_EVENTS] = 10
         static_inputs[POOL_XML] = "pool_xml_catalog.xml"  # String for Gauss
         static_inputs["histogram"] = False
     else:
         # For non-Gauss, would need actual input files
         static_inputs[POOL_XML] = {"class": "File", "path": "pool_xml_catalog.xml"}
-        static_inputs[NUMBER_OF_EVENTS] = event_type.get("num_test_events", 10)
-
-    # Common dynamic inputs with defaults
-    # static_inputs["output-prefix"] = event_type.get("id", "output")
+        static_inputs[NUMBER_OF_EVENTS] = 10
 
     return static_inputs
 
