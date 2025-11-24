@@ -110,8 +110,8 @@ python scripts/generate_schemas.py \
   --individual \
   --unified && \
 echo "Copying schemas to test locations..." && \
-cp generated_schemas/dirac-metadata.json test/workflows/test_meta/schemas/dirac-metadata.json && \
-cp generated_schemas/plugins-summary.json test/workflows/test_meta/schemas/plugins-summary.json
+cp generated_schemas/dirac-metadata.json test/schemas/dirac-metadata.json && \
+cp generated_schemas/plugins-summary.json test/schemas/plugins-summary.json
 """
 
 schemas-yaml = """
@@ -128,8 +128,8 @@ schemas = { depends-on = ["schemas-json", "schemas-yaml"] }
 clean-schemas = """
 echo "Cleaning generated schemas..." && \
 rm -rf generated_schemas/ && \
-rm -f test/workflows/test_meta/schemas/dirac-metadata.json \
-      test/workflows/test_meta/schemas/plugins-summary.json
+rm -f test/schemas/dirac-metadata.json \
+      test/schemas/plugins-summary.json
 """
 
 # Schema validation

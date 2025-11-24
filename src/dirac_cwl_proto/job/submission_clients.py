@@ -14,6 +14,7 @@ from diracx.api.jobs import create_sandbox
 from diracx.client.aio import AsyncDiracClient
 from rich.console import Console
 
+from dirac_cwl_proto.execution_hooks import SchedulingHint
 from dirac_cwl_proto.submission_models import JobSubmissionModel
 
 console = Console()
@@ -169,11 +170,12 @@ class DIRACSubmissionClient(SubmissionClient):
         jdl_lines.append("JobName = test;")
         jdl_lines.append("OutputSandbox = {std.out, std.err};")
 
-        if job.scheduling.priority:
-            jdl_lines.append(f"Priority = {job.scheduling.priority};")
+        job_scheduling = SchedulingHint.from_cwl(job.task)
+        if job_scheduling.priority:
+            jdl_lines.append(f"Priority = {job_scheduling.priority};")
 
-        if job.scheduling.sites:
-            jdl_lines.append(f"Site = {job.scheduling.sites};")
+        if job_scheduling.sites:
+            jdl_lines.append(f"Site = {job_scheduling.sites};")
 
         jdl_lines.append(f"InputSandbox = {sandbox_id};")
 
