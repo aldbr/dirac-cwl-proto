@@ -4,7 +4,7 @@ CLI interface to run a workflow as a production.
 
 import logging
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any, List, Optional
+from typing import List, Optional
 
 import typer
 from cwl_utils.pack import pack
@@ -138,8 +138,6 @@ def _get_transformations(
     """
     # Create a subworkflow and a transformation for each step
     transformations = []
-    # TODO: check usage:
-    #  configuration = _get_configuration(production.task)
 
     for step in production.task.steps:
         step_task = _create_subworkflow(
@@ -217,16 +215,3 @@ def _create_subworkflow(
                 break
 
     return new_workflow
-
-
-def _get_configuration(task: Workflow) -> dict[str, Any]:
-    """Get the external inputs of a step.
-
-    :param task: The task to get the query params for
-
-    :return: A dictionary of query params
-    """
-    configuration = {}
-    for input in task.inputs:
-        configuration[input.id.split("#")[-1]] = input.default
-    return configuration
