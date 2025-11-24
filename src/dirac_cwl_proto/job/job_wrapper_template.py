@@ -10,7 +10,7 @@ from cwl_utils.parser.cwl_v1_2_utils import load_inputfile
 from ruamel.yaml import YAML
 
 from dirac_cwl_proto.job.job_wrapper import JobWrapper
-from dirac_cwl_proto.submission_models import JobSubmissionModel
+from dirac_cwl_proto.submission_models import JobModel
 
 
 def main():
@@ -32,12 +32,12 @@ def main():
         f.flush()
         task_obj = load_document_by_uri(f.name)
 
-    if len(job_model_dict["parameters"]) > 0:
-        param_obj = load_inputfile(job_model_dict["parameters"][0]["cwl"])
-        job_model_dict["parameters"][0]["cwl"] = param_obj
+    if job_model_dict["job_input"]:
+        cwl_inputs_obj = load_inputfile(job_model_dict["job_input"]["cwl"])
+        job_model_dict["job_input"]["cwl"] = cwl_inputs_obj
     job_model_dict["task"] = task_obj
 
-    job = JobSubmissionModel.model_validate(job_model_dict)
+    job = JobModel.model_validate(job_model_dict)
 
     res = job_wrapper.run_job(job)
     if res:

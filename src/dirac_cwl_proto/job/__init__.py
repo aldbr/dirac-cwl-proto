@@ -27,6 +27,7 @@ from dirac_cwl_proto.job.submission_clients import (
 )
 from dirac_cwl_proto.submission_models import (
     JobInputModel,
+    JobModel,
     JobSubmissionModel,
 )
 
@@ -109,7 +110,10 @@ async def submit_job_client(
                 f"\t[green]:heavy_check_mark:[/green] Parameter {parameter_p}"
             )
 
-    job = JobSubmissionModel(task=task, parameters=parameters)
+    job = JobSubmissionModel(
+        task=task,
+        job_inputs=parameters,
+    )
     console.print(
         "[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Job(s) validated."
     )
@@ -127,7 +131,7 @@ async def submit_job_client(
         return typer.Exit(code=1)
 
 
-def validate_jobs(job: JobSubmissionModel) -> list[JobSubmissionModel]:
+def validate_jobs(job: JobSubmissionModel) -> list[JobModel]:
     """
     Validate jobs
 
@@ -140,14 +144,18 @@ def validate_jobs(job: JobSubmissionModel) -> list[JobSubmissionModel]:
     )
     # Initiate 1 job per parameter
     jobs = []
-    if not job.parameters:
-        jobs.append(job)
+    if not job.job_inputs:
+        jobs.append(
+            JobModel(
+                task=job.task,
+            )
+        )
     else:
-        for parameter in job.parameters:
+        for parameter in job.job_inputs:
             jobs.append(
-                JobSubmissionModel(
+                JobModel(
                     task=job.task,
-                    parameters=[parameter],
+                    job_input=parameter,
                 )
             )
     console.print(
@@ -221,7 +229,7 @@ def submit_job_router(job: JobSubmissionModel) -> bool:
 # -----------------------------------------------------------------------------
 
 
-def run_job(job_id: int, job: JobSubmissionModel, logger: logging.Logger) -> bool:
+def run_job(job_id: int, job: JobModel, logger: logging.Logger) -> bool:
     """
     Run a single job by dumping it to JSON and executing the job_wrapper_template.py script.
 

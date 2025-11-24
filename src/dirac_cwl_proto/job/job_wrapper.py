@@ -25,7 +25,7 @@ from dirac_cwl_proto.execution_hooks import ExecutionHooksHint
 from dirac_cwl_proto.execution_hooks.core import ExecutionHooksBasePlugin
 from dirac_cwl_proto.submission_models import (
     JobInputModel,
-    JobSubmissionModel,
+    JobModel,
 )
 
 # -----------------------------------------------------------------------------
@@ -152,7 +152,7 @@ class JobWrapper:
 
         return True
 
-    def run_job(self, job: JobSubmissionModel) -> bool:
+    def run_job(self, job: JobModel) -> bool:
         """
         Executes a given CWL workflow using cwltool.
         This is the equivalent of the DIRAC JobWrapper.
@@ -174,10 +174,7 @@ class JobWrapper:
         try:
             # Pre-process the job
             logger.info("Pre-processing Task...")
-            command = self._pre_process(
-                job.task,
-                job.parameters[0] if job.parameters else None,
-            )
+            command = self._pre_process(job.task, job.job_input)
             logger.info("Task pre-processed successfully!")
 
             # Execute the task
