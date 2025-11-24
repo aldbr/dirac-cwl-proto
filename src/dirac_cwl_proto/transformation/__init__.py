@@ -164,7 +164,7 @@ def submit_transformation_router(transformation: TransformationSubmissionModel) 
     logger.info("Building the jobs...")
     jobs = JobSubmissionModel(
         task=transformation.task,
-        job_inputs=job_model_params,
+        inputs=job_model_params,
     )
     logger.info("Jobs built!")
 

@@ -67,13 +67,13 @@ class BaseJobModel(BaseModel):
 class JobSubmissionModel(BaseJobModel):
     """Job definition sent to the router."""
 
-    job_inputs: list[JobInputModel] | None = None
+    inputs: list[JobInputModel] | None = None
 
 
 class JobModel(BaseJobModel):
     """Job definition sent to the job wrapper."""
 
-    job_input: Optional[JobInputModel] = None
+    input: Optional[JobInputModel] = None
 
 
 # -----------------------------------------------------------------------------

@@ -112,7 +112,7 @@ async def submit_job_client(
 
     job = JobSubmissionModel(
         task=task,
-        job_inputs=parameters,
+        inputs=parameters,
     )
     console.print(
         "[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Job(s) validated."
@@ -144,18 +144,18 @@ def validate_jobs(job: JobSubmissionModel) -> list[JobModel]:
     )
     # Initiate 1 job per parameter
     jobs = []
-    if not job.job_inputs:
+    if not job.inputs:
         jobs.append(
             JobModel(
                 task=job.task,
             )
         )
     else:
-        for parameter in job.job_inputs:
+        for parameter in job.inputs:
             jobs.append(
                 JobModel(
                     task=job.task,
-                    job_input=parameter,
+                    input=parameter,
                 )
             )
     console.print(

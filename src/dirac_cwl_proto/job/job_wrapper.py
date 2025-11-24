@@ -174,7 +174,7 @@ class JobWrapper:
         try:
             # Pre-process the job
             logger.info("Pre-processing Task...")
-            command = self._pre_process(job.task, job.job_input)
+            command = self._pre_process(job.task, job.input)
             logger.info("Task pre-processed successfully!")
 
             # Execute the task

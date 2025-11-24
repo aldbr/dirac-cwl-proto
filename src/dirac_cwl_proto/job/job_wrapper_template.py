@@ -32,9 +32,9 @@ def main():
         f.flush()
         task_obj = load_document_by_uri(f.name)
 
-    if job_model_dict["job_input"]:
-        cwl_inputs_obj = load_inputfile(job_model_dict["job_input"]["cwl"])
-        job_model_dict["job_input"]["cwl"] = cwl_inputs_obj
+    if job_model_dict["input"]:
+        cwl_inputs_obj = load_inputfile(job_model_dict["input"]["cwl"])
+        job_model_dict["input"]["cwl"] = cwl_inputs_obj
     job_model_dict["task"] = task_obj
 
     job = JobModel.model_validate(job_model_dict)
