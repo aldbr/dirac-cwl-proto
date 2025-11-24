@@ -33,8 +33,8 @@ def main():
         task_obj = load_document_by_uri(f.name)
 
     if len(job_model_dict["parameters"]) > 0:
-        param_obj = load_inputfile(job_model_dict["parameters"][0])
-        job_model_dict["parameters"] = [param_obj]
+        param_obj = load_inputfile(job_model_dict["parameters"][0]["cwl"])
+        job_model_dict["parameters"][0]["cwl"] = param_obj
     job_model_dict["task"] = task_obj
 
     job = JobSubmissionModel.model_validate(job_model_dict)
