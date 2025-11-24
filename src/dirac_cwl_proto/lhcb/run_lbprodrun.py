@@ -6,7 +6,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
-
+import xml.etree.ElementTree as ET
 
 def main():
     parser = argparse.ArgumentParser(description="LbProdRun Wrapper for DIRAC CWL")
@@ -77,6 +77,61 @@ def main():
             prodconf_file=config_filename,
         )
     )
+
+    # TODO: should filenames be lowercased?
+    # sometimes LHCb applications don't respect lowercasing of output
+    # filenames e.g. ALLSTREAMS.DST filetype ---> {prefix}.AllStreams.dst 
+    # (when it should be {prefix}.allstreams.dst)
+
+    # Update all relative PFN paths in the pool XML catalog to absolute paths
+    print("Updating Pool XML Catalog...")
+    catalog_path = Path(args.pool_xml_catalog)
+
+    if catalog_path.exists():
+        # Parse the XML
+        tree = ET.parse(catalog_path)
+        root = tree.getroot()
+
+        updated_count = 0
+        # Find all pfn elements
+        for pfn_elem in root.findall('.//pfn'):
+            pfn_name = pfn_elem.get('name')
+            if pfn_name:
+                pfn_path = Path(pfn_name)
+                # Only update if it's not already an absolute path
+                if not pfn_path.is_absolute():
+                    # Check if file exists in current directory
+                    if pfn_path.exists():
+                        absolute_path = pfn_path.resolve().as_posix()
+                        pfn_elem.set('name', absolute_path)
+                        print(f"  Updated: {pfn_name} -> {absolute_path}")
+                        updated_count += 1
+                    else:
+                        print(f"⚠️  Warning: File {pfn_name} not found in current directory")
+
+        # Write back the updated XML
+        # Preserve the XML declaration and DOCTYPE
+        tree.write(catalog_path, encoding='UTF-8', xml_declaration=True)
+
+        # Fix the DOCTYPE manually since ElementTree doesn't preserve it well
+        with open(catalog_path, 'r') as f:
+            content = f.read()
+
+        # Add the POOLFILECATALOG comment and DOCTYPE after the XML declaration
+        if '<!DOCTYPE POOLFILECATALOG' not in content:
+            content = content.replace(
+                '<?xml version=\'1.0\' encoding=\'UTF-8\'?>',
+                '<?xml version="1.0" encoding="UTF-8" standalone="no" ?>\n'
+                '<!-- Edited By POOL -->\n'
+                '<!DOCTYPE POOLFILECATALOG SYSTEM "InMemory">'
+            )
+            with open(catalog_path, 'w') as f:
+                f.write(content)
+
+        print(f"Pool XML Catalog updated. {updated_count} PFN(s) converted to absolute paths.")
+    else:
+        print(f"⚠️  Warning: Pool XML Catalog {catalog_path} does not exist.")
+
     sys.exit(returncode)
 
 

@@ -683,6 +683,23 @@ def _buildCommandLineTool(
     )
 
 
+def _make_case_insensitive_glob(extension: str) -> str:
+    """
+    Convert an extension to a case-insensitive glob pattern using character classes.
+
+    For example: "allstreams.dst" -> "*.[aA][lL][lL][sS][tT][rR][eE][aA][mM][sS].[dD][sS][tT]"
+    """
+    result = "*."
+    for char in extension:
+        if char == '.':
+            result += '.'
+        elif char.isalpha():
+            result += f"[{char.lower()}{char.upper()}]"
+        else:
+            result += char
+    return result
+
+
 def _buildOutputParameters(step: dict[str, Any]) -> list[CommandOutputParameter]:
     """Build output parameters for a step."""
     output_parameters = []
@@ -695,7 +712,8 @@ def _buildOutputParameters(step: dict[str, Any]) -> list[CommandOutputParameter]
     for output in output_types:
         output_type = output.get("type")
         if output_type:
-            output_globs.append(f"*.{output_type.lower()}")
+            # Use case-insensitive glob pattern to handle any case variation
+            output_globs.append(_make_case_insensitive_glob(output_type.lower()))
 
     if output_globs:
         output_parameters.append(
