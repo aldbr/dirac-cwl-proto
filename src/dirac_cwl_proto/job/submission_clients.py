@@ -15,7 +15,7 @@ from diracx.client.aio import AsyncDiracClient
 from rich.console import Console
 
 from dirac_cwl_proto.execution_hooks import SchedulingHint
-from dirac_cwl_proto.submission_models import JobSubmissionModel
+from dirac_cwl_proto.submission_models import JobModel, JobSubmissionModel
 
 console = Console()
 
@@ -150,7 +150,7 @@ class DIRACSubmissionClient(SubmissionClient):
         )
         return True
 
-    def convert_to_jdl(self, job: JobSubmissionModel, sandbox_id: str) -> str:
+    def convert_to_jdl(self, job: JobModel, sandbox_id: str) -> str:
         """
         Convert job model to jdl.
 

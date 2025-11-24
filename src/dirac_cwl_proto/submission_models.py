@@ -7,7 +7,7 @@ modern Python typing, and comprehensive numpydoc documentation.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Optional
 
 from cwl_utils.parser import save
 from cwl_utils.parser.cwl_v1_2 import (
@@ -42,14 +42,13 @@ class JobInputModel(BaseModel):
         return save(value)
 
 
-class JobSubmissionModel(BaseModel):
-    """Job definition sent to the router."""
+class BaseJobModel(BaseModel):
+    """Base class for Job definition."""
 
     # Allow arbitrary types to be passed to the model
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     task: CommandLineTool | Workflow | ExpressionTool
-    parameters: list[JobInputModel] | None = None
 
     @field_serializer("task")
     def serialize_task(self, value):
@@ -63,6 +62,18 @@ class JobSubmissionModel(BaseModel):
         task = values.get("task")
         ExecutionHooksHint.from_cwl(task), SchedulingHint.from_cwl(task)
         return values
+
+
+class JobSubmissionModel(BaseJobModel):
+    """Job definition sent to the router."""
+
+    inputs: list[JobInputModel] | None = None
+
+
+class JobModel(BaseJobModel):
+    """Job definition sent to the job wrapper."""
+
+    input: Optional[JobInputModel] = None
 
 
 # -----------------------------------------------------------------------------
