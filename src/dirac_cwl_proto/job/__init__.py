@@ -3,6 +3,7 @@ CLI interface to run a workflow as a job.
 """
 
 import logging
+import os
 import random
 import subprocess
 from pathlib import Path
@@ -34,11 +35,10 @@ from dirac_cwl_proto.submission_models import (
 app = AsyncTyper()
 console = Console()
 
+
 # -----------------------------------------------------------------------------
 # dirac-cli commands
 # -----------------------------------------------------------------------------
-
-
 @app.async_command("submit")
 async def submit_job_client(
     task_path: str = typer.Argument(..., help="Path to the CWL file"),
@@ -61,6 +61,11 @@ async def submit_job_client(
     submission_client: SubmissionClient = (
         PrototypeSubmissionClient() if local else DIRACSubmissionClient()
     )
+
+    if local:
+        os.environ["DIRAC_PROTO_LOCAL"] = "1"
+    else:
+        os.environ["DIRAC_PROTO_LOCAL"] = "0"
 
     # Validate the workflow
     console.print(

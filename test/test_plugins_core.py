@@ -5,6 +5,7 @@ This module tests the built-in execution hooks plugins including the
 QueryBased plugin implementation.
 """
 
+import os
 from pathlib import Path
 
 from dirac_cwl_proto.execution_hooks.plugins.core import (
@@ -114,6 +115,7 @@ class TestQueryBasedPlugin:
 
     def test_store_output(self):
         """Test store_output method."""
+        os.environ["DIRAC_PROTO_LOCAL"] = "1"
         plugin = QueryBasedPlugin()
 
         # Since store_output expects a string path not a dict, let's test the actual signature
