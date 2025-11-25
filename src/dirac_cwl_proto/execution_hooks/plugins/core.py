@@ -10,9 +10,10 @@ import logging
 from pathlib import Path
 from typing import Any, ClassVar, List, Optional, Sequence, Union
 
+from DIRACCommon.Core.Utilities.ReturnValues import returnValueOrRaise  # type: ignore[import-untyped]
 from pydantic import Field
 
-from dirac_cwl_proto.execution_hooks.data_management.sandbox import (
+from dirac_cwl_proto.data_management_mocks.sandbox import (
     upload_files_as_sandbox,
 )
 
@@ -140,4 +141,6 @@ class QueryBasedPlugin(ExecutionHooksBasePlugin):
                 if isinstance(src_path, str) or isinstance(src_path, Path):
                     src_path = [src_path]
                 for src in src_path:
-                    self._datamanager.put_and_register(str(lfn), src)
+                    returnValueOrRaise(
+                        self._datamanager.putAndRegister(str(lfn), src, "test")
+                    )

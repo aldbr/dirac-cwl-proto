@@ -39,36 +39,6 @@
       "dirac_description": "Base metadata model",
       "dirac_vo": null,
       "properties": {
-        "base_path": {
-          "default": "/",
-          "format": "path",
-          "title": "Base Path",
-          "type": "string"
-        },
-        "campaign": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Campaign"
-        },
-        "data_type": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Data Type"
-        },
         "output_paths": {
           "additionalProperties": true,
           "default": {},
@@ -82,18 +52,6 @@
           },
           "title": "Output Sandbox",
           "type": "array"
-        },
-        "site": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Site"
         }
       },
       "title": "DIRAC Metadata Model",
@@ -236,12 +194,6 @@
       "dirac_description": "LFN-based metadata for structured data discovery",
       "dirac_vo": null,
       "properties": {
-        "base_path": {
-          "default": "/",
-          "format": "path",
-          "title": "Base Path",
-          "type": "string"
-        },
         "campaign": {
           "anyOf": [
             {

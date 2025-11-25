@@ -4,6 +4,7 @@ CLI interface to run a workflow as a transformation.
 
 import glob
 import logging
+import os
 import time
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -51,6 +52,10 @@ def submit_transformation_client(
     - Validate the workflow
     - Start the transformation
     """
+    if local:
+        os.environ["DIRAC_PROTO_LOCAL"] = "1"
+    else:
+        os.environ["DIRAC_PROTO_LOCAL"] = "0"
     # Validate the workflow
     console.print(
         "[blue]:information_source:[/blue] [bold]CLI:[/bold] Validating the transformation..."

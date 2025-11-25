@@ -12,10 +12,10 @@ from diracx.api.jobs import create_sandbox
 from diracx.client.aio import AsyncDiracClient
 from rich.console import Console
 
-from dirac_cwl_proto.execution_hooks import SchedulingHint
-from dirac_cwl_proto.execution_hooks.data_management.sandbox import (
+from dirac_cwl_proto.data_management_mocks.sandbox import (
     upload_files_as_sandbox,
 )
+from dirac_cwl_proto.execution_hooks import SchedulingHint
 from dirac_cwl_proto.submission_models import JobModel, JobSubmissionModel
 
 console = Console()

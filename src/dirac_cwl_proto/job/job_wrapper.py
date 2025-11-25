@@ -175,8 +175,8 @@ class JobWrapper:
             logger.error("Failed to post-process Task")
             return False
 
-        except Exception:
-            logger.exception("JobWrapper: Failed to execute workflow")
+        except Exception as e:
+            logger.exception(f"JobWrapper: Failed to execute workflow : {e}")
             return False
         finally:
             # Clean up

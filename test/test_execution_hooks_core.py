@@ -115,7 +115,9 @@ class TestExecutionHookExtended:
         )
 
         put_mock = mocker.patch.object(
-            model._datamanager, "put_and_register", return_value=None
+            model._datamanager,
+            "putAndRegister",
+            return_value={"OK": True, "Value": None},
         )
 
         sb_upload_mock = mocker.patch(

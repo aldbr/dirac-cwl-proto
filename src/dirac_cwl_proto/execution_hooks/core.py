@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import (
@@ -31,13 +32,17 @@ from cwl_utils.parser.cwl_v1_2 import (
     Saveable,
     Workflow,
 )
+from DIRAC.DataManagementSystem.Client.DataManager import (  # type: ignore[import-untyped]
+    DataManager,
+)
+from DIRACCommon.Core.Utilities.ReturnValues import returnValueOrRaise  # type: ignore[import-untyped]
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
 from ruamel.yaml import YAML
 
 from dirac_cwl_proto.commands import PostProcessCommand, PreProcessCommand
 from dirac_cwl_proto.core.exceptions import WorkflowProcessingException
-from dirac_cwl_proto.execution_hooks.data_management.data_manager import DataManager
-from dirac_cwl_proto.execution_hooks.data_management.sandbox import (
+from dirac_cwl_proto.data_management_mocks.data_manager import MockDataManager
+from dirac_cwl_proto.data_management_mocks.sandbox import (
     upload_files_as_sandbox,
 )
 
@@ -72,9 +77,12 @@ class ExecutionHooksBasePlugin(BaseModel):
     output_paths: Dict[str, Any] = {}
     output_sandbox: list[str] = []
 
-    _datamanager: DataManager = PrivateAttr(
-        default_factory=lambda: DataManager(file_catalog="LocalFileCatalog")
-    )
+    _datamanager: DataManager = PrivateAttr(default_factory=DataManager)
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        if os.getenv("DIRAC_PROTO_LOCAL") == "1":
+            self._datamanager = MockDataManager()
 
     _preprocess_commands: List[type[PreProcessCommand]] = PrivateAttr(default=[])
     _postprocess_commands: List[type[PostProcessCommand]] = PrivateAttr(default=[])
@@ -137,7 +145,7 @@ class ExecutionHooksBasePlugin(BaseModel):
         new_paths: dict[str, Path | list[Path]] = {}
         if inputs.lfns_input:
             for input_name, lfns in inputs.lfns_input.items():
-                paths = self._datamanager.get_file(lfns, job_path)
+                paths = returnValueOrRaise(self._datamanager.getFile(lfns, job_path))
                 if paths:
                     new_paths[input_name] = paths
         return new_paths
@@ -347,7 +355,9 @@ class ExecutionHooksBasePlugin(BaseModel):
                 if isinstance(src_path, str) or isinstance(src_path, Path):
                     src_path = [src_path]
                 for src in src_path:
-                    self._datamanager.put_and_register(str(lfn), src)
+                    returnValueOrRaise(
+                        self._datamanager.putAndRegister(str(lfn), src, "FileStorage")
+                    )
 
     @classmethod
     def get_schema_info(cls) -> Dict[str, Any]:
