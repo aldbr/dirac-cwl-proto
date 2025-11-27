@@ -186,10 +186,8 @@ class ExecutionHooksPluginRegistry:
             Number of plugins discovered and registered.
         """
         entrypoints = entry_points(group="dirac_cwl_proto.execution_hooks")
-        hook_names = entrypoints.names
-
         discovered = 0
-        for hook_name in hook_names:
+        for hook_name in entrypoints.names:
             try:
                 hook = entrypoints[hook_name].load()
                 if issubclass(hook, ExecutionHooksBasePlugin):
