@@ -16,7 +16,8 @@ def validatePFN(value: str) -> str:
 LFN = Annotated[str, BeforeValidator(validateLFN)]
 PFN = Annotated[AnyUrl, BeforeValidator(validatePFN)]
 StorageElementId = str
-FileGuid = str
+ChecksumType = str
+FileChecksum = str
 
 
 class JSONCatalog(RootModel):
@@ -25,9 +26,8 @@ class JSONCatalog(RootModel):
             url: PFN
             se: StorageElementId
         replicas: list[Replica]
-
         size_bytes: int | None = None
-        checksum: dict[str, ] = None
+        checksum: dict[ChecksumType, FileChecksum] | None = None
 
     root: dict[LFN, CatalogEntry]
 
