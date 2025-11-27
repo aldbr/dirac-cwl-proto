@@ -7,9 +7,8 @@ automatic discovery.
 
 from __future__ import annotations
 
-import importlib
 import logging
-import pkgutil
+from importlib.metadata import entry_points
 from typing import Any, Dict, List, Optional, Type
 
 from .core import ExecutionHooksBasePlugin, ExecutionHooksHint
@@ -178,64 +177,32 @@ class ExecutionHooksPluginRegistry:
         """Get detailed information about a plugin."""
         return self._plugin_info.get(plugin_key)
 
-    def discover_plugins(self, package_names: Optional[List[str]] = None) -> int:
-        """Discover and register plugins from specified packages.
-
-        Parameters
-        ----------
-        package_names : Optional[List[str]], optional
-            Packages to search for plugins. If None, searches default locations.
+    def discover_plugins(self) -> int:
+        """Discover and register plugins from the entry points defined in the pyproject.toml.
 
         Returns
         -------
         int
             Number of plugins discovered and registered.
         """
-        if package_names is None:
-            package_names = [
-                "dirac_cwl_proto.execution_hooks.plugins",
-            ]
+        entrypoints = entry_points(group="dirac_cwl_proto.execution_hooks")
+        hook_names = entrypoints.names
 
         discovered = 0
-        for package_name in package_names:
-            discovered += self._discover_from_package(package_name)
-
-        return discovered
-
-    def _discover_from_package(self, package_name: str) -> int:
-        """Discover plugins from a specific package."""
-        try:
-            package = importlib.import_module(package_name)
-        except ImportError:
-            logger.debug(f"Package {package_name} not found, skipping plugin discovery")
-            return 0
-
-        discovered = 0
-        package_path = getattr(package, "__path__", None)
-        if package_path is None:
-            return 0
-
-        for _importer, modname, ispkg in pkgutil.iter_modules(package_path):
-            if ispkg:
-                continue
-
+        for hook_name in hook_names:
             try:
-                module_name = f"{package_name}.{modname}"
-                module = importlib.import_module(module_name)
-
-                # Look for metadata model classes
-                for attr_name in dir(module):
-                    attr = getattr(module, attr_name)
-                    if (
-                        isinstance(attr, type)
-                        and issubclass(attr, ExecutionHooksBasePlugin)
-                        and attr is not ExecutionHooksBasePlugin
-                    ):
-                        self.register_plugin(attr)
-                        discovered += 1
-
+                hook = entrypoints[hook_name].load()
+                if issubclass(hook, ExecutionHooksBasePlugin):
+                    self.register_plugin(hook)
+                    discovered += 1
+                else:
+                    logger.warning(
+                        "Tried to discover execution hook with name '%s' that does not inherit %s",
+                        hook_name,
+                        ExecutionHooksBasePlugin.__name__,
+                    )
             except Exception as e:
-                logger.warning(f"Failed to import plugin module {module_name}: {e}")
+                logger.error(f"Failed to import plugin {hook_name}: {e}")
 
         return discovered
 
@@ -284,6 +251,6 @@ def get_registry() -> ExecutionHooksPluginRegistry:
     return _registry
 
 
-def discover_plugins(package_names: Optional[List[str]] = None) -> int:
+def discover_plugins() -> int:
     """Discover and register plugins from packages."""
-    return _registry.discover_plugins(package_names)
+    return _registry.discover_plugins()
