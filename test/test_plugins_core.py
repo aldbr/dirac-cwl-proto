@@ -7,6 +7,8 @@ QueryBased plugin implementation.
 
 from pathlib import Path
 
+import pytest
+
 from dirac_cwl_proto.execution_hooks.plugins.core import (
     QueryBasedPlugin,
 )
@@ -192,3 +194,110 @@ class TestPluginIntegration:
             schema = plugin.model_json_schema()
             assert isinstance(schema, dict)
             assert "properties" in schema
+
+
+class TestPluginCommands:
+    """Test plugin preprocessing and postprocessing commands."""
+
+    @pytest.fixture
+    def plugin_class_fixture(self):
+        from dirac_cwl_proto.commands.download_config import DownloadConfig
+        from dirac_cwl_proto.commands.group_outputs import GroupOutputs
+        from dirac_cwl_proto.execution_hooks.core import ExecutionHooksBasePlugin
+        from dirac_cwl_proto.execution_hooks.registry import get_registry
+
+        registry = get_registry()
+        plugin_class = registry.get_plugin("JobTypeTestingPlugin")
+        
+        if not plugin_class:
+            class JobTypeTestingPlugin(ExecutionHooksBasePlugin):
+                def __init__(self, **data):
+                    super().__init__(**data)
+
+                    self.preprocess_commands = [DownloadConfig]
+                    self.postprocess_commands = [GroupOutputs]
+
+            registry.register_plugin(JobTypeTestingPlugin)
+            plugin_class = JobTypeTestingPlugin
+
+        return plugin_class
+
+    def test_from_registry(self, plugin_class_fixture):
+        """Test the initialization from the registry."""
+        from dirac_cwl_proto.execution_hooks.registry import get_registry
+
+        registry = get_registry()
+
+        plugin_instance = registry.get_plugin("JobTypeTestingPlugin")()
+
+        assert isinstance(plugin_instance, plugin_class_fixture)
+
+        assert len(plugin_instance.preprocess_commands) == 1
+        assert len(plugin_instance.postprocess_commands) == 1
+
+    def test_from_hints(self, plugin_class_fixture):
+        """Test the initialization from an ExecutionHooksHint."""
+        from dirac_cwl_proto.execution_hooks.core import ExecutionHooksHint
+
+        hint = ExecutionHooksHint(hook_plugin=plugin_class_fixture.__name__)
+        plugin_from_hint = hint.to_runtime()
+
+        assert isinstance(plugin_from_hint, plugin_class_fixture)
+
+        assert len(plugin_from_hint.preprocess_commands) == 1
+        assert len(plugin_from_hint.postprocess_commands) == 1
+
+    def test_execute(self, plugin_class_fixture, mocker, monkeypatch):
+        """Test the preprocessing and postprocessing commands execution."""
+        from dirac_cwl_proto.commands import PostProcessCommand, PreProcessCommand
+
+        # Create real classes so Pydantic does not complain
+        class PreCommand(PreProcessCommand):
+            def execute(job_path, **kwargs):
+                return
+
+        class PostCommand(PostProcessCommand):
+            def execute(job_path, **kwargs):
+                return
+
+        class DualCommand(PreProcessCommand, PostProcessCommand):
+            def execute(job_path, **kwargs):
+                return
+
+        # Patch the 'execute' functions to be able to spy them
+        pre_execute = mocker.MagicMock()
+        post_execute = mocker.MagicMock()
+        dual_execute = mocker.MagicMock()
+
+        monkeypatch.setattr(PreCommand, "execute", pre_execute)
+        monkeypatch.setattr(PostCommand, "execute", post_execute)
+        monkeypatch.setattr(DualCommand, "execute", dual_execute)
+
+        plugin = plugin_class_fixture()
+
+        # Set the commands in the wrong places
+        plugin.preprocess_commands = [PostCommand]
+        plugin.postprocess_commands = [PreCommand]
+
+        # It should complain
+        with pytest.raises(TypeError):
+            plugin.pre_process("/fake/dir", ["fake", "command"])
+
+        with pytest.raises(TypeError):
+            plugin.post_process("/fake/dir")
+
+        # Set them correctly
+        plugin.preprocess_commands = [PreCommand, DualCommand]
+        plugin.postprocess_commands = [PostCommand, DualCommand]
+
+        # Preprocess
+        plugin.pre_process("/fake/dir", ["fake", "command"])
+        pre_execute.assert_called_once()
+        dual_execute.assert_called_once()
+
+        dual_execute.reset_mock()
+
+        # Postprocess
+        plugin.post_process("/fake/dir")
+        post_execute.assert_called_once()
+        dual_execute.assert_called_once()

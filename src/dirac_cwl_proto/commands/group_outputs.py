@@ -1,28 +1,25 @@
 import glob
 import os
 
-from dirac_cwl_proto.commands import CommandBase
+from dirac_cwl_proto.commands import PostProcessCommand
 
 
-class GroupOutputs(CommandBase):
-    """Example command that merges all of the outputs in a singular file.
-
-    This command is expected to be executed during the post-processing stage.
-    """
+class GroupOutputs(PostProcessCommand):
+    """Example command that merges all of the outputs in a singular file."""
 
     def execute(self, job_path, **kwargs):
-        groupedOutputs = "group.out"
-        outputPath = os.path.join(job_path, groupedOutputs)
-        outputFiles = ["*.out", "*.txt"]
+        grouped_outputs = "group.out"
+        output_path = os.path.join(job_path, grouped_outputs)
+        output_files = ["*.out", "*.txt"]
 
-        with open(outputPath, "w", encoding="utf-8") as fIn:
-            for fileType in outputFiles:
-                extension = f"{job_path}/{fileType}"
+        with open(output_path, "w", encoding="utf-8") as f_in:
+            for file_type in output_files:
+                extension = f"{job_path}/{file_type}"
                 for file in glob.glob(extension):
-                    if file == outputPath:
+                    if file == output_path:
                         continue
 
-                    with open(file, "r", encoding="utf-8") as fOut:
-                        fIn.write(f"############ {file}\n")
-                        fIn.writelines(fOut.readlines())
-                        fIn.write("\n")
+                    with open(file, "r", encoding="utf-8") as f_out:
+                        f_in.write(f"############ {file}\n")
+                        f_in.writelines(f_out.readlines())
+                        f_in.write("\n")

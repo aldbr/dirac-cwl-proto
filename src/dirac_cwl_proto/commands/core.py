@@ -1,16 +1,12 @@
-import logging
 from abc import ABC, abstractmethod
 from pathlib import Path
 
-logger = logging.getLogger(__name__)
-
 
 class CommandBase(ABC):
-    """
-    Base abstract class for pre/post-processing tasks.
+    """Base abstract class for pre/post-processing commands.
 
     New commands **MUST NOT** inherit this class. Instead they should inherit the interface classes
-    :class:`dirac_cwl_proto.commands.base.PreProcessCommand` and 
+    :class:`dirac_cwl_proto.commands.base.PreProcessCommand` and
     :class:`dirac_cwl_proto.commands.base.PostProcessCommand`
     """
 
@@ -23,6 +19,7 @@ class PreProcessCommand(CommandBase):
     """Interface class for pre-processing commands.
     Every pre-processing command must inherit this class. Used for type validation.
     """
+
 
 class PostProcessCommand(CommandBase):
     """Interface class for post-processing commands.

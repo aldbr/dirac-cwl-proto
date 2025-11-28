@@ -13,7 +13,7 @@ from typing import Any, ClassVar, Dict, List, Mapping, Optional, TypeVar, Union
 
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
 
-from dirac_cwl_proto.commands import JobTypeProcessorBase
+from dirac_cwl_proto.commands import PostProcessCommand, PreProcessCommand
 
 logger = logging.getLogger(__name__)
 
@@ -243,7 +243,9 @@ class ExecutionHooksBasePlugin(BaseModel):
     _data_catalog: Optional[DataCatalogInterface] = PrivateAttr(
         default_factory=lambda: DefaultDataCatalogInterface()
     )
-    _job_type_processor: Optional[JobTypeProcessorBase] = PrivateAttr(default=None)
+
+    _preprocess_commands: List[type[PreProcessCommand]] = PrivateAttr(default=[])
+    _postprocess_commands: List[type[PostProcessCommand]] = PrivateAttr(default=[])
 
     @property
     def data_catalog(self) -> Optional[DataCatalogInterface]:
@@ -256,14 +258,24 @@ class ExecutionHooksBasePlugin(BaseModel):
         self._data_catalog = value
 
     @property
-    def job_type_processor(self) -> Optional[JobTypeProcessorBase]:
-        """Get the job processor interface."""
-        return self._job_type_processor
+    def preprocess_commands(self) -> List[type[PreProcessCommand]]:
+        """Get the list of pre-processing commands."""
+        return self._preprocess_commands
 
-    @job_type_processor.setter
-    def job_type_processor(self, value: JobTypeProcessorBase) -> None:
-        """Set the job processor interface."""
-        self._job_type_processor = value
+    @preprocess_commands.setter
+    def preprocess_commands(self, value: List[type[PreProcessCommand]]) -> None:
+        """Set the list of pre-processing commands."""
+        self._preprocess_commands = value
+
+    @property
+    def postprocess_commands(self) -> List[type[PostProcessCommand]]:
+        """Get the list of post-processing commands."""
+        return self._postprocess_commands
+
+    @postprocess_commands.setter
+    def postprocess_commands(self, value: List[type[PostProcessCommand]]) -> None:
+        """Set the list of post-processing commands."""
+        self._postprocess_commands = value
 
     def __init__(self, **data):
         """Initialize with data catalog interface."""
@@ -292,8 +304,19 @@ class ExecutionHooksBasePlugin(BaseModel):
         List[str]
             Modified command list.
         """
-        if self.job_type_processor:
-            self.job_type_processor.pre_process(job_path, **kwargs)
+        for preprocess_command in self.preprocess_commands:
+            if not issubclass(preprocess_command, PreProcessCommand):
+                msg = f"The command {preprocess_command} is not a {PreProcessCommand.__name__}"
+                logger.error(msg)
+                raise TypeError(msg)
+
+            try:
+                preprocess_command().execute(job_path, **kwargs)
+            except Exception as e:
+                logger.exception(
+                    f"Command '{preprocess_command.__name__}' failed during the pre-process stage: {e}"
+                )
+                raise
 
         return command
 
@@ -305,8 +328,19 @@ class ExecutionHooksBasePlugin(BaseModel):
         job_path : Path
             Path to the job working directory.
         """
-        if self.job_type_processor:
-            self.job_type_processor.post_process(job_path, **kwargs)
+        for postprocess_command in self.postprocess_commands:
+            if not issubclass(postprocess_command, PostProcessCommand):
+                msg = f"The command {postprocess_command} is not a {PostProcessCommand.__name__}"
+                logger.error(msg)
+                raise TypeError(msg)
+
+            try:
+                postprocess_command().execute(job_path, **kwargs)
+            except Exception as e:
+                logger.exception(
+                    f"Command '{postprocess_command.__name__}' failed during the post-process stage: {e}"
+                )
+                raise
 
         return True
 
@@ -419,11 +453,6 @@ class ExecutionHooksHint(BaseModel, Hint):
     # Enhanced fields for submission functionality
     configuration: Dict[str, Any] = Field(
         default_factory=dict, description="Additional parameters for metadata plugins"
-    )
-
-    job_type: Optional[str] = Field(
-        default=None,
-        description="",
     )
 
     def model_copy(
