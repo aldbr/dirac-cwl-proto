@@ -2,7 +2,9 @@ from pathlib import Path
 
 from DIRAC.DataManagementSystem.Client.DataManager import DataManager  # type: ignore[import-untyped]
 from DIRAC.Resources.Storage.FileStorage import FileStorage  # type: ignore[import-untyped]
-from DIRACCommon.Core.Utilities.ReturnValues import S_ERROR, S_OK  # type: ignore[import-untyped]
+from DIRACCommon.Core.Utilities.ReturnValues import S_ERROR, S_OK, returnSingleResult  # type: ignore[import-untyped]
+
+from dirac_cwl_proto.data_management_mocks.file_catalog import LocalFileCatalog
 
 
 class MockDataManager(DataManager):
@@ -13,6 +15,7 @@ class MockDataManager(DataManager):
     def __init__(self):
         self.base_storage_path = "filecatalog"
         self.storage_element = FileStorage("local", {"Path": self.base_storage_path})
+        self.fileCatalog = LocalFileCatalog()
 
     def getFile(self, lfn, destinationDir=".", sourceSE=None, diskOnly=False):
         """Get local copy of LFN(s) from Storage Elements.
@@ -33,17 +36,25 @@ class MockDataManager(DataManager):
 
         if not sourceSE:
             sourceSE = self.storage_element
+
+        success = {}
+        fail = {}
         for lfn in lfns:
-            res = sourceSE.getFile(str(lfn).removeprefix("lfn:"), destinationDir)
+            res = sourceSE.getFile(
+                str(Path(self.base_storage_path) / str(lfn).removeprefix("lfn:")),
+                destinationDir,
+            )
             if not res["OK"]:
-                return S_ERROR(f"Could not download lfn {lfn} : {res['Message']}")
-        return S_OK([Path(lfn).name for lfn in lfns])
+                fail[lfn] = res["Message"]
+            else:
+                success[lfn] = Path(lfn).name
+        return S_OK({"Successful": success, "Failed": fail})
 
     def putAndRegister(
         self,
         lfn,
         fileName,
-        diracSE=None,
+        diracSE,
         guid=None,
         path=None,
         checksum=None,
@@ -58,10 +69,10 @@ class MockDataManager(DataManager):
         'path' is the path on the storage where the file will be put (if not provided the LFN will be used)
         'overwrite' removes file from the file catalogue and SE before attempting upload
         """
-
+        self.fileCatalog.addFile(lfn)
         return self.put(lfn, fileName, diracSE, path)
 
-    def put(self, lfn, fileName, diracSE=None, path=None):
+    def put(self, lfn, fileName, diracSE, path=None):
         """Put a local file to a Storage Element
 
         :param self: self reference
@@ -76,8 +87,8 @@ class MockDataManager(DataManager):
             return S_ERROR("No Storage Element defined")
         if not path:
             path = str(lfn).removeprefix("lfn:")
-        dest = str(Path(path) / Path(fileName).name)
-        res = se.putFile({dest: fileName})
+        dest = str(Path(self.base_storage_path) / Path(path) / Path(fileName).name)
+        res = returnSingleResult(se.putFile({dest: fileName}))
         if not res["OK"]:
-            return res
-        return S_OK({"Successful": [lfn], "Failed": []})
+            return S_OK({"Successful": {}, "Failed": {lfn: res["Message"]}})
+        return S_OK({"Successful": {lfn: res["Value"]}, "Failed": {}})

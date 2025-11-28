@@ -19,4 +19,4 @@ hints:
   dirac:execution-hooks:
     hook_plugin: "QueryBasedPlugin"
     output_paths:
-      output1: "lfn:filecatalog/test/output"
+      output1: "lfn:test/output"

@@ -110,14 +110,17 @@ class TestExecutionHookExtended:
         """Test that the Hook uses the correct interface for each output type."""
 
         model = ExecutionHooksBasePlugin(
-            output_paths={"test_lfn": "lfn:filecatalog/test"},
+            output_paths={"test_lfn": "lfn:test"},
             output_sandbox=["test_sb"],
         )
 
         put_mock = mocker.patch.object(
             model._datamanager,
             "putAndRegister",
-            return_value={"OK": True, "Value": None},
+            return_value={
+                "OK": True,
+                "Value": {"Successful": {"test": "test"}, "Failed": {}},
+            },
         )
 
         sb_upload_mock = mocker.patch(
@@ -155,6 +158,7 @@ class TestExecutionHookExtended:
             "value": 42,
             "output_paths": {},
             "output_sandbox": [],
+            "storage_element_name": "testSE",
         }
 
         # Test JSON schema generation

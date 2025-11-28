@@ -195,11 +195,11 @@ def _get_inputs(input_query: Path | list[Path], group_size: int) -> List[List[st
 
     # Retrieve all input paths matching the query
     if isinstance(input_query, Path):
-        input_paths = glob.glob(str(input_query / "*"))
+        input_paths = glob.glob(str(input_query / "*"), root_dir="filecatalog")
     else:
         input_paths = []
         for query in input_query:
-            input_paths.extend(glob.glob(str(query / "*")))
+            input_paths.extend(glob.glob(str(query / "*"), root_dir="filecatalog"))
     len_input_paths = len(input_paths)
 
     # Ensure there are enough inputs to form at least one group

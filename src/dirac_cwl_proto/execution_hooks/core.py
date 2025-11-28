@@ -35,7 +35,10 @@ from cwl_utils.parser.cwl_v1_2 import (
 from DIRAC.DataManagementSystem.Client.DataManager import (  # type: ignore[import-untyped]
     DataManager,
 )
-from DIRACCommon.Core.Utilities.ReturnValues import returnValueOrRaise  # type: ignore[import-untyped]
+from DIRACCommon.Core.Utilities.ReturnValues import (  # type: ignore[import-untyped]
+    returnSingleResult,
+    returnValueOrRaise,
+)
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
 from ruamel.yaml import YAML
 
@@ -77,6 +80,7 @@ class ExecutionHooksBasePlugin(BaseModel):
     output_paths: Dict[str, Any] = {}
     output_sandbox: list[str] = []
 
+    storage_element_name: str = "testSE"
     _datamanager: DataManager = PrivateAttr(default_factory=DataManager)
 
     def __init__(self, **kwargs):
@@ -145,9 +149,11 @@ class ExecutionHooksBasePlugin(BaseModel):
         new_paths: dict[str, Path | list[Path]] = {}
         if inputs.lfns_input:
             for input_name, lfns in inputs.lfns_input.items():
-                paths = returnValueOrRaise(self._datamanager.getFile(lfns, job_path))
+                paths = returnValueOrRaise(self._datamanager.getFile(lfns, job_path))[
+                    "Successful"
+                ]
                 if paths:
-                    new_paths[input_name] = paths
+                    new_paths[input_name] = [paths[lfn] for lfn in paths]
         return new_paths
 
     def update_inputs(self, inputs: Any, updates: dict[str, Path | list[Path]]):
@@ -356,7 +362,11 @@ class ExecutionHooksBasePlugin(BaseModel):
                     src_path = [src_path]
                 for src in src_path:
                     returnValueOrRaise(
-                        self._datamanager.putAndRegister(str(lfn), src, "FileStorage")
+                        returnSingleResult(
+                            self._datamanager.putAndRegister(
+                                str(lfn), src, self.storage_element_name
+                            )
+                        )
                     )
 
     @classmethod

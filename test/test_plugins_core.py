@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 
 import pytest
+from DIRACCommon.Core.Utilities.ReturnValues import SErrorException
 
 from dirac_cwl_proto.core.exceptions import WorkflowProcessingException
 from dirac_cwl_proto.execution_hooks.plugins.core import (
@@ -24,7 +25,7 @@ class TestQueryBasedPlugin:
         # Test default values
         plugin = QueryBasedPlugin()
         assert plugin.name() == "QueryBasedPlugin"
-        assert plugin.query_root == "/grid/data"  # Default value
+        assert plugin.query_root == "grid/data"  # Default value
         assert plugin.site is None
         assert plugin.campaign is None
         assert plugin.data_type is None
@@ -72,7 +73,7 @@ class TestQueryBasedPlugin:
         result = plugin.get_input_query("test_input")
 
         # Should return a path under the default root when no parameters are set
-        expected = Path("/grid/data/test_input")
+        expected = Path("grid/data/test_input")
         assert result == expected
 
     def test_get_input_query_default_root(self):
@@ -82,7 +83,7 @@ class TestQueryBasedPlugin:
         result = plugin.get_input_query("test_input")
 
         # Should use default "/grid/data" root with campaign
-        expected = Path("/grid/data/Test/test_input")
+        expected = Path("grid/data/Test/test_input")
         assert result == expected
 
     def test_get_input_query_with_kwargs(self):
@@ -113,7 +114,7 @@ class TestQueryBasedPlugin:
         result = plugin.get_output_query("test_output")
 
         # Should use default path according to DefaultDataCatalogInterface
-        expected = Path("/grid/data/outputs")
+        expected = Path("grid/data/outputs")
         assert result == expected
 
     def test_store_output(self):
@@ -127,7 +128,7 @@ class TestQueryBasedPlugin:
         # This should work since QueryBasedPlugin provides an output path
         try:
             plugin.store_output("test_output", "/tmp/test_file.txt")
-        except (FileNotFoundError, OSError):
+        except SErrorException:
             # Expected since the file doesn't exist
             pass
 

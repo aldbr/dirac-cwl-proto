@@ -10,7 +10,10 @@ import logging
 from pathlib import Path
 from typing import Any, ClassVar, List, Optional, Sequence, Union
 
-from DIRACCommon.Core.Utilities.ReturnValues import returnValueOrRaise  # type: ignore[import-untyped]
+from DIRACCommon.Core.Utilities.ReturnValues import (  # type: ignore[import-untyped]
+    returnSingleResult,
+    returnValueOrRaise,
+)
 from pydantic import Field
 
 from dirac_cwl_proto.data_management_mocks.sandbox import (
@@ -35,7 +38,7 @@ class QueryBasedPlugin(ExecutionHooksBasePlugin):
 
     # LFN parameters
     query_root: str = Field(
-        default="/grid/data", description="Base path for LFN structure"
+        default="grid/data", description="Base path for LFN structure"
     )
     site: Optional[str] = Field(
         default=None, description="Site identifier for LFN path"
@@ -142,5 +145,9 @@ class QueryBasedPlugin(ExecutionHooksBasePlugin):
                     src_path = [src_path]
                 for src in src_path:
                     returnValueOrRaise(
-                        self._datamanager.putAndRegister(str(lfn), src, "test")
+                        returnSingleResult(
+                            self._datamanager.putAndRegister(
+                                str(lfn), src, self.storage_element_name
+                            )
+                        )
                     )
