@@ -1,0 +1,27 @@
+from abc import ABC, abstractmethod
+from pathlib import Path
+
+
+class CommandBase(ABC):
+    """Base abstract class for pre/post-processing commands.
+
+    New commands **MUST NOT** inherit this class. Instead they should inherit the interface classes
+    :class:`dirac_cwl_proto.commands.base.PreProcessCommand` and
+    :class:`dirac_cwl_proto.commands.base.PostProcessCommand`
+    """
+
+    @abstractmethod
+    def execute(self, job_path: Path, **kwargs) -> None:
+        raise NotImplementedError("This method should be implemented by child class")
+
+
+class PreProcessCommand(CommandBase):
+    """Interface class for pre-processing commands.
+    Every pre-processing command must inherit this class. Used for type validation.
+    """
+
+
+class PostProcessCommand(CommandBase):
+    """Interface class for post-processing commands.
+    Every post-processing command must inherit this class. Used for type validation.
+    """
