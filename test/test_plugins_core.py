@@ -208,8 +208,9 @@ class TestPluginCommands:
 
         registry = get_registry()
         plugin_class = registry.get_plugin("JobTypeTestingPlugin")
-        
+
         if not plugin_class:
+
             class JobTypeTestingPlugin(ExecutionHooksBasePlugin):
                 def __init__(self, **data):
                     super().__init__(**data)
