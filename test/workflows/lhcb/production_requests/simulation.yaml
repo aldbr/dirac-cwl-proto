@@ -1,0 +1,2150 @@
+- wg: RD
+  name: RD_Lb2pKpipiMuMu_Run2_Run3 2016 pp MagUp
+  type: Simulation
+  steps:
+  - name: Sim10f - 2016 - Beam6500GeV - MagUp - Pythia8
+    input: []
+    dbtags:
+      DDDB: 2016-v03.06
+      CondDB: sim-20201113-6-vc-mu100-Sim10
+    output:
+    - type: SIM
+      visible: false
+    options:
+    - $APPCONFIGOPTS/Gauss/Beam6500GeV-mu100-2016-nu1.6.py
+    - $APPCONFIGOPTS/Gauss/EnableSpillover-25ns.py
+    - $APPCONFIGOPTS/Gauss/DataType-2016.py
+    - $APPCONFIGOPTS/Gauss/RICHRandomHits.py
+    - $DECFILESROOT/options/@{eventType}.py
+    - $LBPYTHIA8ROOT/options/Pythia8.py
+    - $APPCONFIGOPTS/Gauss/G4PL_FTFP_BERT_EmOpt2.py
+    - $APPCONFIGOPTS/Persistency/BasketSize-10.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZLIB-1.py
+    visible: true
+    data_pkgs:
+    - AppConfig.v3r457
+    - Gen/DecFiles.v32r39
+    application:
+      name: Gauss
+      version: v56r10p1
+      binary_tag: x86_64_v2-centos7-gcc11-opt
+    processing_pass: Sim10f
+  - name: Digi15 for 2016+spillover
+    input:
+    - type: SIM
+      visible: false
+    output:
+    - type: DIGI
+      visible: false
+    options:
+    - $APPCONFIGOPTS/Boole/Default.py
+    - $APPCONFIGOPTS/Boole/EnableSpillover.py
+    - $APPCONFIGOPTS/Boole/DataType-2015.py
+    - $APPCONFIGOPTS/Boole/Boole-SetOdinRndTrigger.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZLIB-1.py
+    visible: false
+    data_pkgs:
+    - AppConfig.v3r457
+    application: Boole/v33r3
+    processing_pass: Digi15
+  - name: L0 emulation for 2016 - TCK 0x160F
+    input:
+    - type: DIGI
+      visible: false
+    output:
+    - type: DIGI
+      visible: false
+    options:
+    - $APPCONFIGOPTS/L0App/L0AppSimProduction.py
+    - $APPCONFIGOPTS/L0App/L0AppTCK-0x160F.py
+    - $APPCONFIGOPTS/L0App/ForceLUTVersionV8.py
+    - $APPCONFIGOPTS/L0App/DataType-2016.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZLIB-1.py
+    visible: false
+    data_pkgs:
+    - AppConfig.v3r457
+    application: Moore/v25r5p3
+    options_format: l0app
+    processing_pass: L0Trig0x160F
+  - name: TCK-0x5138160F (HLT1) Flagged for 2016
+    input:
+    - type: DIGI
+      visible: false
+    output:
+    - type: DIGI
+      visible: false
+    options:
+    - $APPCONFIGOPTS/Moore/MooreSimProductionForSeparateL0AppStep2015.py
+    - $APPCONFIGOPTS/Conditions/TCK-0x5138160F.py
+    - $APPCONFIGOPTS/Moore/DataType-2016.py
+    - $APPCONFIGOPTS/Moore/MooreSimProductionHlt1.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZLIB-1.py
+    visible: false
+    data_pkgs:
+    - AppConfig.v3r457
+    application: Moore/v25r5p3
+    processing_pass: Trig0x5138160F
+  - name: TCK-0x6139160F (HLT2) Flagged for 2016
+    input:
+    - type: DIGI
+      visible: false
+    output:
+    - type: DIGI
+      visible: false
+    options:
+    - $APPCONFIGOPTS/Moore/MooreSimProductionForSeparateL0AppStep2015.py
+    - $APPCONFIGOPTS/Conditions/TCK-0x6139160F.py
+    - $APPCONFIGOPTS/Moore/DataType-2016.py
+    - $APPCONFIGOPTS/Moore/MooreSimProductionHlt2.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZLIB-1.py
+    visible: true
+    data_pkgs:
+    - AppConfig.v3r457
+    application: Moore/v25r5p3
+    processing_pass: Trig0x6139160F
+  - name: Reco16 for MC 2016
+    input:
+    - type: DIGI
+      visible: false
+    output:
+    - type: DST
+      visible: false
+    options:
+    - $APPCONFIGOPTS/Brunel/DataType-2016.py
+    - $APPCONFIGOPTS/Brunel/MC-WithTruth.py
+    - $APPCONFIGOPTS/Brunel/SplitRawEventOutput.4.3.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZLIB-1.py
+    visible: true
+    data_pkgs:
+    - AppConfig.v3r457
+    application: Brunel/v50r7
+    processing_pass: Reco16
+  - name: Turbo lines (MC) for 2016 Turbo03a
+    input:
+    - type: DST
+      visible: false
+    output:
+    - type: DST
+      visible: false
+    options:
+    - $APPCONFIGOPTS/Turbo/Tesla_2016_LinesFromStreams_MC.py
+    - $APPCONFIGOPTS/Turbo/Tesla_PR_Truth_2016.py
+    - $APPCONFIGOPTS/Turbo/Tesla_Simulation_2016.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZLIB-1.py
+    visible: true
+    data_pkgs:
+    - AppConfig.v3r457
+    - TurboStreamProd.v4r2p9
+    application: DaVinci/v41r5
+    options_format: Tesla
+    processing_pass: Turbo03a
+  - name: Stripping28r2p2NoPrescalingFlagged for 2016
+    input:
+    - type: DST
+      visible: false
+    output:
+    - type: ALLSTREAMS.DST
+      visible: false
+    options:
+    - $APPCONFIGOPTS/DaVinci/DV-Stripping28r2p2-Stripping-MC-NoPrescaling-DST.py
+    - $APPCONFIGOPTS/DaVinci/DV-RedoCaloPID-Stripping_28_24.py
+    - $APPCONFIGOPTS/DaVinci/DataType-2016.py
+    - $APPCONFIGOPTS/DaVinci/InputType-DST.py
+    - $APPCONFIGOPTS/DaVinci/DV-RawEventJuggler-4_3-to-4_3.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZLIB-1.py
+    visible: true
+    data_pkgs:
+    - AppConfig.v3r457
+    - TMVAWeights.v1r18
+    application: DaVinci/v44r11p6
+    processing_pass: Stripping28r2p2NoPrescalingFlagged
+  - name: Merge for ALLSTREAMS.DST
+    input:
+    - type: ALLSTREAMS.DST
+      visible: false
+    output:
+    - type: ALLSTREAMS.DST
+      visible: true
+    options:
+    - $APPCONFIGOPTS/Merging/DVMergeDST.py
+    - $APPCONFIGOPTS/DaVinci/DataType-2016.py
+    - $APPCONFIGOPTS/Merging/WriteFSR.py
+    - $APPCONFIGOPTS/Merging/MergeFSR.py
+    - $APPCONFIGOPTS/DaVinci/Simulation.py
+    - $APPCONFIGOPTS/Persistency/Compression-LZMA-4.py
+    visible: false
+    data_pkgs:
+    - AppConfig.v3r457
+    application: DaVinci/v46r17
+    options_format: merge
+    processing_pass: merging
+  author: null
+  inform:
+  - qi.shi@cern.ch
+  comment: " \n lhcb-simulation/mc-requests!1587"
+  priority: 2a
+  event_types:
+  - id: '15146001'
+    num_events: 800000
+    num_test_events: 10
+  - id: '15116010'
+    num_events: 800000
+    num_test_events: 10
+  sim_condition: Beam6500GeV-2016-MagUp-Nu1.6-25ns-Pythia8
+  retention_rate: 1.0
+  mc_config_version: '2016'
+- wg: RD
+  name: RD_Lb2pKpipiMuMu_Run2_Run3 2016 pp MagDown
+  type: Simulation
+  steps:
+  - name: Sim10f - 2016 - Beam6500GeV - MagDown - Pythia8
+    input: []
+    dbtags:
+      DDDB: 2016-v03.06
+      CondDB: sim-20201113-6-vc-md100-Sim10
+    output:
+    - type: SIM
+      visible: false
+    options:
+    - $APPCONFIGOPTS/Gauss/Beam6500GeV-md100-2016-nu1.6.py
+    - $APPCONFIGOPTS/Gauss/EnableSpillover-25ns.py
+    - $APPCONFIGOPTS/Gauss/DataType-2016.py
+    - $APPCONFIGOPTS/Gauss/RICHRandomHits.py
+    - $DECFILESROOT/options/@{eventType}.py
+    - $LBPYTHIA8ROOT/options/Pythia8.py
+    - $APPCONFIGOPTS/Gauss/G4PL_FTFP_BERT_EmOpt2.py
+    - $APPCONFIGOPTS/Persistency/BasketSize-10.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZLIB-1.py
+    visible: true
+    data_pkgs:
+    - AppConfig.v3r457
+    - Gen/DecFiles.v32r39
+    application:
+      name: Gauss
+      version: v56r10p1
+      binary_tag: x86_64_v2-centos7-gcc11-opt
+    processing_pass: Sim10f
+  - name: Digi15 for 2016+spillover
+    input:
+    - type: SIM
+      visible: false
+    output:
+    - type: DIGI
+      visible: false
+    options:
+    - $APPCONFIGOPTS/Boole/Default.py
+    - $APPCONFIGOPTS/Boole/EnableSpillover.py
+    - $APPCONFIGOPTS/Boole/DataType-2015.py
+    - $APPCONFIGOPTS/Boole/Boole-SetOdinRndTrigger.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZLIB-1.py
+    visible: false
+    data_pkgs:
+    - AppConfig.v3r457
+    application: Boole/v33r3
+    processing_pass: Digi15
+  - name: L0 emulation for 2016 - TCK 0x160F
+    input:
+    - type: DIGI
+      visible: false
+    output:
+    - type: DIGI
+      visible: false
+    options:
+    - $APPCONFIGOPTS/L0App/L0AppSimProduction.py
+    - $APPCONFIGOPTS/L0App/L0AppTCK-0x160F.py
+    - $APPCONFIGOPTS/L0App/ForceLUTVersionV8.py
+    - $APPCONFIGOPTS/L0App/DataType-2016.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZLIB-1.py
+    visible: false
+    data_pkgs:
+    - AppConfig.v3r457
+    application: Moore/v25r5p3
+    options_format: l0app
+    processing_pass: L0Trig0x160F
+  - name: TCK-0x5138160F (HLT1) Flagged for 2016
+    input:
+    - type: DIGI
+      visible: false
+    output:
+    - type: DIGI
+      visible: false
+    options:
+    - $APPCONFIGOPTS/Moore/MooreSimProductionForSeparateL0AppStep2015.py
+    - $APPCONFIGOPTS/Conditions/TCK-0x5138160F.py
+    - $APPCONFIGOPTS/Moore/DataType-2016.py
+    - $APPCONFIGOPTS/Moore/MooreSimProductionHlt1.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZLIB-1.py
+    visible: false
+    data_pkgs:
+    - AppConfig.v3r457
+    application: Moore/v25r5p3
+    processing_pass: Trig0x5138160F
+  - name: TCK-0x6139160F (HLT2) Flagged for 2016
+    input:
+    - type: DIGI
+      visible: false
+    output:
+    - type: DIGI
+      visible: false
+    options:
+    - $APPCONFIGOPTS/Moore/MooreSimProductionForSeparateL0AppStep2015.py
+    - $APPCONFIGOPTS/Conditions/TCK-0x6139160F.py
+    - $APPCONFIGOPTS/Moore/DataType-2016.py
+    - $APPCONFIGOPTS/Moore/MooreSimProductionHlt2.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZLIB-1.py
+    visible: true
+    data_pkgs:
+    - AppConfig.v3r457
+    application: Moore/v25r5p3
+    processing_pass: Trig0x6139160F
+  - name: Reco16 for MC 2016
+    input:
+    - type: DIGI
+      visible: false
+    output:
+    - type: DST
+      visible: false
+    options:
+    - $APPCONFIGOPTS/Brunel/DataType-2016.py
+    - $APPCONFIGOPTS/Brunel/MC-WithTruth.py
+    - $APPCONFIGOPTS/Brunel/SplitRawEventOutput.4.3.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZLIB-1.py
+    visible: true
+    data_pkgs:
+    - AppConfig.v3r457
+    application: Brunel/v50r7
+    processing_pass: Reco16
+  - name: Turbo lines (MC) for 2016 Turbo03a
+    input:
+    - type: DST
+      visible: false
+    output:
+    - type: DST
+      visible: false
+    options:
+    - $APPCONFIGOPTS/Turbo/Tesla_2016_LinesFromStreams_MC.py
+    - $APPCONFIGOPTS/Turbo/Tesla_PR_Truth_2016.py
+    - $APPCONFIGOPTS/Turbo/Tesla_Simulation_2016.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZLIB-1.py
+    visible: true
+    data_pkgs:
+    - AppConfig.v3r457
+    - TurboStreamProd.v4r2p9
+    application: DaVinci/v41r5
+    options_format: Tesla
+    processing_pass: Turbo03a
+  - name: Stripping28r2p2NoPrescalingFlagged for 2016
+    input:
+    - type: DST
+      visible: false
+    output:
+    - type: ALLSTREAMS.DST
+      visible: false
+    options:
+    - $APPCONFIGOPTS/DaVinci/DV-Stripping28r2p2-Stripping-MC-NoPrescaling-DST.py
+    - $APPCONFIGOPTS/DaVinci/DV-RedoCaloPID-Stripping_28_24.py
+    - $APPCONFIGOPTS/DaVinci/DataType-2016.py
+    - $APPCONFIGOPTS/DaVinci/InputType-DST.py
+    - $APPCONFIGOPTS/DaVinci/DV-RawEventJuggler-4_3-to-4_3.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZLIB-1.py
+    visible: true
+    data_pkgs:
+    - AppConfig.v3r457
+    - TMVAWeights.v1r18
+    application: DaVinci/v44r11p6
+    processing_pass: Stripping28r2p2NoPrescalingFlagged
+  - name: Merge for ALLSTREAMS.DST
+    input:
+    - type: ALLSTREAMS.DST
+      visible: false
+    output:
+    - type: ALLSTREAMS.DST
+      visible: true
+    options:
+    - $APPCONFIGOPTS/Merging/DVMergeDST.py
+    - $APPCONFIGOPTS/DaVinci/DataType-2016.py
+    - $APPCONFIGOPTS/Merging/WriteFSR.py
+    - $APPCONFIGOPTS/Merging/MergeFSR.py
+    - $APPCONFIGOPTS/DaVinci/Simulation.py
+    - $APPCONFIGOPTS/Persistency/Compression-LZMA-4.py
+    visible: false
+    data_pkgs:
+    - AppConfig.v3r457
+    application: DaVinci/v46r17
+    options_format: merge
+    processing_pass: merging
+  author: null
+  inform:
+  - qi.shi@cern.ch
+  comment: " \n lhcb-simulation/mc-requests!1587"
+  priority: 2a
+  event_types:
+  - id: '15146001'
+    num_events: 800000
+    num_test_events: 10
+  - id: '15116010'
+    num_events: 800000
+    num_test_events: 10
+  sim_condition: Beam6500GeV-2016-MagDown-Nu1.6-25ns-Pythia8
+  retention_rate: 1.0
+  mc_config_version: '2016'
+- wg: RD
+  name: RD_Lb2pKpipiMuMu_Run2_Run3 2017 pp MagUp
+  type: Simulation
+  steps:
+  - name: Sim10f - 2017 - Beam6500GeV - MagUp - Pythia8
+    input: []
+    dbtags:
+      DDDB: 2017-v03.06
+      CondDB: sim-20201113-7-vc-mu100-Sim10
+    output:
+    - type: SIM
+      visible: false
+    options:
+    - $APPCONFIGOPTS/Gauss/Beam6500GeV-mu100-2017-nu1.6.py
+    - $APPCONFIGOPTS/Gauss/EnableSpillover-25ns.py
+    - $APPCONFIGOPTS/Gauss/DataType-2017.py
+    - $APPCONFIGOPTS/Gauss/RICHRandomHits.py
+    - $DECFILESROOT/options/@{eventType}.py
+    - $LBPYTHIA8ROOT/options/Pythia8.py
+    - $APPCONFIGOPTS/Gauss/G4PL_FTFP_BERT_EmOpt2.py
+    - $APPCONFIGOPTS/Persistency/BasketSize-10.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZLIB-1.py
+    visible: true
+    data_pkgs:
+    - AppConfig.v3r457
+    - Gen/DecFiles.v32r39
+    application:
+      name: Gauss
+      version: v56r10p1
+      binary_tag: x86_64_v2-centos7-gcc11-opt
+    processing_pass: Sim10f
+  - name: Digi15 for 2017+spillover
+    input:
+    - type: SIM
+      visible: false
+    output:
+    - type: DIGI
+      visible: false
+    options:
+    - $APPCONFIGOPTS/Boole/Default.py
+    - $APPCONFIGOPTS/Boole/EnableSpillover.py
+    - $APPCONFIGOPTS/Boole/DataType-2015.py
+    - $APPCONFIGOPTS/Boole/Boole-SetOdinRndTrigger.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZLIB-1.py
+    visible: false
+    data_pkgs:
+    - AppConfig.v3r457
+    application: Boole/v33r3
+    processing_pass: Digi15
+  - name: L0 emulation for 2017 - TCK 0x1709
+    input:
+    - type: DIGI
+      visible: false
+    output:
+    - type: DIGI
+      visible: false
+    options:
+    - $APPCONFIGOPTS/L0App/L0AppSimProduction.py
+    - $APPCONFIGOPTS/L0App/L0AppTCK-0x1709.py
+    - $APPCONFIGOPTS/L0App/ForceLUTVersionV8.py
+    - $APPCONFIGOPTS/L0App/DataType-2017.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZLIB-1.py
+    visible: false
+    data_pkgs:
+    - AppConfig.v3r457
+    application: Moore/v26r6p1
+    options_format: l0app
+    processing_pass: L0Trig0x1709
+  - name: TCK-0x51611709 (HLT1) Flagged for 2017
+    input:
+    - type: DIGI
+      visible: false
+    output:
+    - type: DIGI
+      visible: false
+    options:
+    - $APPCONFIGOPTS/Moore/MooreSimProductionForSeparateL0AppStep2015.py
+    - $APPCONFIGOPTS/Conditions/TCK-0x51611709.py
+    - $APPCONFIGOPTS/Moore/DataType-2017.py
+    - $APPCONFIGOPTS/Moore/MooreSimProductionHlt1.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZLIB-1.py
+    visible: false
+    data_pkgs:
+    - AppConfig.v3r457
+    application: Moore/v26r6p1
+    processing_pass: Trig0x51611709
+  - name: TCK-0x62661709 (HLT2) Flagged for 2017
+    input:
+    - type: DIGI
+      visible: false
+    output:
+    - type: DIGI
+      visible: false
+    options:
+    - $APPCONFIGOPTS/Moore/MooreSimProductionForSeparateL0AppStep2015.py
+    - $APPCONFIGOPTS/Conditions/TCK-0x62661709.py
+    - $APPCONFIGOPTS/Moore/DataType-2017.py
+    - $APPCONFIGOPTS/Moore/MooreSimProductionHlt2.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZLIB-1.py
+    visible: true
+    data_pkgs:
+    - AppConfig.v3r457
+    application: Moore/v26r6p1
+    processing_pass: Trig0x62661709
+  - name: Reco17 for MC 2017
+    input:
+    - type: DIGI
+      visible: false
+    output:
+    - type: DST
+      visible: false
+    options:
+    - $APPCONFIGOPTS/Brunel/DataType-2017.py
+    - $APPCONFIGOPTS/Brunel/MC-WithTruth.py
+    - $APPCONFIGOPTS/Brunel/SplitRawEventOutput.4.3.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZLIB-1.py
+    visible: true
+    data_pkgs:
+    - AppConfig.v3r457
+    - Det/SQLDDDB.v7r10
+    application: Brunel/v52r10
+    processing_pass: Reco17
+  - name: Turbo lines (MC) for 2017 Turbo04a-WithTurcal
+    input:
+    - type: DST
+      visible: false
+    output:
+    - type: DST
+      visible: false
+    options:
+    - $APPCONFIGOPTS/Turbo/Tesla_2017_LinesFromStreamsAndTurCal_MC.py
+    - $APPCONFIGOPTS/Turbo/Tesla_Simulation_2017.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZLIB-1.py
+    visible: true
+    data_pkgs:
+    - AppConfig.v3r457
+    - TurboStreamProd.v4r2p7
+    application: DaVinci/v42r8p3
+    options_format: Tesla
+    processing_pass: Turbo04a-WithTurcal
+  - name: Stripping29r2p3NoPrescalingFlagged for 2017
+    input:
+    - type: DST
+      visible: false
+    output:
+    - type: ALLSTREAMS.DST
+      visible: false
+    options:
+    - $APPCONFIGOPTS/DaVinci/DV-Stripping29r2p3-Stripping-MC-NoPrescaling-DST.py
+    - $APPCONFIGOPTS/DaVinci/DataType-2017.py
+    - $APPCONFIGOPTS/DaVinci/InputType-DST.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZLIB-1.py
+    visible: true
+    data_pkgs:
+    - AppConfig.v3r457
+    - TMVAWeights.v1r18
+    application: DaVinci/v44r11p6
+    processing_pass: Stripping29r2p3NoPrescalingFlagged
+  - name: Merge for ALLSTREAMS.DST
+    input:
+    - type: ALLSTREAMS.DST
+      visible: false
+    output:
+    - type: ALLSTREAMS.DST
+      visible: true
+    options:
+    - $APPCONFIGOPTS/Merging/DVMergeDST.py
+    - $APPCONFIGOPTS/DaVinci/DataType-2017.py
+    - $APPCONFIGOPTS/Merging/WriteFSR.py
+    - $APPCONFIGOPTS/Merging/MergeFSR.py
+    - $APPCONFIGOPTS/DaVinci/Simulation.py
+    - $APPCONFIGOPTS/Persistency/Compression-LZMA-4.py
+    visible: false
+    data_pkgs:
+    - AppConfig.v3r457
+    application: DaVinci/v46r17
+    options_format: merge
+    processing_pass: merging
+  author: null
+  inform:
+  - qi.shi@cern.ch
+  comment: " \n lhcb-simulation/mc-requests!1587"
+  priority: 2a
+  event_types:
+  - id: '15146001'
+    num_events: 800000
+    num_test_events: 10
+  - id: '15116010'
+    num_events: 800000
+    num_test_events: 10
+  sim_condition: Beam6500GeV-2017-MagUp-Nu1.6-25ns-Pythia8
+  retention_rate: 1.0
+  mc_config_version: '2017'
+- wg: RD
+  name: RD_Lb2pKpipiMuMu_Run2_Run3 2017 pp MagDown
+  type: Simulation
+  steps:
+  - name: Sim10f - 2017 - Beam6500GeV - MagDown - Pythia8
+    input: []
+    dbtags:
+      DDDB: 2017-v03.06
+      CondDB: sim-20201113-7-vc-md100-Sim10
+    output:
+    - type: SIM
+      visible: false
+    options:
+    - $APPCONFIGOPTS/Gauss/Beam6500GeV-md100-2017-nu1.6.py
+    - $APPCONFIGOPTS/Gauss/EnableSpillover-25ns.py
+    - $APPCONFIGOPTS/Gauss/DataType-2017.py
+    - $APPCONFIGOPTS/Gauss/RICHRandomHits.py
+    - $DECFILESROOT/options/@{eventType}.py
+    - $LBPYTHIA8ROOT/options/Pythia8.py
+    - $APPCONFIGOPTS/Gauss/G4PL_FTFP_BERT_EmOpt2.py
+    - $APPCONFIGOPTS/Persistency/BasketSize-10.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZLIB-1.py
+    visible: true
+    data_pkgs:
+    - AppConfig.v3r457
+    - Gen/DecFiles.v32r39
+    application:
+      name: Gauss
+      version: v56r10p1
+      binary_tag: x86_64_v2-centos7-gcc11-opt
+    processing_pass: Sim10f
+  - name: Digi15 for 2017+spillover
+    input:
+    - type: SIM
+      visible: false
+    output:
+    - type: DIGI
+      visible: false
+    options:
+    - $APPCONFIGOPTS/Boole/Default.py
+    - $APPCONFIGOPTS/Boole/EnableSpillover.py
+    - $APPCONFIGOPTS/Boole/DataType-2015.py
+    - $APPCONFIGOPTS/Boole/Boole-SetOdinRndTrigger.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZLIB-1.py
+    visible: false
+    data_pkgs:
+    - AppConfig.v3r457
+    application: Boole/v33r3
+    processing_pass: Digi15
+  - name: L0 emulation for 2017 - TCK 0x1709
+    input:
+    - type: DIGI
+      visible: false
+    output:
+    - type: DIGI
+      visible: false
+    options:
+    - $APPCONFIGOPTS/L0App/L0AppSimProduction.py
+    - $APPCONFIGOPTS/L0App/L0AppTCK-0x1709.py
+    - $APPCONFIGOPTS/L0App/ForceLUTVersionV8.py
+    - $APPCONFIGOPTS/L0App/DataType-2017.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZLIB-1.py
+    visible: false
+    data_pkgs:
+    - AppConfig.v3r457
+    application: Moore/v26r6p1
+    options_format: l0app
+    processing_pass: L0Trig0x1709
+  - name: TCK-0x51611709 (HLT1) Flagged for 2017
+    input:
+    - type: DIGI
+      visible: false
+    output:
+    - type: DIGI
+      visible: false
+    options:
+    - $APPCONFIGOPTS/Moore/MooreSimProductionForSeparateL0AppStep2015.py
+    - $APPCONFIGOPTS/Conditions/TCK-0x51611709.py
+    - $APPCONFIGOPTS/Moore/DataType-2017.py
+    - $APPCONFIGOPTS/Moore/MooreSimProductionHlt1.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZLIB-1.py
+    visible: false
+    data_pkgs:
+    - AppConfig.v3r457
+    application: Moore/v26r6p1
+    processing_pass: Trig0x51611709
+  - name: TCK-0x62661709 (HLT2) Flagged for 2017
+    input:
+    - type: DIGI
+      visible: false
+    output:
+    - type: DIGI
+      visible: false
+    options:
+    - $APPCONFIGOPTS/Moore/MooreSimProductionForSeparateL0AppStep2015.py
+    - $APPCONFIGOPTS/Conditions/TCK-0x62661709.py
+    - $APPCONFIGOPTS/Moore/DataType-2017.py
+    - $APPCONFIGOPTS/Moore/MooreSimProductionHlt2.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZLIB-1.py
+    visible: true
+    data_pkgs:
+    - AppConfig.v3r457
+    application: Moore/v26r6p1
+    processing_pass: Trig0x62661709
+  - name: Reco17 for MC 2017
+    input:
+    - type: DIGI
+      visible: false
+    output:
+    - type: DST
+      visible: false
+    options:
+    - $APPCONFIGOPTS/Brunel/DataType-2017.py
+    - $APPCONFIGOPTS/Brunel/MC-WithTruth.py
+    - $APPCONFIGOPTS/Brunel/SplitRawEventOutput.4.3.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZLIB-1.py
+    visible: true
+    data_pkgs:
+    - AppConfig.v3r457
+    - Det/SQLDDDB.v7r10
+    application: Brunel/v52r10
+    processing_pass: Reco17
+  - name: Turbo lines (MC) for 2017 Turbo04a-WithTurcal
+    input:
+    - type: DST
+      visible: false
+    output:
+    - type: DST
+      visible: false
+    options:
+    - $APPCONFIGOPTS/Turbo/Tesla_2017_LinesFromStreamsAndTurCal_MC.py
+    - $APPCONFIGOPTS/Turbo/Tesla_Simulation_2017.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZLIB-1.py
+    visible: true
+    data_pkgs:
+    - AppConfig.v3r457
+    - TurboStreamProd.v4r2p7
+    application: DaVinci/v42r8p3
+    options_format: Tesla
+    processing_pass: Turbo04a-WithTurcal
+  - name: Stripping29r2p3NoPrescalingFlagged for 2017
+    input:
+    - type: DST
+      visible: false
+    output:
+    - type: ALLSTREAMS.DST
+      visible: false
+    options:
+    - $APPCONFIGOPTS/DaVinci/DV-Stripping29r2p3-Stripping-MC-NoPrescaling-DST.py
+    - $APPCONFIGOPTS/DaVinci/DataType-2017.py
+    - $APPCONFIGOPTS/DaVinci/InputType-DST.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZLIB-1.py
+    visible: true
+    data_pkgs:
+    - AppConfig.v3r457
+    - TMVAWeights.v1r18
+    application: DaVinci/v44r11p6
+    processing_pass: Stripping29r2p3NoPrescalingFlagged
+  - name: Merge for ALLSTREAMS.DST
+    input:
+    - type: ALLSTREAMS.DST
+      visible: false
+    output:
+    - type: ALLSTREAMS.DST
+      visible: true
+    options:
+    - $APPCONFIGOPTS/Merging/DVMergeDST.py
+    - $APPCONFIGOPTS/DaVinci/DataType-2017.py
+    - $APPCONFIGOPTS/Merging/WriteFSR.py
+    - $APPCONFIGOPTS/Merging/MergeFSR.py
+    - $APPCONFIGOPTS/DaVinci/Simulation.py
+    - $APPCONFIGOPTS/Persistency/Compression-LZMA-4.py
+    visible: false
+    data_pkgs:
+    - AppConfig.v3r457
+    application: DaVinci/v46r17
+    options_format: merge
+    processing_pass: merging
+  author: null
+  inform:
+  - qi.shi@cern.ch
+  comment: " \n lhcb-simulation/mc-requests!1587"
+  priority: 2a
+  event_types:
+  - id: '15146001'
+    num_events: 800000
+    num_test_events: 10
+  - id: '15116010'
+    num_events: 800000
+    num_test_events: 10
+  sim_condition: Beam6500GeV-2017-MagDown-Nu1.6-25ns-Pythia8
+  retention_rate: 1.0
+  mc_config_version: '2017'
+- wg: RD
+  name: RD_Lb2pKpipiMuMu_Run2_Run3 2018 pp MagUp
+  type: Simulation
+  steps:
+  - name: Sim10f - 2018 - Beam6500GeV - MagUp - Pythia8
+    input: []
+    dbtags:
+      DDDB: 2018-v03.06
+      CondDB: sim-20201113-8-vc-mu100-Sim10
+    output:
+    - type: SIM
+      visible: false
+    options:
+    - $APPCONFIGOPTS/Gauss/Beam6500GeV-mu100-2018-nu1.6.py
+    - $APPCONFIGOPTS/Gauss/EnableSpillover-25ns.py
+    - $APPCONFIGOPTS/Gauss/DataType-2018.py
+    - $APPCONFIGOPTS/Gauss/RICHRandomHits.py
+    - $DECFILESROOT/options/@{eventType}.py
+    - $LBPYTHIA8ROOT/options/Pythia8.py
+    - $APPCONFIGOPTS/Gauss/G4PL_FTFP_BERT_EmOpt2.py
+    - $APPCONFIGOPTS/Persistency/BasketSize-10.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZLIB-1.py
+    visible: true
+    data_pkgs:
+    - AppConfig.v3r457
+    - Gen/DecFiles.v32r39
+    application:
+      name: Gauss
+      version: v56r10p1
+      binary_tag: x86_64_v2-centos7-gcc11-opt
+    processing_pass: Sim10f
+  - name: Digi15 for 2018+spillover
+    input:
+    - type: SIM
+      visible: false
+    output:
+    - type: DIGI
+      visible: false
+    options:
+    - $APPCONFIGOPTS/Boole/Default.py
+    - $APPCONFIGOPTS/Boole/EnableSpillover.py
+    - $APPCONFIGOPTS/Boole/DataType-2015.py
+    - $APPCONFIGOPTS/Boole/Boole-SetOdinRndTrigger.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZLIB-1.py
+    visible: false
+    data_pkgs:
+    - AppConfig.v3r457
+    application: Boole/v33r3
+    processing_pass: Digi15
+  - name: L0 emulation for 2018 - TCK 0x18a4
+    input:
+    - type: DIGI
+      visible: false
+    output:
+    - type: DIGI
+      visible: false
+    options:
+    - $APPCONFIGOPTS/L0App/L0AppSimProduction.py
+    - $APPCONFIGOPTS/L0App/L0AppTCK-0x18a4.py
+    - $APPCONFIGOPTS/L0App/ForceLUTVersionV8.py
+    - $APPCONFIGOPTS/L0App/DataType-2017.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZLIB-1.py
+    visible: false
+    data_pkgs:
+    - AppConfig.v3r457
+    application: Moore/v28r3p1
+    options_format: l0app
+    processing_pass: L0Trig0x18a4
+  - name: TCK-0x517a18a4 (HLT1) Flagged for 2018
+    input:
+    - type: DIGI
+      visible: false
+    output:
+    - type: DIGI
+      visible: false
+    options:
+    - $APPCONFIGOPTS/Moore/MooreSimProductionForSeparateL0AppStep2015.py
+    - $APPCONFIGOPTS/Conditions/TCK-0x517a18a4.py
+    - $APPCONFIGOPTS/Moore/DataType-2017.py
+    - $APPCONFIGOPTS/Moore/MooreSimProductionHlt1.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZLIB-1.py
+    visible: false
+    data_pkgs:
+    - AppConfig.v3r457
+    application: Moore/v28r3p1
+    processing_pass: Trig0x517a18a4
+  - name: TCK-0x617d18a4 (HLT2) Flagged for 2018
+    input:
+    - type: DIGI
+      visible: false
+    output:
+    - type: DIGI
+      visible: false
+    options:
+    - $APPCONFIGOPTS/Moore/MooreSimProductionForSeparateL0AppStep2015.py
+    - $APPCONFIGOPTS/Conditions/TCK-0x617d18a4.py
+    - $APPCONFIGOPTS/Moore/DataType-2017.py
+    - $APPCONFIGOPTS/Moore/MooreSimProductionHlt2.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZLIB-1.py
+    visible: true
+    data_pkgs:
+    - AppConfig.v3r457
+    application: Moore/v28r3p1
+    processing_pass: Trig0x617d18a4
+  - name: Reco18 for MC 2018
+    input:
+    - type: DIGI
+      visible: false
+    output:
+    - type: DST
+      visible: false
+    options:
+    - $APPCONFIGOPTS/Brunel/DataType-2018.py
+    - $APPCONFIGOPTS/Brunel/MC-WithTruth.py
+    - $APPCONFIGOPTS/Brunel/SplitRawEventOutput.4.3.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZLIB-1.py
+    visible: true
+    data_pkgs:
+    - AppConfig.v3r457
+    application: Brunel/v54r4
+    processing_pass: Reco18
+  - name: Turbo lines (MC) for 2018 Turbo05-WithTurcal
+    input:
+    - type: DST
+      visible: false
+    output:
+    - type: DST
+      visible: false
+    options:
+    - $APPCONFIGOPTS/Turbo/Tesla_2018_LinesFromStreamsAndTurCal_MC.py
+    - $APPCONFIGOPTS/Turbo/Tesla_Simulation_2018.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZLIB-1.py
+    visible: true
+    data_pkgs:
+    - AppConfig.v3r457
+    - TurboStreamProd.v4r2p10
+    application: DaVinci/v44r7
+    options_format: Tesla
+    processing_pass: Turbo05-WithTurcal
+  - name: Stripping34r0p3NoPrescalingFlagged for 2018
+    input:
+    - type: DST
+      visible: false
+    output:
+    - type: ALLSTREAMS.DST
+      visible: false
+    options:
+    - $APPCONFIGOPTS/DaVinci/DV-Stripping34r0p3-Stripping-MC-NoPrescaling-DST.py
+    - $APPCONFIGOPTS/DaVinci/DataType-2018.py
+    - $APPCONFIGOPTS/DaVinci/InputType-DST.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZLIB-1.py
+    visible: true
+    data_pkgs:
+    - AppConfig.v3r457
+    - TMVAWeights.v1r18
+    application: DaVinci/v44r11p6
+    processing_pass: Stripping34r0p3NoPrescalingFlagged
+  - name: Merge for ALLSTREAMS.DST
+    input:
+    - type: ALLSTREAMS.DST
+      visible: false
+    output:
+    - type: ALLSTREAMS.DST
+      visible: true
+    options:
+    - $APPCONFIGOPTS/Merging/DVMergeDST.py
+    - $APPCONFIGOPTS/DaVinci/DataType-2018.py
+    - $APPCONFIGOPTS/Merging/WriteFSR.py
+    - $APPCONFIGOPTS/Merging/MergeFSR.py
+    - $APPCONFIGOPTS/DaVinci/Simulation.py
+    - $APPCONFIGOPTS/Persistency/Compression-LZMA-4.py
+    visible: false
+    data_pkgs:
+    - AppConfig.v3r457
+    application: DaVinci/v46r17
+    options_format: merge
+    processing_pass: merging
+  author: null
+  inform:
+  - qi.shi@cern.ch
+  comment: " \n lhcb-simulation/mc-requests!1587"
+  priority: 2a
+  event_types:
+  - id: '15146001'
+    num_events: 800000
+    num_test_events: 10
+  - id: '15116010'
+    num_events: 800000
+    num_test_events: 10
+  sim_condition: Beam6500GeV-2018-MagUp-Nu1.6-25ns-Pythia8
+  retention_rate: 1.0
+  mc_config_version: '2018'
+- wg: RD
+  name: RD_Lb2pKpipiMuMu_Run2_Run3 2018 pp MagDown
+  type: Simulation
+  steps:
+  - name: Sim10f - 2018 - Beam6500GeV - MagDown - Pythia8
+    input: []
+    dbtags:
+      DDDB: 2018-v03.06
+      CondDB: sim-20201113-8-vc-md100-Sim10
+    output:
+    - type: SIM
+      visible: false
+    options:
+    - $APPCONFIGOPTS/Gauss/Beam6500GeV-md100-2018-nu1.6.py
+    - $APPCONFIGOPTS/Gauss/EnableSpillover-25ns.py
+    - $APPCONFIGOPTS/Gauss/DataType-2018.py
+    - $APPCONFIGOPTS/Gauss/RICHRandomHits.py
+    - $DECFILESROOT/options/@{eventType}.py
+    - $LBPYTHIA8ROOT/options/Pythia8.py
+    - $APPCONFIGOPTS/Gauss/G4PL_FTFP_BERT_EmOpt2.py
+    - $APPCONFIGOPTS/Persistency/BasketSize-10.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZLIB-1.py
+    visible: true
+    data_pkgs:
+    - AppConfig.v3r457
+    - Gen/DecFiles.v32r39
+    application:
+      name: Gauss
+      version: v56r10p1
+      binary_tag: x86_64_v2-centos7-gcc11-opt
+    processing_pass: Sim10f
+  - name: Digi15 for 2018+spillover
+    input:
+    - type: SIM
+      visible: false
+    output:
+    - type: DIGI
+      visible: false
+    options:
+    - $APPCONFIGOPTS/Boole/Default.py
+    - $APPCONFIGOPTS/Boole/EnableSpillover.py
+    - $APPCONFIGOPTS/Boole/DataType-2015.py
+    - $APPCONFIGOPTS/Boole/Boole-SetOdinRndTrigger.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZLIB-1.py
+    visible: false
+    data_pkgs:
+    - AppConfig.v3r457
+    application: Boole/v33r3
+    processing_pass: Digi15
+  - name: L0 emulation for 2018 - TCK 0x18a4
+    input:
+    - type: DIGI
+      visible: false
+    output:
+    - type: DIGI
+      visible: false
+    options:
+    - $APPCONFIGOPTS/L0App/L0AppSimProduction.py
+    - $APPCONFIGOPTS/L0App/L0AppTCK-0x18a4.py
+    - $APPCONFIGOPTS/L0App/ForceLUTVersionV8.py
+    - $APPCONFIGOPTS/L0App/DataType-2017.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZLIB-1.py
+    visible: false
+    data_pkgs:
+    - AppConfig.v3r457
+    application: Moore/v28r3p1
+    options_format: l0app
+    processing_pass: L0Trig0x18a4
+  - name: TCK-0x517a18a4 (HLT1) Flagged for 2018
+    input:
+    - type: DIGI
+      visible: false
+    output:
+    - type: DIGI
+      visible: false
+    options:
+    - $APPCONFIGOPTS/Moore/MooreSimProductionForSeparateL0AppStep2015.py
+    - $APPCONFIGOPTS/Conditions/TCK-0x517a18a4.py
+    - $APPCONFIGOPTS/Moore/DataType-2017.py
+    - $APPCONFIGOPTS/Moore/MooreSimProductionHlt1.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZLIB-1.py
+    visible: false
+    data_pkgs:
+    - AppConfig.v3r457
+    application: Moore/v28r3p1
+    processing_pass: Trig0x517a18a4
+  - name: TCK-0x617d18a4 (HLT2) Flagged for 2018
+    input:
+    - type: DIGI
+      visible: false
+    output:
+    - type: DIGI
+      visible: false
+    options:
+    - $APPCONFIGOPTS/Moore/MooreSimProductionForSeparateL0AppStep2015.py
+    - $APPCONFIGOPTS/Conditions/TCK-0x617d18a4.py
+    - $APPCONFIGOPTS/Moore/DataType-2017.py
+    - $APPCONFIGOPTS/Moore/MooreSimProductionHlt2.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZLIB-1.py
+    visible: true
+    data_pkgs:
+    - AppConfig.v3r457
+    application: Moore/v28r3p1
+    processing_pass: Trig0x617d18a4
+  - name: Reco18 for MC 2018
+    input:
+    - type: DIGI
+      visible: false
+    output:
+    - type: DST
+      visible: false
+    options:
+    - $APPCONFIGOPTS/Brunel/DataType-2018.py
+    - $APPCONFIGOPTS/Brunel/MC-WithTruth.py
+    - $APPCONFIGOPTS/Brunel/SplitRawEventOutput.4.3.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZLIB-1.py
+    visible: true
+    data_pkgs:
+    - AppConfig.v3r457
+    application: Brunel/v54r4
+    processing_pass: Reco18
+  - name: Turbo lines (MC) for 2018 Turbo05-WithTurcal
+    input:
+    - type: DST
+      visible: false
+    output:
+    - type: DST
+      visible: false
+    options:
+    - $APPCONFIGOPTS/Turbo/Tesla_2018_LinesFromStreamsAndTurCal_MC.py
+    - $APPCONFIGOPTS/Turbo/Tesla_Simulation_2018.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZLIB-1.py
+    visible: true
+    data_pkgs:
+    - AppConfig.v3r457
+    - TurboStreamProd.v4r2p10
+    application: DaVinci/v44r7
+    options_format: Tesla
+    processing_pass: Turbo05-WithTurcal
+  - name: Stripping34r0p3NoPrescalingFlagged for 2018
+    input:
+    - type: DST
+      visible: false
+    output:
+    - type: ALLSTREAMS.DST
+      visible: false
+    options:
+    - $APPCONFIGOPTS/DaVinci/DV-Stripping34r0p3-Stripping-MC-NoPrescaling-DST.py
+    - $APPCONFIGOPTS/DaVinci/DataType-2018.py
+    - $APPCONFIGOPTS/DaVinci/InputType-DST.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZLIB-1.py
+    visible: true
+    data_pkgs:
+    - AppConfig.v3r457
+    - TMVAWeights.v1r18
+    application: DaVinci/v44r11p6
+    processing_pass: Stripping34r0p3NoPrescalingFlagged
+  - name: Merge for ALLSTREAMS.DST
+    input:
+    - type: ALLSTREAMS.DST
+      visible: false
+    output:
+    - type: ALLSTREAMS.DST
+      visible: true
+    options:
+    - $APPCONFIGOPTS/Merging/DVMergeDST.py
+    - $APPCONFIGOPTS/DaVinci/DataType-2018.py
+    - $APPCONFIGOPTS/Merging/WriteFSR.py
+    - $APPCONFIGOPTS/Merging/MergeFSR.py
+    - $APPCONFIGOPTS/DaVinci/Simulation.py
+    - $APPCONFIGOPTS/Persistency/Compression-LZMA-4.py
+    visible: false
+    data_pkgs:
+    - AppConfig.v3r457
+    application: DaVinci/v46r17
+    options_format: merge
+    processing_pass: merging
+  author: null
+  inform:
+  - qi.shi@cern.ch
+  comment: " \n lhcb-simulation/mc-requests!1587"
+  priority: 2a
+  event_types:
+  - id: '15146001'
+    num_events: 800000
+    num_test_events: 10
+  - id: '15116010'
+    num_events: 800000
+    num_test_events: 10
+  sim_condition: Beam6500GeV-2018-MagDown-Nu1.6-25ns-Pythia8
+  retention_rate: 1.0
+  mc_config_version: '2018'
+- wg: RD
+  name: RD_Lb2pKpipiMuMu_Run2_Run3 2024.W31 pp MagUp
+  type: Simulation
+  steps:
+  - name: Sim10f - 2024.W31 - Beam6800GeV - MagUp - Pythia8
+    input: []
+    dbtags:
+      DDDB: 2024-v00.03
+      CondDB: sim10-2024.W31-v00.00-mu100
+    output:
+    - type: SIM
+      visible: false
+    options:
+    - $APPCONFIGOPTS/Gauss/Beam6800GeV-mu100-2024.W31-nu6.3.py
+    - $APPCONFIGOPTS/Gauss/EnableSpillover-25ns.py
+    - $APPCONFIGOPTS/Gauss/Run3-detector.py
+    - $APPCONFIGOPTS/Gauss/DataType-2024.py
+    - $DECFILESROOT/options/@{eventType}.py
+    - $LBPYTHIA8ROOT/options/Pythia8.py
+    - $APPCONFIGOPTS/Gauss/G4PL_FTFP_BERT_EmOpt2.py
+    - $APPCONFIGOPTS/Persistency/BasketSize-10.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZSTD-1.py
+    visible: true
+    data_pkgs:
+    - AppConfig.v3r457
+    - Gen/DecFiles.v32r39
+    application:
+      name: Gauss
+      version: v56r10p1
+      binary_tag: x86_64_v2-centos7-gcc11-opt
+    processing_pass: Sim10f
+  - name: Digi17c for 2024.W31+spillover
+    input:
+    - type: SIM
+      visible: false
+    output:
+    - type: DIGI
+      visible: false
+    options:
+    - $APPCONFIGOPTS/Boole/Default.py
+    - $APPCONFIGOPTS/Boole/EnableSpillover.py
+    - $APPCONFIGOPTS/Boole/Boole-Upgrade-Baseline-20200616.py
+    - $APPCONFIGOPTS/Boole/Upgrade-RichMaPMT-NoSpilloverDigi.py
+    - $APPCONFIGOPTS/Boole/Boole-Upgrade-IntegratedLumi-0fb.py
+    - $APPCONFIGOPTS/Boole/Run3-VP-NoSpillOver.py
+    - $APPCONFIGOPTS/Persistency/BasketSize-10.py
+    - $APPCONFIGOPTS/Boole/MuonLowE-Bkg-G4.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZSTD-1.py
+    visible: false
+    data_pkgs:
+    - AppConfig.v3r457
+    application:
+      name: Boole
+      version: v47r0p1
+      binary_tag: x86_64_v2-el9-gcc13+detdesc-opt
+    processing_pass: Digi17c
+  - name: TCK-HLT1_2024.W31.34_noUT (HLT1) Flagged for 2024.W31
+    input:
+    - type: DIGI
+      visible: false
+    output:
+    - type: HLT1.DST
+      visible: false
+    options:
+      entrypoint: Moore.production:hlt1
+      extra_args:
+      - --
+      - --sequence=hlt1_pp_matching_no_ut_1000KHz
+      - --flagging
+      extra_options:
+        data_type: Upgrade
+        input_type: ROOT
+        simulation: true
+        compression:
+          level: 1
+          algorithm: ZSTD
+          max_buffer_size: 1048576
+        output_type: ROOT
+        input_raw_format: 0.5
+    visible: false
+    data_pkgs: []
+    application:
+      name: Moore
+      version: v55r11p8
+      binary_tag: x86_64_v2-el9-gcc13+detdesc-opt
+    processing_pass: HLT1_2024.W31.34_noUT
+  - name: TCK-HLT2-2024.W31.34 (HLT2) Flagged for 2024.W31
+    input:
+    - type: HLT1.DST
+      visible: false
+    output:
+    - type: HLT2.DST
+      visible: false
+    options:
+      entrypoint: Moore.production:hlt2
+      extra_args:
+      - --
+      - --velo-source=VPRetinaCluster
+      - --settings=hlt2_pp_2024
+      - --flagging
+      extra_options:
+        data_type: Upgrade
+        input_type: ROOT
+        simulation: true
+        compression:
+          level: 1
+          algorithm: ZSTD
+          max_buffer_size: 1048576
+        output_type: ROOT
+        input_raw_format: 0.5
+    visible: true
+    data_pkgs: []
+    application:
+      name: Moore
+      version: v55r11p8
+      binary_tag: x86_64_v2-el9-gcc13+detdesc-opt
+    processing_pass: HLT2-2024.W31.34
+  - name: Merge for HLT2.DST for 2024.W31
+    input:
+    - type: HLT2.DST
+      visible: false
+    output:
+    - type: HLT2.DST
+      visible: true
+    options:
+      entrypoint: GaudiConf.mergeDST:dst
+      extra_args:
+      - --
+      - --merge-genfsr
+      extra_options:
+        data_type: Upgrade
+        input_type: ROOT
+        simulation: true
+        compression:
+          level: 4
+          algorithm: LZMA
+          max_buffer_size: 1048576
+        output_type: ROOT
+        root_ioalg_name: RootIOAlgExt
+        root_ioalg_opts:
+          StoreOldFSRs: true
+        input_raw_format: 0.5
+    visible: false
+    data_pkgs:
+    - AppConfig.v3r457
+    application:
+      name: LHCb
+      version: v58r4
+      binary_tag: x86_64_v2-el9-gcc13+detdesc-opt
+    processing_pass: merging
+  author: null
+  inform:
+  - qi.shi@cern.ch
+  comment: " \n lhcb-simulation/mc-requests!1587"
+  priority: 2a
+  event_types:
+  - id: '15146001'
+    num_events: 582000
+    num_test_events: 10
+  - id: '15116010'
+    num_events: 582000
+    num_test_events: 10
+  sim_condition: Beam6800GeV-2024.W31-MagUp-Nu6.3-25ns-Pythia8
+  retention_rate: 1.0
+  mc_config_version: '2024'
+- wg: RD
+  name: RD_Lb2pKpipiMuMu_Run2_Run3 2024.W32.34 pp MagUp
+  type: Simulation
+  steps:
+  - name: Sim10f - 2024.W32.34 - Beam6800GeV - MagUp - Pythia8
+    input: []
+    dbtags:
+      DDDB: 2024-v00.03
+      CondDB: sim10-2024.W32.34-v00.00-mu100
+    output:
+    - type: SIM
+      visible: false
+    options:
+    - $APPCONFIGOPTS/Gauss/Beam6800GeV-mu100-2024.W32.34-nu6.3.py
+    - $APPCONFIGOPTS/Gauss/EnableSpillover-25ns.py
+    - $APPCONFIGOPTS/Gauss/Run3-detector.py
+    - $APPCONFIGOPTS/Gauss/DataType-2024.py
+    - $DECFILESROOT/options/@{eventType}.py
+    - $LBPYTHIA8ROOT/options/Pythia8.py
+    - $APPCONFIGOPTS/Gauss/G4PL_FTFP_BERT_EmOpt2.py
+    - $APPCONFIGOPTS/Persistency/BasketSize-10.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZSTD-1.py
+    visible: true
+    data_pkgs:
+    - AppConfig.v3r457
+    - Gen/DecFiles.v32r39
+    application:
+      name: Gauss
+      version: v56r10p1
+      binary_tag: x86_64_v2-centos7-gcc11-opt
+    processing_pass: Sim10f
+  - name: Digi17c for 2024.W32.34+spillover
+    input:
+    - type: SIM
+      visible: false
+    output:
+    - type: DIGI
+      visible: false
+    options:
+    - $APPCONFIGOPTS/Boole/Default.py
+    - $APPCONFIGOPTS/Boole/EnableSpillover.py
+    - $APPCONFIGOPTS/Boole/Boole-Upgrade-Baseline-20200616.py
+    - $APPCONFIGOPTS/Boole/Upgrade-RichMaPMT-NoSpilloverDigi.py
+    - $APPCONFIGOPTS/Boole/Boole-Upgrade-IntegratedLumi-0fb.py
+    - $APPCONFIGOPTS/Boole/Run3-VP-NoSpillOver.py
+    - $APPCONFIGOPTS/Persistency/BasketSize-10.py
+    - $APPCONFIGOPTS/Boole/MuonLowE-Bkg-G4.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZSTD-1.py
+    visible: false
+    data_pkgs:
+    - AppConfig.v3r457
+    application:
+      name: Boole
+      version: v47r0p1
+      binary_tag: x86_64_v2-el9-gcc13+detdesc-opt
+    processing_pass: Digi17c
+  - name: TCK-HLT1_2024.W31.34_noUT (HLT1) Flagged for 2024.W32.34
+    input:
+    - type: DIGI
+      visible: false
+    output:
+    - type: HLT1.DST
+      visible: false
+    options:
+      entrypoint: Moore.production:hlt1
+      extra_args:
+      - --
+      - --sequence=hlt1_pp_matching_no_ut_1000KHz
+      - --flagging
+      extra_options:
+        data_type: Upgrade
+        input_type: ROOT
+        simulation: true
+        compression:
+          level: 1
+          algorithm: ZSTD
+          max_buffer_size: 1048576
+        output_type: ROOT
+        input_raw_format: 0.5
+    visible: false
+    data_pkgs: []
+    application:
+      name: Moore
+      version: v55r11p8
+      binary_tag: x86_64_v2-el9-gcc13+detdesc-opt
+    processing_pass: HLT1_2024.W31.34_noUT
+  - name: TCK-HLT2-2024.W31.34 (HLT2) Flagged for 2024.W32.34
+    input:
+    - type: HLT1.DST
+      visible: false
+    output:
+    - type: HLT2.DST
+      visible: false
+    options:
+      entrypoint: Moore.production:hlt2
+      extra_args:
+      - --
+      - --velo-source=VPRetinaCluster
+      - --settings=hlt2_pp_2024
+      - --flagging
+      extra_options:
+        data_type: Upgrade
+        input_type: ROOT
+        simulation: true
+        compression:
+          level: 1
+          algorithm: ZSTD
+          max_buffer_size: 1048576
+        output_type: ROOT
+        input_raw_format: 0.5
+    visible: true
+    data_pkgs: []
+    application:
+      name: Moore
+      version: v55r11p8
+      binary_tag: x86_64_v2-el9-gcc13+detdesc-opt
+    processing_pass: HLT2-2024.W31.34
+  - name: Merge for HLT2.DST for 2024.W32.34
+    input:
+    - type: HLT2.DST
+      visible: false
+    output:
+    - type: HLT2.DST
+      visible: true
+    options:
+      entrypoint: GaudiConf.mergeDST:dst
+      extra_args:
+      - --
+      - --merge-genfsr
+      extra_options:
+        data_type: Upgrade
+        input_type: ROOT
+        simulation: true
+        compression:
+          level: 4
+          algorithm: LZMA
+          max_buffer_size: 1048576
+        output_type: ROOT
+        root_ioalg_name: RootIOAlgExt
+        root_ioalg_opts:
+          StoreOldFSRs: true
+        input_raw_format: 0.5
+    visible: false
+    data_pkgs:
+    - AppConfig.v3r457
+    application:
+      name: LHCb
+      version: v58r4
+      binary_tag: x86_64_v2-el9-gcc13+detdesc-opt
+    processing_pass: merging
+  author: null
+  inform:
+  - qi.shi@cern.ch
+  comment: " \n lhcb-simulation/mc-requests!1587"
+  priority: 2a
+  event_types:
+  - id: '15146001'
+    num_events: 1262000
+    num_test_events: 10
+  - id: '15116010'
+    num_events: 1262000
+    num_test_events: 10
+  sim_condition: Beam6800GeV-2024.W32.34-MagUp-Nu6.3-25ns-Pythia8
+  retention_rate: 1.0
+  mc_config_version: '2024'
+- wg: RD
+  name: RD_Lb2pKpipiMuMu_Run2_Run3 2024.W35.37 pp MagUp
+  type: Simulation
+  steps:
+  - name: Sim10f - 2024.W35.37 - Beam6800GeV - MagUp - Pythia8
+    input: []
+    dbtags:
+      DDDB: 2024-v00.03
+      CondDB: sim10-2024.W35.37-v01.00-mu100
+    output:
+    - type: SIM
+      visible: false
+    options:
+    - $APPCONFIGOPTS/Gauss/Beam6800GeV-mu100-2024.W35.37-nu6.3.py
+    - $APPCONFIGOPTS/Gauss/EnableSpillover-25ns.py
+    - $APPCONFIGOPTS/Gauss/Run3-detector.py
+    - $APPCONFIGOPTS/Gauss/DataType-2024.py
+    - $DECFILESROOT/options/@{eventType}.py
+    - $LBPYTHIA8ROOT/options/Pythia8.py
+    - $APPCONFIGOPTS/Gauss/G4PL_FTFP_BERT_EmOpt2.py
+    - $APPCONFIGOPTS/Persistency/BasketSize-10.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZSTD-1.py
+    visible: true
+    data_pkgs:
+    - AppConfig.v3r457
+    - Gen/DecFiles.v32r39
+    application:
+      name: Gauss
+      version: v56r10p1
+      binary_tag: x86_64_v2-centos7-gcc11-opt
+    processing_pass: Sim10f
+  - name: Digi17c for 2024.W35.37+spillover
+    input:
+    - type: SIM
+      visible: false
+    output:
+    - type: DIGI
+      visible: false
+    options:
+    - $APPCONFIGOPTS/Boole/Default.py
+    - $APPCONFIGOPTS/Boole/EnableSpillover.py
+    - $APPCONFIGOPTS/Boole/Boole-Upgrade-Baseline-20200616.py
+    - $APPCONFIGOPTS/Boole/Upgrade-RichMaPMT-NoSpilloverDigi.py
+    - $APPCONFIGOPTS/Boole/Boole-Upgrade-IntegratedLumi-0fb.py
+    - $APPCONFIGOPTS/Boole/Run3-VP-NoSpillOver.py
+    - $APPCONFIGOPTS/Persistency/BasketSize-10.py
+    - $APPCONFIGOPTS/Boole/MuonLowE-Bkg-G4.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZSTD-1.py
+    visible: false
+    data_pkgs:
+    - AppConfig.v3r457
+    application:
+      name: Boole
+      version: v47r0p1
+      binary_tag: x86_64_v2-el9-gcc13+detdesc-opt
+    processing_pass: Digi17c
+  - name: TCK-HLT1_2024.W35.39 (HLT1) Flagged for 2024.W35.37
+    input:
+    - type: DIGI
+      visible: false
+    output:
+    - type: HLT1.DST
+      visible: false
+    options:
+      entrypoint: Moore.production:hlt1
+      extra_args:
+      - --
+      - --sequence=hlt1_pp_forward_then_matching_1000KHz
+      - --flagging
+      extra_options:
+        data_type: Upgrade
+        input_type: ROOT
+        simulation: true
+        compression:
+          level: 1
+          algorithm: ZSTD
+          max_buffer_size: 1048576
+        output_type: ROOT
+        input_raw_format: 0.5
+    visible: false
+    data_pkgs: []
+    application:
+      name: Moore
+      version: v55r12p7
+      binary_tag: x86_64_v2-el9-gcc13+detdesc-opt
+    processing_pass: HLT1_2024.W35.39
+  - name: TCK-HLT2-2024.W35.39 (HLT2) Flagged for 2024.W35.37
+    input:
+    - type: HLT1.DST
+      visible: false
+    output:
+    - type: HLT2.DST
+      visible: false
+    options:
+      entrypoint: Moore.production:hlt2
+      extra_args:
+      - --
+      - --velo-source=VPRetinaCluster
+      - --settings=hlt2_pp_2024
+      - --flagging
+      extra_options:
+        data_type: Upgrade
+        input_type: ROOT
+        simulation: true
+        compression:
+          level: 1
+          algorithm: ZSTD
+          max_buffer_size: 1048576
+        output_type: ROOT
+        input_raw_format: 0.5
+    visible: true
+    data_pkgs: []
+    application:
+      name: Moore
+      version: v55r12p7
+      binary_tag: x86_64_v2-el9-gcc13+detdesc-opt
+    processing_pass: HLT2-2024.W35.39
+  - name: Merge for HLT2.DST for 2024.W35.37
+    input:
+    - type: HLT2.DST
+      visible: false
+    output:
+    - type: HLT2.DST
+      visible: true
+    options:
+      entrypoint: GaudiConf.mergeDST:dst
+      extra_args:
+      - --
+      - --merge-genfsr
+      extra_options:
+        data_type: Upgrade
+        input_type: ROOT
+        simulation: true
+        compression:
+          level: 4
+          algorithm: LZMA
+          max_buffer_size: 1048576
+        output_type: ROOT
+        root_ioalg_name: RootIOAlgExt
+        root_ioalg_opts:
+          StoreOldFSRs: true
+        input_raw_format: 0.5
+    visible: false
+    data_pkgs:
+    - AppConfig.v3r457
+    application:
+      name: LHCb
+      version: v58r4
+      binary_tag: x86_64_v2-el9-gcc13+detdesc-opt
+    processing_pass: merging
+  author: null
+  inform:
+  - qi.shi@cern.ch
+  comment: " \n lhcb-simulation/mc-requests!1587"
+  priority: 2a
+  event_types:
+  - id: '15146001'
+    num_events: 1093000
+    num_test_events: 10
+  - id: '15116010'
+    num_events: 1093000
+    num_test_events: 10
+  sim_condition: Beam6800GeV-2024.W35.37-MagUp-Nu6.3-25ns-Pythia8
+  retention_rate: 1.0
+  mc_config_version: '2024'
+- wg: RD
+  name: RD_Lb2pKpipiMuMu_Run2_Run3 2024.W37.39 pp MagDown
+  type: Simulation
+  steps:
+  - name: Sim10f - 2024.W37.39 - Beam6800GeV - MagDown - Pythia8
+    input: []
+    dbtags:
+      DDDB: 2024-v00.03
+      CondDB: sim10-2024.W37.39-v01.00-md100
+    output:
+    - type: SIM
+      visible: false
+    options:
+    - $APPCONFIGOPTS/Gauss/Beam6800GeV-md100-2024.W37.39-nu6.3.py
+    - $APPCONFIGOPTS/Gauss/EnableSpillover-25ns.py
+    - $APPCONFIGOPTS/Gauss/Run3-detector.py
+    - $APPCONFIGOPTS/Gauss/DataType-2024.py
+    - $DECFILESROOT/options/@{eventType}.py
+    - $LBPYTHIA8ROOT/options/Pythia8.py
+    - $APPCONFIGOPTS/Gauss/G4PL_FTFP_BERT_EmOpt2.py
+    - $APPCONFIGOPTS/Persistency/BasketSize-10.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZSTD-1.py
+    visible: true
+    data_pkgs:
+    - AppConfig.v3r457
+    - Gen/DecFiles.v32r39
+    application:
+      name: Gauss
+      version: v56r10p1
+      binary_tag: x86_64_v2-centos7-gcc11-opt
+    processing_pass: Sim10f
+  - name: Digi17c for 2024.W37.39+spillover
+    input:
+    - type: SIM
+      visible: false
+    output:
+    - type: DIGI
+      visible: false
+    options:
+    - $APPCONFIGOPTS/Boole/Default.py
+    - $APPCONFIGOPTS/Boole/EnableSpillover.py
+    - $APPCONFIGOPTS/Boole/Boole-Upgrade-Baseline-20200616.py
+    - $APPCONFIGOPTS/Boole/Upgrade-RichMaPMT-NoSpilloverDigi.py
+    - $APPCONFIGOPTS/Boole/Boole-Upgrade-IntegratedLumi-0fb.py
+    - $APPCONFIGOPTS/Boole/Run3-VP-NoSpillOver.py
+    - $APPCONFIGOPTS/Persistency/BasketSize-10.py
+    - $APPCONFIGOPTS/Boole/MuonLowE-Bkg-G4.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZSTD-1.py
+    visible: false
+    data_pkgs:
+    - AppConfig.v3r457
+    application:
+      name: Boole
+      version: v47r0p1
+      binary_tag: x86_64_v2-el9-gcc13+detdesc-opt
+    processing_pass: Digi17c
+  - name: TCK-HLT1_2024.W35.39 (HLT1) Flagged for 2024.W37.39
+    input:
+    - type: DIGI
+      visible: false
+    output:
+    - type: HLT1.DST
+      visible: false
+    options:
+      entrypoint: Moore.production:hlt1
+      extra_args:
+      - --
+      - --sequence=hlt1_pp_forward_then_matching_1000KHz
+      - --flagging
+      extra_options:
+        data_type: Upgrade
+        input_type: ROOT
+        simulation: true
+        compression:
+          level: 1
+          algorithm: ZSTD
+          max_buffer_size: 1048576
+        output_type: ROOT
+        input_raw_format: 0.5
+    visible: false
+    data_pkgs: []
+    application:
+      name: Moore
+      version: v55r12p7
+      binary_tag: x86_64_v2-el9-gcc13+detdesc-opt
+    processing_pass: HLT1_2024.W35.39
+  - name: TCK-HLT2-2024.W35.39 (HLT2) Flagged for 2024.W37.39
+    input:
+    - type: HLT1.DST
+      visible: false
+    output:
+    - type: HLT2.DST
+      visible: false
+    options:
+      entrypoint: Moore.production:hlt2
+      extra_args:
+      - --
+      - --velo-source=VPRetinaCluster
+      - --settings=hlt2_pp_2024
+      - --flagging
+      extra_options:
+        data_type: Upgrade
+        input_type: ROOT
+        simulation: true
+        compression:
+          level: 1
+          algorithm: ZSTD
+          max_buffer_size: 1048576
+        output_type: ROOT
+        input_raw_format: 0.5
+    visible: true
+    data_pkgs: []
+    application:
+      name: Moore
+      version: v55r12p7
+      binary_tag: x86_64_v2-el9-gcc13+detdesc-opt
+    processing_pass: HLT2-2024.W35.39
+  - name: Merge for HLT2.DST for 2024.W37.39
+    input:
+    - type: HLT2.DST
+      visible: false
+    output:
+    - type: HLT2.DST
+      visible: true
+    options:
+      entrypoint: GaudiConf.mergeDST:dst
+      extra_args:
+      - --
+      - --merge-genfsr
+      extra_options:
+        data_type: Upgrade
+        input_type: ROOT
+        simulation: true
+        compression:
+          level: 4
+          algorithm: LZMA
+          max_buffer_size: 1048576
+        output_type: ROOT
+        root_ioalg_name: RootIOAlgExt
+        root_ioalg_opts:
+          StoreOldFSRs: true
+        input_raw_format: 0.5
+    visible: false
+    data_pkgs:
+    - AppConfig.v3r457
+    application:
+      name: LHCb
+      version: v58r4
+      binary_tag: x86_64_v2-el9-gcc13+detdesc-opt
+    processing_pass: merging
+  author: null
+  inform:
+  - qi.shi@cern.ch
+  comment: " \n lhcb-simulation/mc-requests!1587"
+  priority: 2a
+  event_types:
+  - id: '15146001'
+    num_events: 962000
+    num_test_events: 10
+  - id: '15116010'
+    num_events: 962000
+    num_test_events: 10
+  sim_condition: Beam6800GeV-2024.W37.39-MagDown-Nu6.3-25ns-Pythia8
+  retention_rate: 1.0
+  mc_config_version: '2024'
+- wg: RD
+  name: RD_Lb2pKpipiMuMu_Run2_Run3 2024.W40.41 pp MagDown
+  type: Simulation
+  steps:
+  - name: Sim10f - 2024.W40.41 - Beam6800GeV - MagDown - Pythia8
+    input: []
+    dbtags:
+      DDDB: 2024-v00.03
+      CondDB: sim10-2024.W40.41-v00.00-md100
+    output:
+    - type: SIM
+      visible: false
+    options:
+    - $APPCONFIGOPTS/Gauss/Beam6800GeV-md100-2024.W40.41-nu7.6.py
+    - $APPCONFIGOPTS/Gauss/EnableSpillover-25ns.py
+    - $APPCONFIGOPTS/Gauss/Run3-detector.py
+    - $APPCONFIGOPTS/Gauss/DataType-2024.py
+    - $DECFILESROOT/options/@{eventType}.py
+    - $LBPYTHIA8ROOT/options/Pythia8.py
+    - $APPCONFIGOPTS/Gauss/G4PL_FTFP_BERT_EmOpt2.py
+    - $APPCONFIGOPTS/Persistency/BasketSize-10.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZSTD-1.py
+    visible: true
+    data_pkgs:
+    - AppConfig.v3r457
+    - Gen/DecFiles.v32r39
+    application:
+      name: Gauss
+      version: v56r10p1
+      binary_tag: x86_64_v2-centos7-gcc11-opt
+    processing_pass: Sim10f
+  - name: Digi17c for 2024.W40.41+spillover
+    input:
+    - type: SIM
+      visible: false
+    output:
+    - type: DIGI
+      visible: false
+    options:
+    - $APPCONFIGOPTS/Boole/Default.py
+    - $APPCONFIGOPTS/Boole/EnableSpillover.py
+    - $APPCONFIGOPTS/Boole/Boole-Upgrade-Baseline-20200616.py
+    - $APPCONFIGOPTS/Boole/Upgrade-RichMaPMT-NoSpilloverDigi.py
+    - $APPCONFIGOPTS/Boole/Boole-Upgrade-IntegratedLumi-0fb.py
+    - $APPCONFIGOPTS/Boole/Run3-VP-NoSpillOver.py
+    - $APPCONFIGOPTS/Persistency/BasketSize-10.py
+    - $APPCONFIGOPTS/Boole/MuonLowE-Bkg-G4.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZSTD-1.py
+    visible: false
+    data_pkgs:
+    - AppConfig.v3r457
+    application:
+      name: Boole
+      version: v47r0p1
+      binary_tag: x86_64_v2-el9-gcc13+detdesc-opt
+    processing_pass: Digi17c
+  - name: TCK-HLT1_2024.W40.42 (HLT1) Flagged for 2024.W40.41
+    input:
+    - type: DIGI
+      visible: false
+    output:
+    - type: HLT1.DST
+      visible: false
+    options:
+      entrypoint: Moore.production:hlt1
+      extra_args:
+      - --
+      - --sequence=hlt1_pp_forward_then_matching_and_downstream_1200KHz
+      - --flagging
+      extra_options:
+        data_type: Upgrade
+        input_type: ROOT
+        simulation: true
+        compression:
+          level: 1
+          algorithm: ZSTD
+          max_buffer_size: 1048576
+        output_type: ROOT
+        input_raw_format: 0.5
+    visible: false
+    data_pkgs: []
+    application:
+      name: Moore
+      version: v55r13p7
+      binary_tag: x86_64_v2-el9-gcc13+detdesc-opt
+    processing_pass: HLT1_2024.W40.42
+  - name: TCK-HLT2-2024.W40.42 (HLT2) Flagged for 2024.W40.41
+    input:
+    - type: HLT1.DST
+      visible: false
+    output:
+    - type: HLT2.DST
+      visible: false
+    options:
+      entrypoint: Moore.production:hlt2
+      extra_args:
+      - --
+      - --velo-source=VPRetinaCluster
+      - --settings=hlt2_pp_2024
+      - --flagging
+      extra_options:
+        data_type: Upgrade
+        input_type: ROOT
+        simulation: true
+        compression:
+          level: 1
+          algorithm: ZSTD
+          max_buffer_size: 1048576
+        output_type: ROOT
+        input_raw_format: 0.5
+    visible: true
+    data_pkgs: []
+    application:
+      name: Moore
+      version: v55r13p7
+      binary_tag: x86_64_v2-el9-gcc13+detdesc-opt
+    processing_pass: HLT2-2024.W40.42
+  - name: Merge for HLT2.DST for 2024.W40.41
+    input:
+    - type: HLT2.DST
+      visible: false
+    output:
+    - type: HLT2.DST
+      visible: true
+    options:
+      entrypoint: GaudiConf.mergeDST:dst
+      extra_args:
+      - --
+      - --merge-genfsr
+      extra_options:
+        data_type: Upgrade
+        input_type: ROOT
+        simulation: true
+        compression:
+          level: 4
+          algorithm: LZMA
+          max_buffer_size: 1048576
+        output_type: ROOT
+        root_ioalg_name: RootIOAlgExt
+        root_ioalg_opts:
+          StoreOldFSRs: true
+        input_raw_format: 0.5
+    visible: false
+    data_pkgs:
+    - AppConfig.v3r457
+    application:
+      name: LHCb
+      version: v58r4
+      binary_tag: x86_64_v2-el9-gcc13+detdesc-opt
+    processing_pass: merging
+  author: null
+  inform:
+  - qi.shi@cern.ch
+  comment: " \n lhcb-simulation/mc-requests!1587"
+  priority: 2a
+  event_types:
+  - id: '15146001'
+    num_events: 692000
+    num_test_events: 10
+  - id: '15116010'
+    num_events: 692000
+    num_test_events: 10
+  sim_condition: Beam6800GeV-2024.W40.41-MagDown-Nu7.6-25ns-Pythia8
+  retention_rate: 1.0
+  mc_config_version: '2024'
+- wg: RD
+  name: RD_Lb2pKpipiMuMu_Run2_Run3 2024.W41.42 pp MagUp
+  type: Simulation
+  steps:
+  - name: Sim10f - 2024.W41.42 - Beam6800GeV - MagUp - Pythia8
+    input: []
+    dbtags:
+      DDDB: 2024-v00.03
+      CondDB: sim10-2024.W41.42-v00.00-mu100
+    output:
+    - type: SIM
+      visible: false
+    options:
+    - $APPCONFIGOPTS/Gauss/Beam6800GeV-mu100-2024.W41.42-nu7.6.py
+    - $APPCONFIGOPTS/Gauss/EnableSpillover-25ns.py
+    - $APPCONFIGOPTS/Gauss/Run3-detector.py
+    - $APPCONFIGOPTS/Gauss/DataType-2024.py
+    - $DECFILESROOT/options/@{eventType}.py
+    - $LBPYTHIA8ROOT/options/Pythia8.py
+    - $APPCONFIGOPTS/Gauss/G4PL_FTFP_BERT_EmOpt2.py
+    - $APPCONFIGOPTS/Persistency/BasketSize-10.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZSTD-1.py
+    visible: true
+    data_pkgs:
+    - AppConfig.v3r457
+    - Gen/DecFiles.v32r39
+    application:
+      name: Gauss
+      version: v56r10p1
+      binary_tag: x86_64_v2-centos7-gcc11-opt
+    processing_pass: Sim10f
+  - name: Digi17c for 2024.W41.42+spillover
+    input:
+    - type: SIM
+      visible: false
+    output:
+    - type: DIGI
+      visible: false
+    options:
+    - $APPCONFIGOPTS/Boole/Default.py
+    - $APPCONFIGOPTS/Boole/EnableSpillover.py
+    - $APPCONFIGOPTS/Boole/Boole-Upgrade-Baseline-20200616.py
+    - $APPCONFIGOPTS/Boole/Upgrade-RichMaPMT-NoSpilloverDigi.py
+    - $APPCONFIGOPTS/Boole/Boole-Upgrade-IntegratedLumi-0fb.py
+    - $APPCONFIGOPTS/Boole/Run3-VP-NoSpillOver.py
+    - $APPCONFIGOPTS/Persistency/BasketSize-10.py
+    - $APPCONFIGOPTS/Boole/MuonLowE-Bkg-G4.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZSTD-1.py
+    visible: false
+    data_pkgs:
+    - AppConfig.v3r457
+    application:
+      name: Boole
+      version: v47r0p1
+      binary_tag: x86_64_v2-el9-gcc13+detdesc-opt
+    processing_pass: Digi17c
+  - name: TCK-HLT1_2024.W40.42 (HLT1) Flagged for 2024.W41.42
+    input:
+    - type: DIGI
+      visible: false
+    output:
+    - type: HLT1.DST
+      visible: false
+    options:
+      entrypoint: Moore.production:hlt1
+      extra_args:
+      - --
+      - --sequence=hlt1_pp_forward_then_matching_and_downstream_1200KHz
+      - --flagging
+      extra_options:
+        data_type: Upgrade
+        input_type: ROOT
+        simulation: true
+        compression:
+          level: 1
+          algorithm: ZSTD
+          max_buffer_size: 1048576
+        output_type: ROOT
+        input_raw_format: 0.5
+    visible: false
+    data_pkgs: []
+    application:
+      name: Moore
+      version: v55r13p7
+      binary_tag: x86_64_v2-el9-gcc13+detdesc-opt
+    processing_pass: HLT1_2024.W40.42
+  - name: TCK-HLT2-2024.W40.42 (HLT2) Flagged for 2024.W41.42
+    input:
+    - type: HLT1.DST
+      visible: false
+    output:
+    - type: HLT2.DST
+      visible: false
+    options:
+      entrypoint: Moore.production:hlt2
+      extra_args:
+      - --
+      - --velo-source=VPRetinaCluster
+      - --settings=hlt2_pp_2024
+      - --flagging
+      extra_options:
+        data_type: Upgrade
+        input_type: ROOT
+        simulation: true
+        compression:
+          level: 1
+          algorithm: ZSTD
+          max_buffer_size: 1048576
+        output_type: ROOT
+        input_raw_format: 0.5
+    visible: true
+    data_pkgs: []
+    application:
+      name: Moore
+      version: v55r13p7
+      binary_tag: x86_64_v2-el9-gcc13+detdesc-opt
+    processing_pass: HLT2-2024.W40.42
+  - name: Merge for HLT2.DST for 2024.W41.42
+    input:
+    - type: HLT2.DST
+      visible: false
+    output:
+    - type: HLT2.DST
+      visible: true
+    options:
+      entrypoint: GaudiConf.mergeDST:dst
+      extra_args:
+      - --
+      - --merge-genfsr
+      extra_options:
+        data_type: Upgrade
+        input_type: ROOT
+        simulation: true
+        compression:
+          level: 4
+          algorithm: LZMA
+          max_buffer_size: 1048576
+        output_type: ROOT
+        root_ioalg_name: RootIOAlgExt
+        root_ioalg_opts:
+          StoreOldFSRs: true
+        input_raw_format: 0.5
+    visible: false
+    data_pkgs:
+    - AppConfig.v3r457
+    application:
+      name: LHCb
+      version: v58r4
+      binary_tag: x86_64_v2-el9-gcc13+detdesc-opt
+    processing_pass: merging
+  author: null
+  inform:
+  - qi.shi@cern.ch
+  comment: " \n lhcb-simulation/mc-requests!1587"
+  priority: 2a
+  event_types:
+  - id: '15146001'
+    num_events: 410000
+    num_test_events: 10
+  - id: '15116010'
+    num_events: 410000
+    num_test_events: 10
+  sim_condition: Beam6800GeV-2024.W41.42-MagUp-Nu7.6-25ns-Pythia8
+  retention_rate: 1.0
+  mc_config_version: '2024'
