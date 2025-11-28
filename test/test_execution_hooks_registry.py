@@ -161,17 +161,69 @@ class TestExecutionHooksPluginRegistry:
         with pytest.raises(KeyError, match="Unknown execution hooks plugin"):
             registry.instantiate_plugin(descriptor)
 
-    def test_discover_plugins(self):
+    def test_discover_no_plugins(self, mocker, monkeypatch):
         """Test automatic plugin discovery."""
+        from dirac_cwl_proto.execution_hooks import registry
+
+        # Mock entry_points to have nothing
+        entrypointMock = mocker.MagicMock()
+        entrypointMock.names = []
+        monkeypatch.setattr(
+            registry, "entry_points", lambda *args, **kwargs: entrypointMock
+        )
+
         registry = ExecutionHooksPluginRegistry()
 
-        # Test discovery from a package that doesn't exist - should return 0
-        discovered = registry.discover_plugins(["nonexistent.package"])
+        # Test discovery with no hooks at the entrypoints - should return 0
+        discovered = registry.discover_plugins()
         assert discovered == 0
 
         # Test that the registry still works normally
         plugins = registry.list_plugins()
         assert isinstance(plugins, list)
+
+    def test_discover_plugins(self, mocker, monkeypatch):
+        from dirac_cwl_proto.execution_hooks import registry
+
+        class FakePlugin(ExecutionHooksBasePlugin):
+            ...
+
+        class FakeWrongPlugin:
+            ...
+
+        # Prepare the mocks
+        entrypointMock = mocker.MagicMock()
+        loggerMock = mocker.MagicMock()
+        fakePluginMock = mocker.MagicMock()
+        fakeWrongPluginMock = mocker.MagicMock()
+
+        # Set the mocked entries
+        mockedEntries = {
+            "FakePlugin": fakePluginMock,
+            "FakeWrongPlugin": fakeWrongPluginMock,
+        }
+
+        # Set the load() return values of the entrypoints
+        fakePluginMock.load.return_value = FakePlugin
+        fakeWrongPluginMock.load.return_value = FakeWrongPlugin
+
+        # Prepare the mocked entry_point
+        entrypointMock.names = list(mockedEntries.keys())
+        entrypointMock.__getitem__.side_effect = mockedEntries.__getitem__
+
+        # Patch both the entry_points and the logger
+        monkeypatch.setattr(
+            registry, "entry_points", lambda *args, **kwargs: entrypointMock
+        )
+        monkeypatch.setattr(registry, "logger", loggerMock)
+
+        # Execute discover_plugins
+        discovered = registry.discover_plugins()
+
+        # It should have only discovered "FakePlugin"
+        assert discovered == 1
+        # "FakeWrongPlugin" should have logged a warning
+        loggerMock.warning.assert_called_once()
 
     def test_list_virtual_organizations(self):
         """Test listing vos."""

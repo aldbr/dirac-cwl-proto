@@ -27,8 +27,8 @@ from dirac_cwl_proto.job.submission_clients import (
 )
 from dirac_cwl_proto.submission_models import (
     JobInputModel,
+    JobModel,
     JobSubmissionModel,
-    extract_dirac_hints,
 )
 
 app = AsyncTyper()
@@ -80,16 +80,6 @@ async def submit_job_client(
         return typer.Exit(code=1)
 
     console.print(f"\t[green]:heavy_check_mark:[/green] Task {task_path}")
-
-    # Extract and validate dirac hints; unknown hints are logged as warnings.
-    try:
-        job_metadata, job_scheduling = extract_dirac_hints(task)
-    except Exception as exc:
-        console.print(
-            f"[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Invalid DIRAC hints:\n{exc}"
-        )
-        return typer.Exit(code=1)
-
     console.print("\t[green]:heavy_check_mark:[/green] Hints")
 
     # Extract parameters if any
@@ -103,17 +93,6 @@ async def submit_job_client(
                     f"[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to validate the parameter:\n{ex}"
                 )
                 return typer.Exit(code=1)
-
-            overrides = parameter.pop("cwltool:overrides", {})
-            if overrides:
-                override_hints = overrides[next(iter(overrides))].get("hints", {})
-                if override_hints:
-                    job_scheduling = job_scheduling.model_copy(
-                        update=override_hints.pop("dirac:scheduling", {})
-                    )
-                    job_metadata = job_metadata.model_copy(
-                        update=override_hints.pop("dirac:execution-hooks", {})
-                    )
 
             # Prepare files for the ISB
             isb_file_paths = prepare_input_sandbox(parameter)
@@ -133,9 +112,7 @@ async def submit_job_client(
 
     job = JobSubmissionModel(
         task=task,
-        parameters=parameters,
-        scheduling=job_scheduling,
-        execution_hooks=job_metadata,
+        inputs=parameters,
     )
     console.print(
         "[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Job(s) validated."
@@ -154,7 +131,7 @@ async def submit_job_client(
         return typer.Exit(code=1)
 
 
-def validate_jobs(job: JobSubmissionModel) -> list[JobSubmissionModel]:
+def validate_jobs(job: JobSubmissionModel) -> list[JobModel]:
     """
     Validate jobs
 
@@ -167,16 +144,18 @@ def validate_jobs(job: JobSubmissionModel) -> list[JobSubmissionModel]:
     )
     # Initiate 1 job per parameter
     jobs = []
-    if not job.parameters:
-        jobs.append(job)
+    if not job.inputs:
+        jobs.append(
+            JobModel(
+                task=job.task,
+            )
+        )
     else:
-        for parameter in job.parameters:
+        for parameter in job.inputs:
             jobs.append(
-                JobSubmissionModel(
+                JobModel(
                     task=job.task,
-                    parameters=[parameter],
-                    scheduling=job.scheduling,
-                    execution_hooks=job.execution_hooks,
+                    input=parameter,
                 )
             )
     console.print(
@@ -250,7 +229,7 @@ def submit_job_router(job: JobSubmissionModel) -> bool:
 # -----------------------------------------------------------------------------
 
 
-def run_job(job_id: int, job: JobSubmissionModel, logger: logging.Logger) -> bool:
+def run_job(job_id: int, job: JobModel, logger: logging.Logger) -> bool:
     """
     Run a single job by dumping it to JSON and executing the job_wrapper_template.py script.
 

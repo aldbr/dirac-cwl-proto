@@ -14,7 +14,8 @@ from diracx.api.jobs import create_sandbox
 from diracx.client.aio import AsyncDiracClient
 from rich.console import Console
 
-from dirac_cwl_proto.submission_models import JobSubmissionModel
+from dirac_cwl_proto.execution_hooks import SchedulingHint
+from dirac_cwl_proto.submission_models import JobModel, JobSubmissionModel
 
 console = Console()
 
@@ -130,10 +131,10 @@ class DIRACSubmissionClient(SubmissionClient):
             console.print(
                 "\t\t[blue]:information_source:[/blue] [bold]CLI:[/bold] Converting job model to jdl..."
             )
-            sandbox_id = await create_sandbox(job_submission_path)
+            sandbox_id = await create_sandbox([job_submission_path])
             job_submission_path.unlink()
 
-            jdl = self.convert_to_jdl(job, [sandbox_id])
+            jdl = self.convert_to_jdl(job, sandbox_id)
             jdls.append(jdl)
 
         console.print(
@@ -149,7 +150,7 @@ class DIRACSubmissionClient(SubmissionClient):
         )
         return True
 
-    def convert_to_jdl(self, job: JobSubmissionModel, sandbox_ids: list[str]) -> str:
+    def convert_to_jdl(self, job: JobModel, sandbox_id: str) -> str:
         """
         Convert job model to jdl.
 
@@ -169,12 +170,13 @@ class DIRACSubmissionClient(SubmissionClient):
         jdl_lines.append("JobName = test;")
         jdl_lines.append("OutputSandbox = {std.out, std.err};")
 
-        if job.scheduling.priority:
-            jdl_lines.append(f"Priority = {job.scheduling.priority};")
+        job_scheduling = SchedulingHint.from_cwl(job.task)
+        if job_scheduling.priority:
+            jdl_lines.append(f"Priority = {job_scheduling.priority};")
 
-        if job.scheduling.sites:
-            jdl_lines.append(f"Site = {job.scheduling.sites};")
+        if job_scheduling.sites:
+            jdl_lines.append(f"Site = {job_scheduling.sites};")
 
-        jdl_lines.append(f"InputSandbox = {sandbox_ids};")
+        jdl_lines.append(f"InputSandbox = {sandbox_id};")
 
         return "\n".join(jdl_lines)
