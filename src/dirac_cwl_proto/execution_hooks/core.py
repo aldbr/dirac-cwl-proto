@@ -14,6 +14,7 @@ from typing import Any, ClassVar, Dict, List, Mapping, Optional, Self, TypeVar, 
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
 
 from dirac_cwl_proto.commands import PostProcessCommand, PreProcessCommand
+from dirac_cwl_proto.core.exceptions import WorkflowProcessingException
 
 logger = logging.getLogger(__name__)
 
@@ -313,10 +314,9 @@ class ExecutionHooksBasePlugin(BaseModel):
             try:
                 preprocess_command().execute(job_path, **kwargs)
             except Exception as e:
-                logger.exception(
-                    f"Command '{preprocess_command.__name__}' failed during the pre-process stage: {e}"
-                )
-                raise
+                msg = f"Command '{preprocess_command.__name__}' failed during the pre-process stage: {e}"
+                logger.exception(msg)
+                raise WorkflowProcessingException(msg) from e
 
         return command
 
@@ -337,10 +337,9 @@ class ExecutionHooksBasePlugin(BaseModel):
             try:
                 postprocess_command().execute(job_path, **kwargs)
             except Exception as e:
-                logger.exception(
-                    f"Command '{postprocess_command.__name__}' failed during the post-process stage: {e}"
-                )
-                raise
+                msg = f"Command '{postprocess_command.__name__}' failed during the post-process stage: {e}"
+                logger.exception(msg)
+                raise WorkflowProcessingException(msg) from e
 
         return True
 
