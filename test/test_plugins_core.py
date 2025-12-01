@@ -9,6 +9,8 @@ from pathlib import Path
 
 import pytest
 
+from dirac_cwl_proto.commands import PostProcessCommand, PreProcessCommand
+from dirac_cwl_proto.core.exceptions import WorkflowProcessingException
 from dirac_cwl_proto.execution_hooks.plugins.core import (
     QueryBasedPlugin,
 )
@@ -223,6 +225,24 @@ class TestPluginCommands:
 
         return plugin_class
 
+    @pytest.fixture
+    def command_factory_fixture(self, mocker, monkeypatch):
+        def _inner(classes, raises):
+            class Command(*classes):
+                def execute(job_path, **kwargs):
+                    return
+
+            execute_mock = mocker.MagicMock()
+
+            if raises:
+                execute_mock.side_effect = WorkflowProcessingException()
+
+            monkeypatch.setattr(Command, "execute", execute_mock)
+
+            return Command, execute_mock
+
+        return _inner
+
     def test_from_registry(self, plugin_class_fixture):
         """Test the initialization from the registry."""
         from dirac_cwl_proto.execution_hooks.registry import get_registry
@@ -248,57 +268,58 @@ class TestPluginCommands:
         assert len(plugin_from_hint.preprocess_commands) == 1
         assert len(plugin_from_hint.postprocess_commands) == 1
 
-    def test_execute(self, plugin_class_fixture, mocker, monkeypatch):
-        """Test the preprocessing and postprocessing commands execution."""
-        from dirac_cwl_proto.commands import PostProcessCommand, PreProcessCommand
-
-        # Create real classes so Pydantic does not complain
-        class PreCommand(PreProcessCommand):
-            def execute(job_path, **kwargs):
-                return
-
-        class PostCommand(PostProcessCommand):
-            def execute(job_path, **kwargs):
-                return
-
-        class DualCommand(PreProcessCommand, PostProcessCommand):
-            def execute(job_path, **kwargs):
-                return
-
-        # Patch the 'execute' functions to be able to spy them
-        pre_execute = mocker.MagicMock()
-        post_execute = mocker.MagicMock()
-        dual_execute = mocker.MagicMock()
-
-        monkeypatch.setattr(PreCommand, "execute", pre_execute)
-        monkeypatch.setattr(PostCommand, "execute", post_execute)
-        monkeypatch.setattr(DualCommand, "execute", dual_execute)
-
+    @pytest.mark.parametrize(
+        "classes, raises, exception",
+        [
+            # Pre-process a pre-process commamd -> Everything works as expected
+            ([PreProcessCommand], False, None),
+            # Pre-process a post-process commamd -> Expected a TypeError
+            ([PostProcessCommand], False, TypeError),
+            # Pre-process a pre-process + post-process commamd -> Everything works as expected
+            ([PreProcessCommand, PostProcessCommand], False, None),
+            # Pre-process a faulty pre-process command -> WorkflowProcessingException raised
+            ([PreProcessCommand], True, WorkflowProcessingException),
+        ],
+    )
+    def test_pre_process(
+        self, plugin_class_fixture, command_factory_fixture, classes, raises, exception
+    ):
         plugin = plugin_class_fixture()
 
-        # Set the commands in the wrong places
-        plugin.preprocess_commands = [PostCommand]
-        plugin.postprocess_commands = [PreCommand]
+        command_class, execute_mock = command_factory_fixture(classes, raises)
+        plugin.preprocess_commands = [command_class]
 
-        # It should complain
-        with pytest.raises(TypeError):
+        if exception:
+            with pytest.raises(exception):
+                plugin.pre_process("/fake/dir", ["fake", "command"])
+        else:
             plugin.pre_process("/fake/dir", ["fake", "command"])
+            execute_mock.assert_called_once()
 
-        with pytest.raises(TypeError):
+    @pytest.mark.parametrize(
+        "classes, raises, exception",
+        [
+            # Post-process a pre-process commamd -> Expected a TypeError
+            ([PreProcessCommand], False, TypeError),
+            # Post-process a post-process commamd -> Everything works as expected
+            ([PostProcessCommand], False, None),
+            # Post-process a pre-process + post-process commamd -> Everything works as expected
+            ([PreProcessCommand, PostProcessCommand], False, None),
+            # Post-process a faulty post-process command -> WorkflowProcessingException raised
+            ([PostProcessCommand], True, WorkflowProcessingException),
+        ],
+    )
+    def test_post_process(
+        self, plugin_class_fixture, command_factory_fixture, classes, raises, exception
+    ):
+        plugin = plugin_class_fixture()
+
+        command_class, execute_mock = command_factory_fixture(classes, raises)
+        plugin.postprocess_commands = [command_class]
+
+        if exception:
+            with pytest.raises(exception):
+                plugin.post_process("/fake/dir")
+        else:
             plugin.post_process("/fake/dir")
-
-        # Set them correctly
-        plugin.preprocess_commands = [PreCommand, DualCommand]
-        plugin.postprocess_commands = [PostCommand, DualCommand]
-
-        # Preprocess
-        plugin.pre_process("/fake/dir", ["fake", "command"])
-        pre_execute.assert_called_once()
-        dual_execute.assert_called_once()
-
-        dual_execute.reset_mock()
-
-        # Postprocess
-        plugin.post_process("/fake/dir")
-        post_execute.assert_called_once()
-        dual_execute.assert_called_once()
+            execute_mock.assert_called_once()
