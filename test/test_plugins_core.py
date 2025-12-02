@@ -7,6 +7,9 @@ QueryBased plugin implementation.
 
 from pathlib import Path
 
+import pytest
+
+from dirac_cwl_proto.core.exceptions import WorkflowProcessingException
 from dirac_cwl_proto.execution_hooks.plugins.core import (
     QueryBasedPlugin,
 )
@@ -192,3 +195,181 @@ class TestPluginIntegration:
             schema = plugin.model_json_schema()
             assert isinstance(schema, dict)
             assert "properties" in schema
+
+
+class TestPluginCommands:
+    """Test plugin pre-processing and post-processing commands."""
+
+    @pytest.fixture
+    def job_type_testing(self):
+        """Registers a plugin with 1 preprocess and 1 postprocess command with the name of "JobTypeTestingPlugin"
+        and returns its class.
+        """
+
+        from dirac_cwl_proto.commands.download_config import DownloadConfig
+        from dirac_cwl_proto.commands.group_outputs import GroupOutputs
+        from dirac_cwl_proto.execution_hooks.core import ExecutionHooksBasePlugin
+        from dirac_cwl_proto.execution_hooks.registry import get_registry
+
+        registry = get_registry()
+
+        # Initialization
+        class JobTypeTestingPlugin(ExecutionHooksBasePlugin):
+            def __init__(self, **data):
+                super().__init__(**data)
+
+                self.preprocess_commands = [DownloadConfig]
+                self.postprocess_commands = [GroupOutputs]
+
+        # Add plugin to registry
+        registry.register_plugin(JobTypeTestingPlugin)
+
+        yield JobTypeTestingPlugin
+
+        # Tear down
+        registry._plugins.pop(JobTypeTestingPlugin.__name__)
+
+    def test_from_registry(self, job_type_testing):
+        """Test the initialization from the registry.
+
+        The plugin "JobTypeTestingPlugin" was registered with 1 command on each step at the fixture "job_type_testing".
+        The fixture "job_type_testing" is the class "JobTypeTestingPlugin".
+        """
+
+        from dirac_cwl_proto.execution_hooks.registry import get_registry
+
+        # Get the job from the registry
+        registry = get_registry()
+        plugin_class = registry.get_plugin("JobTypeTestingPlugin")
+
+        # It should have a found it and be the same class
+        assert plugin_class is not None
+        assert plugin_class == job_type_testing  # Comparing types
+
+        plugin_instance = plugin_class()
+
+        assert len(plugin_instance.preprocess_commands) == 1
+        assert len(plugin_instance.postprocess_commands) == 1
+
+    def test_from_hints(self, job_type_testing):
+        """Test the initialization from a hint.
+
+        The plugin "JobTypeTestingPlugin" was registered with 1 command on each step at the fixture "job_type_testing".
+        The fixture "job_type_testing" is the class "JobTypeTestingPlugin".
+        """
+
+        from dirac_cwl_proto.execution_hooks.core import ExecutionHooksHint
+
+        # Get the plugin from the hints
+        hint = ExecutionHooksHint(hook_plugin="JobTypeTestingPlugin")
+        plugin_from_hint = hint.to_runtime()  # Returns an instance of the plugin
+
+        # They should be the same class and not None
+        assert plugin_from_hint is not None
+        assert isinstance(plugin_from_hint, job_type_testing)
+
+        plugin_instance = job_type_testing()
+
+        # The instance from the hints and registry should have the same commands
+        assert len(plugin_from_hint.preprocess_commands) == 1
+        assert (
+            plugin_from_hint.preprocess_commands[0]
+            == plugin_instance.preprocess_commands[0]
+        )
+
+        assert len(plugin_from_hint.postprocess_commands) == 1
+        assert (
+            plugin_from_hint.postprocess_commands[0]
+            == plugin_instance.postprocess_commands[0]
+        )
+
+    def test_execute(self, job_type_testing, mocker, monkeypatch):
+        """Test the execution of the preprocess and postprocess commands.
+
+        The fixture "job_type_testing" is the class "JobTypeTestingPlugin".
+        It uses the plugin class from the fixture, even though the commands will be overwritten.
+        """
+
+        from dirac_cwl_proto.commands import PostProcessCommand, PreProcessCommand
+
+        # Initialization
+        class PreProcessCmd(PreProcessCommand):
+            def execute(job_path, **kwargs):
+                return
+
+        class PostProcessCmd(PostProcessCommand):
+            def execute(job_path, **kwargs):
+                return
+
+        class DualProcessCmd(PreProcessCommand, PostProcessCommand):
+            def execute(job_path, **kwargs):
+                return
+
+        plugin = job_type_testing()
+
+        # Mock the "execute" commands to be able to spy them
+        execute_preprocess_mock = mocker.MagicMock()
+        execute_postprocess_mock = mocker.MagicMock()
+        execute_dualprocess_mock = mocker.MagicMock()
+
+        monkeypatch.setattr(PreProcessCmd, "execute", execute_preprocess_mock)
+        monkeypatch.setattr(PostProcessCmd, "execute", execute_postprocess_mock)
+        monkeypatch.setattr(DualProcessCmd, "execute", execute_dualprocess_mock)
+
+        # Test #1: The commands were set in the correct processing step
+        #   Expected Result: Everything works as expected
+        plugin.preprocess_commands = [PreProcessCmd, DualProcessCmd]
+        plugin.postprocess_commands = [PostProcessCmd, DualProcessCmd]
+
+        plugin.pre_process("/fake/dir", ["fake", "command"])
+        execute_preprocess_mock.assert_called_once()
+        execute_dualprocess_mock.assert_called_once()
+
+        execute_dualprocess_mock.reset_mock()  # Reset the mock to be able to call "assert_called_once"
+
+        plugin.post_process("/fake/dir")
+        execute_postprocess_mock.assert_called_once()
+        execute_dualprocess_mock.assert_called_once()
+
+        # Test #2: The commands were set in the wrong processing step.
+        #   Expected Result: The call raises "TypeError"
+        plugin.preprocess_commands = [PostProcessCmd, DualProcessCmd]
+        plugin.postprocess_commands = [PreProcessCmd, DualProcessCmd]
+
+        with pytest.raises(TypeError):
+            plugin.pre_process("/fake/dir", ["fake", "command"])
+
+        with pytest.raises(TypeError):
+            plugin.post_process("/fake/dir")
+
+    def test_command_exception(self, job_type_testing, mocker, monkeypatch):
+        """Test exception report when a command fails.
+
+        The fixture "job_type_testing" is the class "JobTypeTestingPlugin".
+        It uses the plugin class from the fixture, even though the commands will be overwritten.
+        """
+
+        from dirac_cwl_proto.commands import PostProcessCommand, PreProcessCommand
+
+        # Initialization
+        class Command(PreProcessCommand, PostProcessCommand):
+            def execute(job_path, **kwargs):
+                return
+
+        plugin = job_type_testing()
+
+        # Set the execute function to raise an exception
+        execute_mock = mocker.MagicMock()
+        execute_mock.side_effect = NotImplementedError()
+
+        monkeypatch.setattr(Command, "execute", execute_mock)
+
+        plugin.preprocess_commands = [Command]
+        plugin.postprocess_commands = [Command]
+
+        # The processing steps should raise a "WorkflowProcessingException"
+        with pytest.raises(WorkflowProcessingException):
+            plugin.pre_process("/fake/dir", ["fake", "command"])
+
+        with pytest.raises(WorkflowProcessingException):
+            plugin.post_process("/fake/dir")
