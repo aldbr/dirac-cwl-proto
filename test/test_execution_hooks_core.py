@@ -5,6 +5,7 @@ This module tests the foundational classes and interfaces of the execution hooks
 plugin system, including ExecutionHooksBasePlugin, ExecutionHooksHint, and core
 abstract interfaces.
 """
+
 from pathlib import Path
 from typing import Any, List, Optional, Union
 

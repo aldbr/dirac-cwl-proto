@@ -192,7 +192,6 @@ class JobWrapper:
 
             # Post-process the job
             logger.info("Post-processing Task...")
-
             if self._post_process(
                 result.returncode,
                 result.stdout,
