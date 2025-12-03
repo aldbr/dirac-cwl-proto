@@ -38,11 +38,8 @@ def upload_files_as_sandbox(
     """
     if len(fileList) == 0:
         return None
-    Path("sandboxstore").mkdir(exist_ok=True)
     sandbox_id = random.randint(1000, 9999)
     sandbox_path = Path("sandboxstore") / f"sandbox_{str(sandbox_id)}.tar.gz"
-    if not sandbox_path:
-        raise RuntimeError(f"No output sanbox path defined for {fileList}")
     sandbox_path.parent.mkdir(exist_ok=True, parents=True)
     with tarfile.open(sandbox_path, "w:gz") as tar:
         for file in fileList:

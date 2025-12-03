@@ -38,7 +38,7 @@ class QueryBasedPlugin(ExecutionHooksBasePlugin):
 
     # LFN parameters
     query_root: str = Field(
-        default="grid/data", description="Base path for LFN structure"
+        default="/grid/data", description="Base path for LFN structure"
     )
     site: Optional[str] = Field(
         default=None, description="Site identifier for LFN path"

@@ -41,7 +41,13 @@ class MockDataManager(DataManager):
         fail = {}
         for lfn in lfns:
             res = sourceSE.getFile(
-                str(Path(self.base_storage_path) / str(lfn).removeprefix("lfn:")),
+                str(
+                    Path(self.base_storage_path)
+                    / str(lfn)
+                    .removeprefix("lfn:")
+                    .removeprefix("LFN:")
+                    .removeprefix("/")
+                ),
                 destinationDir,
             )
             if not res["OK"]:
@@ -86,7 +92,7 @@ class MockDataManager(DataManager):
         if not se:
             return S_ERROR("No Storage Element defined")
         if not path:
-            path = str(lfn).removeprefix("lfn:")
+            path = str(lfn).removeprefix("lfn:").removeprefix("LFN:").removeprefix("/")
         dest = str(Path(self.base_storage_path) / Path(path) / Path(fileName).name)
         res = returnSingleResult(se.putFile({dest: fileName}))
         if not res["OK"]:
