@@ -29,6 +29,14 @@
           },
           "title": "Output Sandbox",
           "type": "array"
+        },
+        "output_se": {
+          "description": "List of Storage Elements that can be used to store the outputs",
+          "items": {
+            "type": "string"
+          },
+          "title": "Output Se",
+          "type": "array"
         }
       },
       "title": "DIRAC Data Manager",
@@ -51,6 +59,14 @@
             "type": "string"
           },
           "title": "Output Sandbox",
+          "type": "array"
+        },
+        "output_se": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Output Se",
           "type": "array"
         }
       },
@@ -234,6 +250,14 @@
           "title": "Output Sandbox",
           "type": "array"
         },
+        "output_se": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Output Se",
+          "type": "array"
+        },
         "query_root": {
           "default": "/grid/data",
           "description": "Base path for LFN structure",
@@ -344,6 +368,14 @@
             "type": "string"
           },
           "title": "Output Sandbox",
+          "type": "array"
+        },
+        "output_se": {
+          "description": "List of Storage Elements that can be used to store the outputs",
+          "items": {
+            "type": "string"
+          },
+          "title": "Output Se",
           "type": "array"
         }
       },

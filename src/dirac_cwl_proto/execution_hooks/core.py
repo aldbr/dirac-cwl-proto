@@ -80,7 +80,7 @@ class ExecutionHooksBasePlugin(BaseModel):
     output_paths: Dict[str, Any] = {}
     output_sandbox: list[str] = []
 
-    storage_element_name: str = "testSE"
+    output_se: list[str] = []
     _datamanager: DataManager = PrivateAttr(default_factory=DataManager)
 
     def __init__(self, **kwargs):
@@ -361,13 +361,17 @@ class ExecutionHooksBasePlugin(BaseModel):
                 if isinstance(src_path, str) or isinstance(src_path, Path):
                     src_path = [src_path]
                 for src in src_path:
-                    returnValueOrRaise(
-                        returnSingleResult(
-                            self._datamanager.putAndRegister(
-                                str(lfn), src, self.storage_element_name
-                            )
+                    res = None
+                    for se in self.output_se:
+                        res = returnSingleResult(
+                            self._datamanager.putAndRegister(str(lfn), src, se)
                         )
-                    )
+                        if res["OK"]:
+                            break
+                    if res and not res["OK"]:
+                        raise RuntimeError(
+                            f"Could not save file {src} with LFN {str(lfn)} : {res['Message']}"
+                        )
 
     @classmethod
     def get_schema_info(cls) -> Dict[str, Any]:
@@ -460,6 +464,11 @@ class ExecutionHooksHint(BaseModel, Hint):
         description="List of the outputs stored in the output sandbox",
     )
 
+    output_se: list[str] = Field(
+        default_factory=lambda: ["SE-USER"],
+        description="List of Storage Elements that can be used to store the outputs",
+    )
+
     def model_copy(
         self,
         update: Optional[Mapping[str, Any]] = None,
@@ -526,6 +535,7 @@ class ExecutionHooksHint(BaseModel, Hint):
                 hook_plugin=self.hook_plugin,
                 output_paths=self.output_paths,
                 output_sandbox=self.output_sandbox,
+                output_se=self.output_se,
                 **self.configuration,
             )
             return get_registry().instantiate_plugin(descriptor)

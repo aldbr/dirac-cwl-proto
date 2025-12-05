@@ -112,6 +112,7 @@ class TestExecutionHookExtended:
         model = ExecutionHooksBasePlugin(
             output_paths={"test_lfn": "lfn:test"},
             output_sandbox=["test_sb"],
+            output_se=["SE-USER"],
         )
 
         put_mock = mocker.patch.object(
@@ -158,7 +159,7 @@ class TestExecutionHookExtended:
             "value": 42,
             "output_paths": {},
             "output_sandbox": [],
-            "storage_element_name": "testSE",
+            "output_se": [],
         }
 
         # Test JSON schema generation

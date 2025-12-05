@@ -12,7 +12,6 @@ from typing import Any, ClassVar, List, Optional, Sequence, Union
 
 from DIRACCommon.Core.Utilities.ReturnValues import (  # type: ignore[import-untyped]
     returnSingleResult,
-    returnValueOrRaise,
 )
 from pydantic import Field
 
@@ -144,10 +143,14 @@ class QueryBasedPlugin(ExecutionHooksBasePlugin):
                 if isinstance(src_path, str) or isinstance(src_path, Path):
                     src_path = [src_path]
                 for src in src_path:
-                    returnValueOrRaise(
-                        returnSingleResult(
-                            self._datamanager.putAndRegister(
-                                str(lfn), src, self.storage_element_name
-                            )
+                    res = None
+                    for se in self.output_se:
+                        res = returnSingleResult(
+                            self._datamanager.putAndRegister(str(lfn), src, se)
                         )
-                    )
+                        if res["OK"]:
+                            break
+                    if res and not res["OK"]:
+                        raise RuntimeError(
+                            f"Could not save file {src} with LFN {str(lfn)} : {res['Message']}"
+                        )
