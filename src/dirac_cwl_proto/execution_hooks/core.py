@@ -560,6 +560,7 @@ class ExecutionHooksHint(BaseModel, Hint):
             hook_plugin=self.hook_plugin,
             output_paths=self.output_paths,
             output_sandbox=self.output_sandbox,
+            output_se=self.output_se,
             **params,
         )
         return get_registry().instantiate_plugin(descriptor)
