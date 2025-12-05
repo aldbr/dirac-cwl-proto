@@ -3,6 +3,7 @@ CLI interface to run a workflow as a job.
 """
 
 import logging
+import os
 import random
 import subprocess
 from pathlib import Path
@@ -34,11 +35,10 @@ from dirac_cwl_proto.submission_models import (
 app = AsyncTyper()
 console = Console()
 
+
 # -----------------------------------------------------------------------------
 # dirac-cli commands
 # -----------------------------------------------------------------------------
-
-
 @app.async_command("submit")
 async def submit_job_client(
     task_path: str = typer.Argument(..., help="Path to the CWL file"),
@@ -61,6 +61,11 @@ async def submit_job_client(
     submission_client: SubmissionClient = (
         PrototypeSubmissionClient() if local else DIRACSubmissionClient()
     )
+
+    if local:
+        os.environ["DIRAC_PROTO_LOCAL"] = "1"
+    else:
+        os.environ["DIRAC_PROTO_LOCAL"] = "0"
 
     # Validate the workflow
     console.print(
@@ -100,10 +105,13 @@ async def submit_job_client(
             # Upload parameter sandbox
             sandbox_id = await submission_client.upload_sandbox(isb_file_paths)
 
+            lfns = get_lfns(parameter)
+
             parameters.append(
                 JobInputModel(
                     sandbox=[sandbox_id] if sandbox_id else None,
                     cwl=parameter,
+                    lfns_input=lfns,
                 )
             )
             console.print(
@@ -186,13 +194,45 @@ def prepare_input_sandbox(input_data: dict[str, Any]) -> list[Path]:
     files_path = []
     for file in files:
         # TODO: path is not the only attribute to consider, but so far it is the only one used
-        if not file.path:
+        if not file.location and not file.path:
             raise NotImplementedError("File path is not defined.")
 
-        file_path = Path(file.path.replace("file://", ""))
-        files_path.append(file_path)
+        if file.path:
+            file_path = Path(file.path.replace("file://", ""))
+            files_path.append(file_path)
 
     return files_path
+
+
+def get_lfns(input_data: dict[str, Any]) -> dict[str, Path | list[Path]]:
+    """
+    Get the list of LFNs in the inputs from the parameters
+
+    :param input_data: The parameters of the job
+    :return: The list of LFN paths
+    """
+    # Get the files from the input data
+    files: dict[str, Path | list[Path]] = {}
+    for input_name, input_value in input_data.items():
+        if isinstance(input_value, list):
+            val = []
+            for item in input_value:
+                if isinstance(item, File):
+                    if not item.location and not item.path:
+                        raise NotImplementedError("File location is not defined.")
+
+                    if not item.location:
+                        continue
+                    # Skip files from the File Catalog
+                    if item.location.startswith("lfn:"):
+                        val.append(Path(item.location))
+            files[input_name] = val
+        elif isinstance(input_value, File):
+            if not input_value.location:
+                raise NotImplementedError("File location is not defined.")
+            if input_value.location.startswith("lfn:"):
+                files[input_name] = Path(input_value.location)
+    return files
 
 
 # -----------------------------------------------------------------------------

@@ -3,6 +3,7 @@ CLI interface to run a workflow as a production.
 """
 
 import logging
+import os
 from concurrent.futures import ThreadPoolExecutor
 from typing import List, Optional
 
@@ -52,6 +53,12 @@ def submit_production_client(
     - Validate the workflow
     - Start the production
     """
+
+    if local:
+        os.environ["DIRAC_PROTO_LOCAL"] = "1"
+    else:
+        os.environ["DIRAC_PROTO_LOCAL"] = "0"
+
     # Validate the workflow
     console.print(
         "[blue]:information_source:[/blue] [bold]CLI:[/bold] Validating the production..."

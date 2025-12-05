@@ -5,9 +5,11 @@ This module tests the built-in execution hooks plugins including the
 QueryBased plugin implementation.
 """
 
+import os
 from pathlib import Path
 
 import pytest
+from DIRACCommon.Core.Utilities.ReturnValues import SErrorException
 
 from dirac_cwl_proto.core.exceptions import WorkflowProcessingException
 from dirac_cwl_proto.execution_hooks.plugins.core import (
@@ -117,6 +119,7 @@ class TestQueryBasedPlugin:
 
     def test_store_output(self):
         """Test store_output method."""
+        os.environ["DIRAC_PROTO_LOCAL"] = "1"
         plugin = QueryBasedPlugin()
 
         # Since store_output expects a string path not a dict, let's test the actual signature
@@ -125,7 +128,7 @@ class TestQueryBasedPlugin:
         # This should work since QueryBasedPlugin provides an output path
         try:
             plugin.store_output("test_output", "/tmp/test_file.txt")
-        except (FileNotFoundError, OSError):
+        except SErrorException:
             # Expected since the file doesn't exist
             pass
 
@@ -134,7 +137,7 @@ class TestQueryBasedPlugin:
         plugin = QueryBasedPlugin(campaign="Test", data_type="SIM")
 
         command = ["python", "script.py"]
-        result = plugin.pre_process(Path("/tmp"), command)
+        result = plugin.pre_process({}, None, Path("/tmp"), command)
 
         # Should return command unchanged
         assert result == command
@@ -321,7 +324,7 @@ class TestPluginCommands:
         plugin.preprocess_commands = [PreProcessCmd, DualProcessCmd]
         plugin.postprocess_commands = [PostProcessCmd, DualProcessCmd]
 
-        plugin.pre_process("/fake/dir", ["fake", "command"])
+        plugin.pre_process("/fake/dir", None, "", ["fake", "command"])
         execute_preprocess_mock.assert_called_once()
         execute_dualprocess_mock.assert_called_once()
 
@@ -337,7 +340,7 @@ class TestPluginCommands:
         plugin.postprocess_commands = [PreProcessCmd, DualProcessCmd]
 
         with pytest.raises(TypeError):
-            plugin.pre_process("/fake/dir", ["fake", "command"])
+            plugin.pre_process("/fake/dir", None, "", ["fake", "command"])
 
         with pytest.raises(TypeError):
             plugin.post_process("/fake/dir")
@@ -369,7 +372,7 @@ class TestPluginCommands:
 
         # The processing steps should raise a "WorkflowProcessingException"
         with pytest.raises(WorkflowProcessingException):
-            plugin.pre_process("/fake/dir", ["fake", "command"])
+            plugin.pre_process("/fake/dir", None, "", ["fake", "command"])
 
         with pytest.raises(WorkflowProcessingException):
             plugin.post_process("/fake/dir")

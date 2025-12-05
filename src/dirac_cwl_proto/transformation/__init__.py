@@ -4,6 +4,7 @@ CLI interface to run a workflow as a transformation.
 
 import glob
 import logging
+import os
 import time
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -19,6 +20,7 @@ from schema_salad.exceptions import ValidationException
 from dirac_cwl_proto.execution_hooks import (
     TransformationExecutionHooksHint,
 )
+from dirac_cwl_proto.execution_hooks.plugins.core import QueryBasedPlugin
 from dirac_cwl_proto.job import submit_job_router
 from dirac_cwl_proto.submission_models import (
     JobInputModel,
@@ -50,6 +52,10 @@ def submit_transformation_client(
     - Validate the workflow
     - Start the transformation
     """
+    if local:
+        os.environ["DIRAC_PROTO_LOCAL"] = "1"
+    else:
+        os.environ["DIRAC_PROTO_LOCAL"] = "0"
     # Validate the workflow
     console.print(
         "[blue]:information_source:[/blue] [bold]CLI:[/bold] Validating the transformation..."
@@ -138,6 +144,7 @@ def submit_transformation_router(transformation: TransformationSubmissionModel) 
         for input_name, group_size in transformation_execution_hooks.group_size.items():
             # Get input query
             logger.info(f"\t- Getting input query for {input_name}...")
+            assert isinstance(transformation_metadata, QueryBasedPlugin)
             input_query = transformation_metadata.get_input_query(input_name)
             if not input_query:
                 raise RuntimeError("Input query not found.")
@@ -188,11 +195,11 @@ def _get_inputs(input_query: Path | list[Path], group_size: int) -> List[List[st
 
     # Retrieve all input paths matching the query
     if isinstance(input_query, Path):
-        input_paths = glob.glob(str(input_query / "*"))
+        input_paths = glob.glob(str(input_query / "*"), root_dir="filecatalog")
     else:
         input_paths = []
         for query in input_query:
-            input_paths.extend(glob.glob(str(query / "*")))
+            input_paths.extend(glob.glob(str(query / "*"), root_dir="filecatalog"))
     len_input_paths = len(input_paths)
 
     # Ensure there are enough inputs to form at least one group
@@ -224,11 +231,16 @@ def _generate_job_model_parameter(
     ]
     for group in grouped_input_data:
         cwl_inputs = {}
+        lfns: dict[str, Path | list[Path]] = {}
         for input_name, input_data in group.items():
             cwl_inputs[input_name] = [
-                File(path=str(Path(path).resolve())) for path in input_data
+                File(location="lfn:" + str(Path(path).resolve())) for path in input_data
             ]
 
-        job_model_params.append(JobInputModel(sandbox=None, cwl=cwl_inputs))
+            lfns[input_name] = [Path("lfn:" + path) for path in input_data]
+
+        job_model_params.append(
+            JobInputModel(sandbox=None, cwl=cwl_inputs, lfns_input=lfns)
+        )
 
     return job_model_params

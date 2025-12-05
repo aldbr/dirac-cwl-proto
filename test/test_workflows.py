@@ -87,7 +87,13 @@ def pi_test_files():
             ],
         ),
         # --- Test metadata example ---
+        # A string input is passed
         ("test/workflows/test_meta/test_meta.cwl", []),
+        # --- Test outputs hints example ---
+        # Output to filecatalog
+        ("test/workflows/test_outputs/test_outputs.cwl", []),
+        # Output to sandbox
+        ("test/workflows/test_outputs/test_outputs_sandbox.cwl", []),
         # --- Crypto example ---
         # Complete
         (
@@ -234,8 +240,8 @@ def test_run_job_parallely():
 
     # This command forces the process 'dirac-cwl' to execute ONLY in
     # one core of the machine, independently of how many there are
-    # physically available.
-    # This simulates a sequential execution of the worklflow.
+    # phisically available.
+    # This simulates a sequential execution of the workflow.
     command = [
         "taskset",
         "-c",
@@ -263,12 +269,54 @@ def test_run_job_parallely():
     end = time.time()
     parallel_time = end - start
 
-    # Parallel time should be aproximately half the time.
+    # Parallel time should be approximately half the time.
     assert abs(1 - sequential_time / (2 * parallel_time)) < error_margin_percentage, (
         "Difference between parallel and sequential time is too large",
         f"Sequential: {sequential_time} # Parallel: {parallel_time}",
         f"Sequential time should be twice the parallel time with an error of {int(error_margin_percentage * 100)}%",
     )
+
+
+@pytest.mark.parametrize(
+    "cwl_file, inputs, destination_source_input_data",
+    [
+        # --- Pi example ---
+        (
+            "test/workflows/pi/pigather.cwl",
+            ["test/workflows/pi/type_dependencies/job/inputs-pi_gather_catalog.yaml"],
+            {
+                "filecatalog/pi/100": [
+                    "test/workflows/pi/type_dependencies/job/result_1.sim",
+                    "test/workflows/pi/type_dependencies/job/result_2.sim",
+                    "test/workflows/pi/type_dependencies/job/result_3.sim",
+                    "test/workflows/pi/type_dependencies/job/result_4.sim",
+                    "test/workflows/pi/type_dependencies/job/result_5.sim",
+                ]
+            },
+        ),
+    ],
+)
+def test_run_job_with_input_data(
+    cli_runner, cleanup, pi_test_files, cwl_file, inputs, destination_source_input_data
+):
+    for destination, inputs_data in destination_source_input_data.items():
+        # Copy the input data to the destination
+        destination = Path(destination)
+        destination.mkdir(parents=True, exist_ok=True)
+        for input in inputs_data:
+            shutil.copy(input, destination)
+
+    # CWL file is the first argument
+    command = ["job", "submit", cwl_file]
+
+    # Add the input file(s)
+    for input in inputs:
+        command.extend(["--parameter-path", input])
+
+    result = cli_runner.invoke(app, command)
+    # Remove ANSI color codes for assertion
+    clean_output = strip_ansi_codes(result.stdout)
+    assert "CLI: Job(s) done" in clean_output, f"Failed to run the job: {result.stdout}"
 
 
 # -----------------------------------------------------------------------------
