@@ -1,9 +1,0 @@
-$namespaces:
-  dirac: "../test_meta/schemas/dirac-metadata.json#"
-cwltool:overrides:
-  test_outputs.cwl#:
-    hints:
-      dirac:execution-hooks:
-        hook_plugin: "QueryBasedPlugin"
-        output_paths: {}
-        output_sandbox: ["output1"]

@@ -23,5 +23,4 @@ $schemas:
 hints:
   - class: dirac:ExecutionHooks
     hook_plugin: "QueryBasedPlugin"
-    output_paths:
-      output1: "lfn:/test/output"
+    output_sandbox: ["output1"]
