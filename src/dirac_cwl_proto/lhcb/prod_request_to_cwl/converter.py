@@ -92,7 +92,7 @@ def fromProductionRequestYAMLToCWL(
         production_dict = productions_data[0]
 
     # Validate it's a simulation production
-    if production_dict.get("type") != "Simulation":
+    if production_dict.get("type") not in ["Simulation"]:
         raise ValueError(f"Only Simulation productions are currently supported, got {production_dict.get('type')}")
 
     # Handle event type selection
