@@ -12,9 +12,6 @@ from diracx.api.jobs import create_sandbox
 from diracx.client.aio import AsyncDiracClient
 from rich.console import Console
 
-from dirac_cwl_proto.data_management_mocks.sandbox import (
-    upload_files_as_sandbox,
-)
 from dirac_cwl_proto.execution_hooks import SchedulingHint
 from dirac_cwl_proto.submission_models import JobModel, JobSubmissionModel
 
@@ -56,12 +53,21 @@ class PrototypeSubmissionClient(SubmissionClient):
         :param parameter_path: Path to the parameter file (not used in local mode)
         :return: Sandbox ID or None
         """
+        from dirac_cwl_proto.data_management_mocks.sandbox import (
+            MockSandboxStoreClient,
+        )
+
         if not isb_file_paths:
             return None
 
         Path("sandboxstore").mkdir(exist_ok=True)
         # Tar the files and upload them to the file catalog
-        sandbox_path = upload_files_as_sandbox(fileList=isb_file_paths)
+        res = MockSandboxStoreClient().uploadFilesAsSandbox(fileList=isb_file_paths)
+
+        if not res["OK"]:
+            raise RuntimeError(f"Could not create sandbox : {res['Message']}")
+
+        sandbox_path = Path(res["Value"])
 
         sandbox_id = sandbox_path.name.replace(".tar.gz", "") if sandbox_path else None
         return sandbox_id

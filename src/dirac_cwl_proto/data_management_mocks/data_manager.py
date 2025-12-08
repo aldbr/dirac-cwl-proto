@@ -93,7 +93,7 @@ class MockDataManager(DataManager):
             return S_ERROR("No Storage Element defined")
         if not path:
             path = str(lfn).removeprefix("lfn:").removeprefix("LFN:").removeprefix("/")
-        dest = str(Path(self.base_storage_path) / Path(path) / Path(fileName).name)
+        dest = str(Path(self.base_storage_path) / Path(path))
         res = returnSingleResult(se.putFile({dest: fileName}))
         if not res["OK"]:
             return S_OK({"Successful": {}, "Failed": {lfn: res["Message"]}})

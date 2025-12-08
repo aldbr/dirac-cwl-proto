@@ -15,10 +15,6 @@ from DIRACCommon.Core.Utilities.ReturnValues import (  # type: ignore[import-unt
 )
 from pydantic import Field
 
-from dirac_cwl_proto.data_management_mocks.sandbox import (
-    upload_files_as_sandbox,
-)
-
 from ..core import (
     ExecutionHooksBasePlugin,
 )
@@ -132,7 +128,7 @@ class QueryBasedPlugin(ExecutionHooksBasePlugin):
         if self.output_sandbox and output_name in self.output_sandbox:
             if isinstance(src_path, Path) or isinstance(src_path, str):
                 src_path = [src_path]
-            upload_files_as_sandbox(src_path)
+            self._sandbox_store_client.uploadFilesAsSandbox(src_path)
         else:
             if self.output_paths and output_name in self.output_paths:
                 lfn = self.output_paths[output_name]

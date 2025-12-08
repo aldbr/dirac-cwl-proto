@@ -4,7 +4,6 @@ import logging
 import random
 import shutil
 import subprocess
-import tarfile
 from pathlib import Path
 from typing import cast
 
@@ -46,17 +45,20 @@ class JobWrapper:
         Download the files from the sandbox store
         """
         assert arguments.sandbox is not None
+        if not self.runtime_metadata:
+            raise RuntimeError("Could not download sandboxes")
         for sandbox in arguments.sandbox:
-            sandbox_path = Path("sandboxstore") / f"{sandbox}.tar.gz"
-            with tarfile.open(sandbox_path, "r:gz") as tar:
-                tar.extractall(job_path, filter="data")
+            self.runtime_metadata._sandbox_store_client.downloadSandbox(
+                sandbox, job_path
+            )
 
     def __download_input_data(self, arguments: JobInputModel, job_path: Path) -> None:
         """
         Download input data
         """
-        if self.runtime_metadata:
-            self.runtime_metadata.download_lfns(arguments, job_path)
+        if not self.runtime_metadata:
+            raise RuntimeError("Could not download input data")
+        self.runtime_metadata.download_lfns(arguments, job_path)
 
     def _pre_process(
         self,

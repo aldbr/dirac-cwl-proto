@@ -124,9 +124,13 @@ class TestExecutionHookExtended:
             },
         )
 
-        sb_upload_mock = mocker.patch(
-            "dirac_cwl_proto.execution_hooks.core.upload_files_as_sandbox",
-            return_value="test",
+        sb_upload_mock = mocker.patch.object(
+            model._sandbox_store_client,
+            "uploadFilesAsSandbox",
+            return_value={
+                "OK": True,
+                "Value": "test",
+            },
         )
 
         # Use data manager if output is in output_paths hint

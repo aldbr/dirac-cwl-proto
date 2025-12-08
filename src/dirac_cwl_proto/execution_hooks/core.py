@@ -35,6 +35,7 @@ from cwl_utils.parser.cwl_v1_2 import (
 from DIRAC.DataManagementSystem.Client.DataManager import (  # type: ignore[import-untyped]
     DataManager,
 )
+from DIRAC.WorkloadManagementSystem.Client.SandboxStoreClient import SandboxStoreClient  # type: ignore[import-untyped]
 from DIRACCommon.Core.Utilities.ReturnValues import (  # type: ignore[import-untyped]
     returnSingleResult,
     returnValueOrRaise,
@@ -45,9 +46,7 @@ from ruamel.yaml import YAML
 from dirac_cwl_proto.commands import PostProcessCommand, PreProcessCommand
 from dirac_cwl_proto.core.exceptions import WorkflowProcessingException
 from dirac_cwl_proto.data_management_mocks.data_manager import MockDataManager
-from dirac_cwl_proto.data_management_mocks.sandbox import (
-    upload_files_as_sandbox,
-)
+from dirac_cwl_proto.data_management_mocks.sandbox import MockSandboxStoreClient
 
 logger = logging.getLogger(__name__)
 
@@ -82,11 +81,15 @@ class ExecutionHooksBasePlugin(BaseModel):
 
     output_se: list[str] = []
     _datamanager: DataManager = PrivateAttr(default_factory=DataManager)
+    _sandbox_store_client: SandboxStoreClient = PrivateAttr(
+        default_factory=SandboxStoreClient
+    )
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         if os.getenv("DIRAC_PROTO_LOCAL") == "1":
             self._datamanager = MockDataManager()
+            self._sandbox_store_client = MockSandboxStoreClient()
 
     _preprocess_commands: List[type[PreProcessCommand]] = PrivateAttr(default=[])
     _postprocess_commands: List[type[PostProcessCommand]] = PrivateAttr(default=[])
@@ -353,7 +356,7 @@ class ExecutionHooksBasePlugin(BaseModel):
         if self.output_sandbox and output_name in self.output_sandbox:
             if isinstance(src_path, Path) or isinstance(src_path, str):
                 src_path = [src_path]
-            upload_files_as_sandbox(src_path)
+            self._sandbox_store_client.uploadFilesAsSandbox(src_path)
         else:
             lfn = self.output_paths.get(output_name, None)
 
