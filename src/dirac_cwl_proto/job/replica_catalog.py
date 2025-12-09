@@ -73,29 +73,11 @@ def validateGUID(value: str) -> str:
     return value
 
 
-def validateMD5(value: str) -> str:
-    """Validate MD5 checksum format.
-
-    Must be 32 hexadecimal characters.
-    """
-    value = value.lower()
-    if len(value) != 32:
-        raise ValueError(
-            f"MD5 checksum must be 32 characters long, got {len(value)}: {value}"
-        )
-    if not re.match(r"^[0-9a-f]{32}$", value):
-        raise ValueError(
-            f"MD5 checksum must contain only hexadecimal characters: {value}"
-        )
-    return value
-
-
 # Logical File Name such as LFN:/lhcb/MC/2024/HLT2.DST/00327923/0000/00327923_00000533_1.hlt2.dst
 LFN = Annotated[str, BeforeValidator(validateLFN)]
 PFN = Annotated[AnyUrl | FilePath, BeforeValidator(validatePFN)]
 StorageElementId = str
 
-MD5Checksum = Annotated[str, BeforeValidator(validateMD5)]
 Adler32Checksum = Annotated[str, BeforeValidator(validateAdler32)]
 GUIDChecksum = Annotated[str, BeforeValidator(validateGUID)]
 
@@ -114,9 +96,7 @@ class ReplicaCatalog(RootModel):
                 return v.strip()
 
         class Checksum(BaseModel):
-            crc32: str | None = None  # ???
             adler32: Adler32Checksum | None = None  # like 788c5caa
-            md5: MD5Checksum | None = None  # like d41d8cd98f00b204e9800998ecf8427e
             guid: GUIDChecksum | None = (
                 None  # Like 6032CB7C-32DC-EC11-9A66-D85ED3091D71
             )
