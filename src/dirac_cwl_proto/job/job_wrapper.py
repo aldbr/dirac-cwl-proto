@@ -35,7 +35,7 @@ class JobWrapper:
     """Job Wrapper for the execution hook."""
 
     def __init__(self) -> None:
-        self.runtime_metadata: ExecutionHooksBasePlugin | None = None
+        self.execution_hooks_plugin: ExecutionHooksBasePlugin | None = None
         self.job_path: Path = Path()
 
     def __download_input_sandbox(
@@ -45,10 +45,10 @@ class JobWrapper:
         Download the files from the sandbox store
         """
         assert arguments.sandbox is not None
-        if not self.runtime_metadata:
+        if not self.execution_hooks_plugin:
             raise RuntimeError("Could not download sandboxes")
         for sandbox in arguments.sandbox:
-            self.runtime_metadata._sandbox_store_client.downloadSandbox(
+            self.execution_hooks_plugin._sandbox_store_client.downloadSandbox(
                 sandbox, job_path
             )
 
@@ -56,9 +56,9 @@ class JobWrapper:
         """
         Download input data
         """
-        if not self.runtime_metadata:
+        if not self.execution_hooks_plugin:
             raise RuntimeError("Could not download input data")
-        self.runtime_metadata.download_lfns(arguments, job_path)
+        self.execution_hooks_plugin.download_lfns(arguments, job_path)
 
     def _pre_process(
         self,
@@ -88,8 +88,8 @@ class JobWrapper:
             self.__download_input_sandbox(arguments, self.job_path)
             logger.info("Files downloaded successfully!")
 
-        if self.runtime_metadata:
-            return self.runtime_metadata.pre_process(
+        if self.execution_hooks_plugin:
+            return self.execution_hooks_plugin.pre_process(
                 executable, arguments, self.job_path, command
             )
         else:  # done in execution hooks otherwise
@@ -122,8 +122,10 @@ class JobWrapper:
         logger.info(stdout)
         logger.info(stderr)
 
-        if self.runtime_metadata:
-            return self.runtime_metadata.post_process(self.job_path, stdout=stdout)
+        if self.execution_hooks_plugin:
+            return self.execution_hooks_plugin.post_process(
+                self.job_path, stdout=stdout
+            )
 
         return True
 
@@ -138,7 +140,7 @@ class JobWrapper:
         # Instantiate runtime metadata from the serializable descriptor and
         # the job context so implementations can access task inputs/overrides.
         job_execution_hooks = ExecutionHooksHint.from_cwl(job.task)
-        self.runtime_metadata = (
+        self.execution_hooks_plugin = (
             job_execution_hooks.to_runtime(job) if job_execution_hooks else None
         )
 
