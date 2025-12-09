@@ -364,10 +364,11 @@ class ExecutionHooksBasePlugin(BaseModel):
                 if isinstance(src_path, str) or isinstance(src_path, Path):
                     src_path = [src_path]
                 for src in src_path:
+                    file_lfn = Path(lfn) / Path(src).name
                     res = None
                     for se in self.output_se:
                         res = returnSingleResult(
-                            self._datamanager.putAndRegister(str(lfn), src, se)
+                            self._datamanager.putAndRegister(str(file_lfn), src, se)
                         )
                         if res["OK"]:
                             break
