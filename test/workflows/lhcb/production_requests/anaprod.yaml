@@ -1,0 +1,784 @@
+- wg: Charm
+  name: AnaProd#lc2pkpidcs#2015_MagDown_collision_LbToLcpkpi
+  type: AnalysisProduction
+  steps:
+  - name: AnaProd#v1r4500#2015_MagDown_collision_LbToLcpkpi
+    input: []
+    ready: true
+    output:
+    - type: LB_LCPKPI.ROOT
+      visible: false
+    options:
+      files:
+      - $ANALYSIS_PRODUCTIONS_DYNAMIC/lc2pkpidcs/2015_MagDown_collision_LbToLcpkpi_autoconf.py
+      - $ANALYSIS_PRODUCTIONS_BASE/lc2pkpidcs/Lb_Lcpkpi.py
+      format: WGProd
+    visible: true
+    obsolete: true
+    data_pkgs:
+    - name: AnalysisProductions
+      version: v1r4500
+    application:
+      name: DaVinci
+      version: v44r11p6
+    processing_pass: AnaProd-v1r4500-collision_LbToLcpkpi
+  - name: AnaProd#MergeV2#lc2pkpidcs#merge0
+    input:
+    - type: LB_LCPKPI.ROOT
+      visible: false
+      step_idx: 0
+    ready: true
+    output:
+    - type: LB_LCPKPI.ROOT
+      visible: true
+    options:
+      entrypoint: LbExec:skim_and_merge
+      extra_args: []
+      extra_options:
+        compression:
+          level: 6
+          algorithm: ZSTD
+          optimise_baskets: true
+    visible: false
+    obsolete: true
+    application:
+      name: lb-conda/default
+      version: '2025-07-31'
+    processing_pass: merged
+  author: null
+  inform: []
+  comment: ''
+  priority: 1b
+  input_dataset:
+    event_type: '90000000'
+    conditions_dict:
+      inTCKs: ALL
+      inProPass: Real Data/Reco15a/Stripping24r2
+      configName: LHCb
+      inFileType: CHARM.MDST
+      configVersion: Collision15
+      inProductionID: ALL
+      inDataQualityFlag: OK
+    launch_parameters:
+      end_run: null
+      start_run: null
+      run_numbers: null
+    conditions_description: Beam6500GeV-VeloClosed-MagDown
+  submission_info:
+    transforms:
+    - cpu: '1000000'
+      type: WGProduction
+      steps:
+      - 0
+      events: -1
+      priority: 2
+      multicore: true
+      output_se: CERN-BUFFER
+      group_size: 2
+      output_mode: Local
+      input_plugin: APProcessing
+      ancestor_depth: 0
+      output_file_mask: ''
+      input_data_policy: protocol
+      remove_inputs_flags: false
+    - cpu: '1000000'
+      type: APMerge
+      steps:
+      - 1
+      events: -1
+      priority: 2
+      multicore: true
+      output_se: CERN-ANAPROD
+      group_size: 10
+      output_mode: Local
+      input_plugin: APProcessingByFileTypeSize
+      ancestor_depth: 0
+      output_file_mask: ''
+      input_data_policy: protocol
+      remove_inputs_flags: true
+- wg: Charm
+  name: AnaProd#lc2pkpidcs#2015_MagUp_collision_LbToLcpkpi
+  type: AnalysisProduction
+  steps:
+  - name: AnaProd#v1r4500#2015_MagUp_collision_LbToLcpkpi
+    input: []
+    ready: true
+    output:
+    - type: LB_LCPKPI.ROOT
+      visible: false
+    options:
+      files:
+      - $ANALYSIS_PRODUCTIONS_DYNAMIC/lc2pkpidcs/2015_MagUp_collision_LbToLcpkpi_autoconf.py
+      - $ANALYSIS_PRODUCTIONS_BASE/lc2pkpidcs/Lb_Lcpkpi.py
+      format: WGProd
+    visible: true
+    obsolete: true
+    data_pkgs:
+    - name: AnalysisProductions
+      version: v1r4500
+    application:
+      name: DaVinci
+      version: v44r11p6
+    processing_pass: AnaProd-v1r4500-collision_LbToLcpkpi
+  - name: AnaProd#MergeV2#lc2pkpidcs#merge0
+    input:
+    - type: LB_LCPKPI.ROOT
+      visible: false
+      step_idx: 0
+    ready: true
+    output:
+    - type: LB_LCPKPI.ROOT
+      visible: true
+    options:
+      entrypoint: LbExec:skim_and_merge
+      extra_args: []
+      extra_options:
+        compression:
+          level: 6
+          algorithm: ZSTD
+          optimise_baskets: true
+    visible: false
+    obsolete: true
+    application:
+      name: lb-conda/default
+      version: '2025-07-31'
+    processing_pass: merged
+  author: null
+  inform: []
+  comment: ''
+  priority: 1b
+  input_dataset:
+    event_type: '90000000'
+    conditions_dict:
+      inTCKs: ALL
+      inProPass: Real Data/Reco15a/Stripping24r2
+      configName: LHCb
+      inFileType: CHARM.MDST
+      configVersion: Collision15
+      inProductionID: ALL
+      inDataQualityFlag: OK
+    launch_parameters:
+      end_run: null
+      start_run: null
+      run_numbers: null
+    conditions_description: Beam6500GeV-VeloClosed-MagUp
+  submission_info:
+    transforms:
+    - cpu: '1000000'
+      type: WGProduction
+      steps:
+      - 0
+      events: -1
+      priority: 2
+      multicore: true
+      output_se: CERN-BUFFER
+      group_size: 2
+      output_mode: Local
+      input_plugin: APProcessing
+      ancestor_depth: 0
+      output_file_mask: ''
+      input_data_policy: protocol
+      remove_inputs_flags: false
+    - cpu: '1000000'
+      type: APMerge
+      steps:
+      - 1
+      events: -1
+      priority: 2
+      multicore: true
+      output_se: CERN-ANAPROD
+      group_size: 10
+      output_mode: Local
+      input_plugin: APProcessingByFileTypeSize
+      ancestor_depth: 0
+      output_file_mask: ''
+      input_data_policy: protocol
+      remove_inputs_flags: true
+- wg: Charm
+  name: AnaProd#lc2pkpidcs#2016_MagDown_collision_LbToLcpkpi
+  type: AnalysisProduction
+  steps:
+  - name: AnaProd#v1r4500#2016_MagDown_collision_LbToLcpkpi
+    input: []
+    ready: true
+    output:
+    - type: LB_LCPKPI.ROOT
+      visible: false
+    options:
+      files:
+      - $ANALYSIS_PRODUCTIONS_DYNAMIC/lc2pkpidcs/2016_MagDown_collision_LbToLcpkpi_autoconf.py
+      - $ANALYSIS_PRODUCTIONS_BASE/lc2pkpidcs/Lb_Lcpkpi.py
+      format: WGProd
+    visible: true
+    obsolete: true
+    data_pkgs:
+    - name: AnalysisProductions
+      version: v1r4500
+    application:
+      name: DaVinci
+      version: v44r11p6
+    processing_pass: AnaProd-v1r4500-collision_LbToLcpkpi
+  - name: AnaProd#MergeV2#lc2pkpidcs#merge0
+    input:
+    - type: LB_LCPKPI.ROOT
+      visible: false
+      step_idx: 0
+    ready: true
+    output:
+    - type: LB_LCPKPI.ROOT
+      visible: true
+    options:
+      entrypoint: LbExec:skim_and_merge
+      extra_args: []
+      extra_options:
+        compression:
+          level: 6
+          algorithm: ZSTD
+          optimise_baskets: true
+    visible: false
+    obsolete: true
+    application:
+      name: lb-conda/default
+      version: '2025-07-31'
+    processing_pass: merged
+  author: null
+  inform: []
+  comment: ''
+  priority: 1b
+  input_dataset:
+    event_type: '90000000'
+    conditions_dict:
+      inTCKs: ALL
+      inProPass: Real Data/Reco16/Stripping28r2p1
+      configName: LHCb
+      inFileType: CHARM.MDST
+      configVersion: Collision16
+      inProductionID: ALL
+      inDataQualityFlag: OK
+    launch_parameters:
+      end_run: null
+      start_run: null
+      run_numbers: null
+    conditions_description: Beam6500GeV-VeloClosed-MagDown
+  submission_info:
+    transforms:
+    - cpu: '1000000'
+      type: WGProduction
+      steps:
+      - 0
+      events: -1
+      priority: 2
+      multicore: true
+      output_se: CERN-BUFFER
+      group_size: 2
+      output_mode: Local
+      input_plugin: APProcessing
+      ancestor_depth: 0
+      output_file_mask: ''
+      input_data_policy: protocol
+      remove_inputs_flags: false
+    - cpu: '1000000'
+      type: APMerge
+      steps:
+      - 1
+      events: -1
+      priority: 2
+      multicore: true
+      output_se: CERN-ANAPROD
+      group_size: 10
+      output_mode: Local
+      input_plugin: APProcessingByFileTypeSize
+      ancestor_depth: 0
+      output_file_mask: ''
+      input_data_policy: protocol
+      remove_inputs_flags: true
+- wg: Charm
+  name: AnaProd#lc2pkpidcs#2016_MagUp_collision_LbToLcpkpi
+  type: AnalysisProduction
+  steps:
+  - name: AnaProd#v1r4500#2016_MagUp_collision_LbToLcpkpi
+    input: []
+    ready: true
+    output:
+    - type: LB_LCPKPI.ROOT
+      visible: false
+    options:
+      files:
+      - $ANALYSIS_PRODUCTIONS_DYNAMIC/lc2pkpidcs/2016_MagUp_collision_LbToLcpkpi_autoconf.py
+      - $ANALYSIS_PRODUCTIONS_BASE/lc2pkpidcs/Lb_Lcpkpi.py
+      format: WGProd
+    visible: true
+    obsolete: true
+    data_pkgs:
+    - name: AnalysisProductions
+      version: v1r4500
+    application:
+      name: DaVinci
+      version: v44r11p6
+    processing_pass: AnaProd-v1r4500-collision_LbToLcpkpi
+  - name: AnaProd#MergeV2#lc2pkpidcs#merge0
+    input:
+    - type: LB_LCPKPI.ROOT
+      visible: false
+      step_idx: 0
+    ready: true
+    output:
+    - type: LB_LCPKPI.ROOT
+      visible: true
+    options:
+      entrypoint: LbExec:skim_and_merge
+      extra_args: []
+      extra_options:
+        compression:
+          level: 6
+          algorithm: ZSTD
+          optimise_baskets: true
+    visible: false
+    obsolete: true
+    application:
+      name: lb-conda/default
+      version: '2025-07-31'
+    processing_pass: merged
+  author: null
+  inform: []
+  comment: ''
+  priority: 1b
+  input_dataset:
+    event_type: '90000000'
+    conditions_dict:
+      inTCKs: ALL
+      inProPass: Real Data/Reco16/Stripping28r2p1
+      configName: LHCb
+      inFileType: CHARM.MDST
+      configVersion: Collision16
+      inProductionID: ALL
+      inDataQualityFlag: OK
+    launch_parameters:
+      end_run: null
+      start_run: null
+      run_numbers: null
+    conditions_description: Beam6500GeV-VeloClosed-MagUp
+  submission_info:
+    transforms:
+    - cpu: '1000000'
+      type: WGProduction
+      steps:
+      - 0
+      events: -1
+      priority: 2
+      multicore: true
+      output_se: CERN-BUFFER
+      group_size: 2
+      output_mode: Local
+      input_plugin: APProcessing
+      ancestor_depth: 0
+      output_file_mask: ''
+      input_data_policy: protocol
+      remove_inputs_flags: false
+    - cpu: '1000000'
+      type: APMerge
+      steps:
+      - 1
+      events: -1
+      priority: 2
+      multicore: true
+      output_se: CERN-ANAPROD
+      group_size: 10
+      output_mode: Local
+      input_plugin: APProcessingByFileTypeSize
+      ancestor_depth: 0
+      output_file_mask: ''
+      input_data_policy: protocol
+      remove_inputs_flags: true
+- wg: Charm
+  name: AnaProd#lc2pkpidcs#2017_MagDown_collision_LbToLcpkpi
+  type: AnalysisProduction
+  steps:
+  - name: AnaProd#v1r4500#2017_MagDown_collision_LbToLcpkpi
+    input: []
+    ready: true
+    output:
+    - type: LB_LCPKPI.ROOT
+      visible: false
+    options:
+      files:
+      - $ANALYSIS_PRODUCTIONS_DYNAMIC/lc2pkpidcs/2017_MagDown_collision_LbToLcpkpi_autoconf.py
+      - $ANALYSIS_PRODUCTIONS_BASE/lc2pkpidcs/Lb_Lcpkpi.py
+      format: WGProd
+    visible: true
+    obsolete: true
+    data_pkgs:
+    - name: AnalysisProductions
+      version: v1r4500
+    application:
+      name: DaVinci
+      version: v44r11p6
+    processing_pass: AnaProd-v1r4500-collision_LbToLcpkpi
+  - name: AnaProd#MergeV2#lc2pkpidcs#merge0
+    input:
+    - type: LB_LCPKPI.ROOT
+      visible: false
+      step_idx: 0
+    ready: true
+    output:
+    - type: LB_LCPKPI.ROOT
+      visible: true
+    options:
+      entrypoint: LbExec:skim_and_merge
+      extra_args: []
+      extra_options:
+        compression:
+          level: 6
+          algorithm: ZSTD
+          optimise_baskets: true
+    visible: false
+    obsolete: true
+    application:
+      name: lb-conda/default
+      version: '2025-07-31'
+    processing_pass: merged
+  author: null
+  inform: []
+  comment: ''
+  priority: 1b
+  input_dataset:
+    event_type: '90000000'
+    conditions_dict:
+      inTCKs: ALL
+      inProPass: Real Data/Reco17/Stripping29r2p2
+      configName: LHCb
+      inFileType: CHARM.MDST
+      configVersion: Collision17
+      inProductionID: ALL
+      inDataQualityFlag: OK
+    launch_parameters:
+      end_run: null
+      start_run: null
+      run_numbers: null
+    conditions_description: Beam6500GeV-VeloClosed-MagDown
+  submission_info:
+    transforms:
+    - cpu: '1000000'
+      type: WGProduction
+      steps:
+      - 0
+      events: -1
+      priority: 2
+      multicore: true
+      output_se: CERN-BUFFER
+      group_size: 2
+      output_mode: Local
+      input_plugin: APProcessing
+      ancestor_depth: 0
+      output_file_mask: ''
+      input_data_policy: protocol
+      remove_inputs_flags: false
+    - cpu: '1000000'
+      type: APMerge
+      steps:
+      - 1
+      events: -1
+      priority: 2
+      multicore: true
+      output_se: CERN-ANAPROD
+      group_size: 10
+      output_mode: Local
+      input_plugin: APProcessingByFileTypeSize
+      ancestor_depth: 0
+      output_file_mask: ''
+      input_data_policy: protocol
+      remove_inputs_flags: true
+- wg: Charm
+  name: AnaProd#lc2pkpidcs#2017_MagUp_collision_LbToLcpkpi
+  type: AnalysisProduction
+  steps:
+  - name: AnaProd#v1r4500#2017_MagUp_collision_LbToLcpkpi
+    input: []
+    ready: true
+    output:
+    - type: LB_LCPKPI.ROOT
+      visible: false
+    options:
+      files:
+      - $ANALYSIS_PRODUCTIONS_DYNAMIC/lc2pkpidcs/2017_MagUp_collision_LbToLcpkpi_autoconf.py
+      - $ANALYSIS_PRODUCTIONS_BASE/lc2pkpidcs/Lb_Lcpkpi.py
+      format: WGProd
+    visible: true
+    obsolete: true
+    data_pkgs:
+    - name: AnalysisProductions
+      version: v1r4500
+    application:
+      name: DaVinci
+      version: v44r11p6
+    processing_pass: AnaProd-v1r4500-collision_LbToLcpkpi
+  - name: AnaProd#MergeV2#lc2pkpidcs#merge0
+    input:
+    - type: LB_LCPKPI.ROOT
+      visible: false
+      step_idx: 0
+    ready: true
+    output:
+    - type: LB_LCPKPI.ROOT
+      visible: true
+    options:
+      entrypoint: LbExec:skim_and_merge
+      extra_args: []
+      extra_options:
+        compression:
+          level: 6
+          algorithm: ZSTD
+          optimise_baskets: true
+    visible: false
+    obsolete: true
+    application:
+      name: lb-conda/default
+      version: '2025-07-31'
+    processing_pass: merged
+  author: null
+  inform: []
+  comment: ''
+  priority: 1b
+  input_dataset:
+    event_type: '90000000'
+    conditions_dict:
+      inTCKs: ALL
+      inProPass: Real Data/Reco17/Stripping29r2p2
+      configName: LHCb
+      inFileType: CHARM.MDST
+      configVersion: Collision17
+      inProductionID: ALL
+      inDataQualityFlag: OK
+    launch_parameters:
+      end_run: null
+      start_run: null
+      run_numbers: null
+    conditions_description: Beam6500GeV-VeloClosed-MagUp
+  submission_info:
+    transforms:
+    - cpu: '1000000'
+      type: WGProduction
+      steps:
+      - 0
+      events: -1
+      priority: 2
+      multicore: true
+      output_se: CERN-BUFFER
+      group_size: 2
+      output_mode: Local
+      input_plugin: APProcessing
+      ancestor_depth: 0
+      output_file_mask: ''
+      input_data_policy: protocol
+      remove_inputs_flags: false
+    - cpu: '1000000'
+      type: APMerge
+      steps:
+      - 1
+      events: -1
+      priority: 2
+      multicore: true
+      output_se: CERN-ANAPROD
+      group_size: 10
+      output_mode: Local
+      input_plugin: APProcessingByFileTypeSize
+      ancestor_depth: 0
+      output_file_mask: ''
+      input_data_policy: protocol
+      remove_inputs_flags: true
+- wg: Charm
+  name: AnaProd#lc2pkpidcs#2018_MagDown_collision_LbToLcpkpi
+  type: AnalysisProduction
+  steps:
+  - name: AnaProd#v1r4500#2018_MagDown_collision_LbToLcpkpi
+    input: []
+    ready: true
+    output:
+    - type: LB_LCPKPI.ROOT
+      visible: false
+    options:
+      files:
+      - $ANALYSIS_PRODUCTIONS_DYNAMIC/lc2pkpidcs/2018_MagDown_collision_LbToLcpkpi_autoconf.py
+      - $ANALYSIS_PRODUCTIONS_BASE/lc2pkpidcs/Lb_Lcpkpi.py
+      format: WGProd
+    visible: true
+    obsolete: true
+    data_pkgs:
+    - name: AnalysisProductions
+      version: v1r4500
+    application:
+      name: DaVinci
+      version: v44r11p6
+    processing_pass: AnaProd-v1r4500-collision_LbToLcpkpi
+  - name: AnaProd#MergeV2#lc2pkpidcs#merge0
+    input:
+    - type: LB_LCPKPI.ROOT
+      visible: false
+      step_idx: 0
+    ready: true
+    output:
+    - type: LB_LCPKPI.ROOT
+      visible: true
+    options:
+      entrypoint: LbExec:skim_and_merge
+      extra_args: []
+      extra_options:
+        compression:
+          level: 6
+          algorithm: ZSTD
+          optimise_baskets: true
+    visible: false
+    obsolete: true
+    application:
+      name: lb-conda/default
+      version: '2025-07-31'
+    processing_pass: merged
+  author: null
+  inform: []
+  comment: ''
+  priority: 1b
+  input_dataset:
+    event_type: '90000000'
+    conditions_dict:
+      inTCKs: ALL
+      inProPass: Real Data/Reco18/Stripping34r0p2
+      configName: LHCb
+      inFileType: CHARM.MDST
+      configVersion: Collision18
+      inProductionID: ALL
+      inDataQualityFlag: OK
+    launch_parameters:
+      end_run: null
+      start_run: null
+      run_numbers: null
+    conditions_description: Beam6500GeV-VeloClosed-MagDown
+  submission_info:
+    transforms:
+    - cpu: '1000000'
+      type: WGProduction
+      steps:
+      - 0
+      events: -1
+      priority: 2
+      multicore: true
+      output_se: CERN-BUFFER
+      group_size: 2
+      output_mode: Local
+      input_plugin: APProcessing
+      ancestor_depth: 0
+      output_file_mask: ''
+      input_data_policy: protocol
+      remove_inputs_flags: false
+    - cpu: '1000000'
+      type: APMerge
+      steps:
+      - 1
+      events: -1
+      priority: 2
+      multicore: true
+      output_se: CERN-ANAPROD
+      group_size: 10
+      output_mode: Local
+      input_plugin: APProcessingByFileTypeSize
+      ancestor_depth: 0
+      output_file_mask: ''
+      input_data_policy: protocol
+      remove_inputs_flags: true
+- wg: Charm
+  name: AnaProd#lc2pkpidcs#2018_MagUp_collision_LbToLcpkpi
+  type: AnalysisProduction
+  steps:
+  - name: AnaProd#v1r4500#2018_MagUp_collision_LbToLcpkpi
+    input: []
+    ready: true
+    output:
+    - type: LB_LCPKPI.ROOT
+      visible: false
+    options:
+      files:
+      - $ANALYSIS_PRODUCTIONS_DYNAMIC/lc2pkpidcs/2018_MagUp_collision_LbToLcpkpi_autoconf.py
+      - $ANALYSIS_PRODUCTIONS_BASE/lc2pkpidcs/Lb_Lcpkpi.py
+      format: WGProd
+    visible: true
+    obsolete: true
+    data_pkgs:
+    - name: AnalysisProductions
+      version: v1r4500
+    application:
+      name: DaVinci
+      version: v44r11p6
+    processing_pass: AnaProd-v1r4500-collision_LbToLcpkpi
+  - name: AnaProd#MergeV2#lc2pkpidcs#merge0
+    input:
+    - type: LB_LCPKPI.ROOT
+      visible: false
+      step_idx: 0
+    ready: true
+    output:
+    - type: LB_LCPKPI.ROOT
+      visible: true
+    options:
+      entrypoint: LbExec:skim_and_merge
+      extra_args: []
+      extra_options:
+        compression:
+          level: 6
+          algorithm: ZSTD
+          optimise_baskets: true
+    visible: false
+    obsolete: true
+    application:
+      name: lb-conda/default
+      version: '2025-07-31'
+    processing_pass: merged
+  author: null
+  inform: []
+  comment: ''
+  priority: 1b
+  input_dataset:
+    event_type: '90000000'
+    conditions_dict:
+      inTCKs: ALL
+      inProPass: Real Data/Reco18/Stripping34r0p2
+      configName: LHCb
+      inFileType: CHARM.MDST
+      configVersion: Collision18
+      inProductionID: ALL
+      inDataQualityFlag: OK
+    launch_parameters:
+      end_run: null
+      start_run: null
+      run_numbers: null
+    conditions_description: Beam6500GeV-VeloClosed-MagUp
+  submission_info:
+    transforms:
+    - cpu: '1000000'
+      type: WGProduction
+      steps:
+      - 0
+      events: -1
+      priority: 2
+      multicore: true
+      output_se: CERN-BUFFER
+      group_size: 2
+      output_mode: Local
+      input_plugin: APProcessing
+      ancestor_depth: 0
+      output_file_mask: ''
+      input_data_policy: protocol
+      remove_inputs_flags: false
+    - cpu: '1000000'
+      type: APMerge
+      steps:
+      - 1
+      events: -1
+      priority: 2
+      multicore: true
+      output_se: CERN-ANAPROD
+      group_size: 10
+      output_mode: Local
+      input_plugin: APProcessingByFileTypeSize
+      ancestor_depth: 0
+      output_file_mask: ''
+      input_data_policy: protocol
+      remove_inputs_flags: true

@@ -1,0 +1,406 @@
+- type: Simulation
+  priority: 2a
+  name: My Analysis 2024 PbPb MagUp
+  mc_config_version: '2024'
+  sim_condition: PbPb-Beam2680GeV-2024-MagUp-Fix1-EPOS
+  inform:
+  - auser
+  - sam.doe@cern.ch
+  comment: ''
+  wg: IFT
+  retention_rate: 1.0
+  event_types:
+  - id: '23103006'
+    num_events: 2500000
+    num_test_events: 10
+  steps:
+  - name: Sim10g - 2024 - Beam2680GeV - MagUp - Epos
+    processing_pass: Sim10g-central
+    visible: true
+    application:
+      name: Gauss
+      version: v56r11
+      binary_tag: x86_64_v2-centos7-gcc11-opt
+    options:
+    - $APPCONFIGOPTS/Gauss/PbPb-Beam2680GeV-mu100-2024-fix1.py
+    - $APPCONFIGOPTS/Gauss/Run3-detector.py
+    - $APPCONFIGOPTS/Gauss/DataType-2024.py
+    - $DECFILESROOT/options/@{eventType}.py
+    - $GAUSSOPTS/BeamBeam.py
+    - $LBCRMCROOT/options/EPOSBeamBeam.py
+    - $LBCRMCROOT/options/ImpactParam_CENT.py
+    - $GAUSSOPTS/Embedding.py
+    - $APPCONFIGOPTS/Gauss/G4PL_FTFP_BERT_EmOpt2.py
+    - $APPCONFIGOPTS/Persistency/BasketSize-10.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZSTD-1.py
+    data_pkgs:
+    - AppConfig.v3r459
+    - Gen/DecFiles.v32r40
+    input: []
+    output:
+    - type: SIM
+      visible: false
+    dbtags:
+      DDDB: 2024-v00.04
+      CondDB: sim10-2024.W45.47-v01.00-mu100
+  - name: Digi17c for 2024
+    processing_pass: Digi17c
+    visible: false
+    application:
+      name: Boole
+      version: v47r0p1
+      binary_tag: x86_64_v2-el9-gcc13+detdesc-opt
+    options:
+    - $APPCONFIGOPTS/Boole/Default.py
+    - $APPCONFIGOPTS/Boole/Boole-Upgrade-Baseline-20200616.py
+    - $APPCONFIGOPTS/Boole/Upgrade-RichMaPMT-NoSpilloverDigi.py
+    - $APPCONFIGOPTS/Boole/Boole-Upgrade-IntegratedLumi-0fb.py
+    - $APPCONFIGOPTS/Boole/Run3-VP-NoSpillOver.py
+    - $APPCONFIGOPTS/Persistency/BasketSize-10.py
+    - $APPCONFIGOPTS/Boole/MuonLowE-Bkg-G4.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZSTD-1.py
+    data_pkgs:
+    - AppConfig.v3r459
+    input:
+    - type: SIM
+      visible: false
+    output:
+    - type: DIGI
+      visible: false
+  - name: TCK-HLT1_2024_PbPb (HLT1) Flagged for 2024
+    processing_pass: HLT1_2024_PbPb
+    visible: false
+    application:
+      name: Moore
+      version: v55r16p9
+      binary_tag: x86_64_v2-el9-gcc13+detdesc-opt
+    options:
+      entrypoint: Moore.production:hlt1
+      extra_options:
+        data_type: Upgrade
+        simulation: true
+        input_type: ROOT
+        output_type: ROOT
+        compression:
+          algorithm: ZSTD
+          level: 1
+          max_buffer_size: 1048576
+        input_raw_format: 0.5
+      extra_args:
+      - --
+      - --sequence=hlt1_PbPb_PbSMOG_veloSP
+      - --flagging
+    data_pkgs: []
+    input:
+    - type: DIGI
+      visible: false
+    output:
+    - type: HLT1.DST
+      visible: false
+  - name: TCK-HLT2_2024_PbPb (HLT2) Flagged for 2024
+    processing_pass: HLT2_2024_PbPb
+    visible: true
+    application:
+      name: Moore
+      version: v55r16p9
+      binary_tag: x86_64_v2-el9-gcc13+detdesc-opt
+    options:
+      entrypoint: Moore.production:hlt2
+      extra_options:
+        data_type: Upgrade
+        simulation: true
+        input_type: ROOT
+        output_type: ROOT
+        compression:
+          algorithm: ZSTD
+          level: 1
+          max_buffer_size: 1048576
+        input_raw_format: 0.5
+      extra_args:
+      - --
+      - --velo-source=VP
+      - --settings=hlt2_PbPb_default_2024
+      - --flagging
+    data_pkgs: []
+    input:
+    - type: HLT1.DST
+      visible: false
+    output:
+    - type: HLT2.DST
+      visible: false
+  - name: Merge for HLT2.DST for 2024
+    processing_pass: merging
+    visible: false
+    application:
+      name: LHCb
+      version: v58r5
+      binary_tag: x86_64_v3-el9-gcc13+detdesc-opt+g
+    options:
+      entrypoint: GaudiConf.mergeDST:dst
+      extra_options:
+        input_raw_format: 0.5
+        input_type: ROOT
+        simulation: true
+        data_type: Upgrade
+        compression:
+          algorithm: LZMA
+          level: 4
+          max_buffer_size: 1048576
+        output_type: ROOT
+        root_ioalg_name: RootIOAlgExt
+        root_ioalg_opts:
+          IgnorePaths:
+          - /Event/DAQ/RawEvent/moved/aside
+          StoreOldFSRs: true
+      extra_args:
+      - --
+      - --merge-genfsr
+    data_pkgs:
+    - AppConfig.v3r459
+    input:
+    - type: HLT2.DST
+      visible: false
+    output:
+    - type: HLT2.DST
+      visible: true
+  submission_info:
+    transforms:
+    - output_mode: Any
+      cpu: '100000'
+      priority: 8
+      type: MCSimulation
+      steps:
+      - 1
+      output_se: Tier1-Buffer
+      input_data_policy: protocol
+      input_plugin: ''
+      group_size: 1
+      events: -1
+      remove_inputs_flags: false
+    - output_mode: Any
+      cpu: '100000'
+      priority: 8
+      type: MCReconstruction
+      input_data_policy: download
+      input_plugin: BySize
+      remove_inputs_flags: true
+      steps:
+      - 2
+      - 3
+      - 4
+      output_se: Tier1-Buffer
+      group_size: 3
+    - output_mode: Any
+      cpu: '100000'
+      priority: 8
+      type: MCMerge
+      steps:
+      - 5
+      output_se: Tier1_MC-DST
+      input_data_policy: download
+      input_plugin: BySize
+      group_size: 8
+      remove_inputs_flags: true
+- type: Simulation
+  priority: 2a
+  name: My Analysis 2024 PbPb MagUp - 1
+  mc_config_version: '2024'
+  sim_condition: PbPb-Beam2680GeV-2024-MagUp-Fix1-EPOS
+  inform:
+  - auser
+  - sam.doe@cern.ch
+  comment: ''
+  wg: IFT
+  retention_rate: 1.0
+  event_types:
+  - id: '24142001'
+    num_events: 2500000
+    num_test_events: 10
+  steps:
+  - name: Sim10g - 2024 - Beam2680GeV - MagUp - Epos
+    processing_pass: Sim10g-peripheral
+    visible: true
+    application:
+      name: Gauss
+      version: v56r11
+      binary_tag: x86_64_v2-centos7-gcc11-opt
+    options:
+    - $APPCONFIGOPTS/Gauss/PbPb-Beam2680GeV-mu100-2024-fix1.py
+    - $APPCONFIGOPTS/Gauss/Run3-detector.py
+    - $APPCONFIGOPTS/Gauss/DataType-2024.py
+    - $DECFILESROOT/options/@{eventType}.py
+    - $GAUSSOPTS/BeamBeam.py
+    - $LBCRMCROOT/options/EPOSBeamBeam.py
+    - $LBCRMCROOT/options/ImpactParam_PERIPH.py
+    - $GAUSSOPTS/Embedding.py
+    - $APPCONFIGOPTS/Gauss/G4PL_FTFP_BERT_EmOpt2.py
+    - $APPCONFIGOPTS/Persistency/BasketSize-10.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZSTD-1.py
+    data_pkgs:
+    - AppConfig.v3r459
+    - Gen/DecFiles.v32r40
+    input: []
+    output:
+    - type: SIM
+      visible: false
+    dbtags:
+      DDDB: 2024-v00.04
+      CondDB: sim10-2024.W45.47-v01.00-mu100
+  - name: Digi17c for 2024
+    processing_pass: Digi17c
+    visible: false
+    application:
+      name: Boole
+      version: v47r0p1
+      binary_tag: x86_64_v2-el9-gcc13+detdesc-opt
+    options:
+    - $APPCONFIGOPTS/Boole/Default.py
+    - $APPCONFIGOPTS/Boole/Boole-Upgrade-Baseline-20200616.py
+    - $APPCONFIGOPTS/Boole/Upgrade-RichMaPMT-NoSpilloverDigi.py
+    - $APPCONFIGOPTS/Boole/Boole-Upgrade-IntegratedLumi-0fb.py
+    - $APPCONFIGOPTS/Boole/Run3-VP-NoSpillOver.py
+    - $APPCONFIGOPTS/Persistency/BasketSize-10.py
+    - $APPCONFIGOPTS/Boole/MuonLowE-Bkg-G4.py
+    - $APPCONFIGOPTS/Persistency/Compression-ZSTD-1.py
+    data_pkgs:
+    - AppConfig.v3r459
+    input:
+    - type: SIM
+      visible: false
+    output:
+    - type: DIGI
+      visible: false
+  - name: TCK-HLT1_2024_PbPb (HLT1) Flagged for 2024
+    processing_pass: HLT1_2024_PbPb
+    visible: false
+    application:
+      name: Moore
+      version: v55r16p9
+      binary_tag: x86_64_v2-el9-gcc13+detdesc-opt
+    options:
+      entrypoint: Moore.production:hlt1
+      extra_options:
+        data_type: Upgrade
+        simulation: true
+        input_type: ROOT
+        output_type: ROOT
+        compression:
+          algorithm: ZSTD
+          level: 1
+          max_buffer_size: 1048576
+        input_raw_format: 0.5
+      extra_args:
+      - --
+      - --sequence=hlt1_PbPb_PbSMOG_veloSP
+      - --flagging
+    data_pkgs: []
+    input:
+    - type: DIGI
+      visible: false
+    output:
+    - type: HLT1.DST
+      visible: false
+  - name: TCK-HLT2_2024_PbPb (HLT2) Flagged for 2024
+    processing_pass: HLT2_2024_PbPb
+    visible: true
+    application:
+      name: Moore
+      version: v55r16p9
+      binary_tag: x86_64_v2-el9-gcc13+detdesc-opt
+    options:
+      entrypoint: Moore.production:hlt2
+      extra_options:
+        data_type: Upgrade
+        simulation: true
+        input_type: ROOT
+        output_type: ROOT
+        compression:
+          algorithm: ZSTD
+          level: 1
+          max_buffer_size: 1048576
+        input_raw_format: 0.5
+      extra_args:
+      - --
+      - --velo-source=VP
+      - --settings=hlt2_PbPb_default_2024
+      - --flagging
+    data_pkgs: []
+    input:
+    - type: HLT1.DST
+      visible: false
+    output:
+    - type: HLT2.DST
+      visible: false
+  - name: Merge for HLT2.DST for 2024
+    processing_pass: merging
+    visible: false
+    application:
+      name: LHCb
+      version: v58r5
+      binary_tag: x86_64_v3-el9-gcc13+detdesc-opt+g
+    options:
+      entrypoint: GaudiConf.mergeDST:dst
+      extra_options:
+        input_raw_format: 0.5
+        input_type: ROOT
+        simulation: true
+        data_type: Upgrade
+        compression:
+          algorithm: LZMA
+          level: 4
+          max_buffer_size: 1048576
+        output_type: ROOT
+        root_ioalg_name: RootIOAlgExt
+        root_ioalg_opts:
+          IgnorePaths:
+          - /Event/DAQ/RawEvent/moved/aside
+          StoreOldFSRs: true
+      extra_args:
+      - --
+      - --merge-genfsr
+    data_pkgs:
+    - AppConfig.v3r459
+    input:
+    - type: HLT2.DST
+      visible: false
+    output:
+    - type: HLT2.DST
+      visible: true
+  submission_info:
+    transforms:
+    - output_mode: Any
+      cpu: '100000'
+      priority: 8
+      type: MCSimulation
+      steps:
+      - 1
+      output_se: Tier1-Buffer
+      input_data_policy: protocol
+      input_plugin: ''
+      group_size: 1
+      events: -1
+      remove_inputs_flags: false
+    - output_mode: Any
+      cpu: '100000'
+      priority: 8
+      type: MCReconstruction
+      input_data_policy: download
+      input_plugin: BySize
+      remove_inputs_flags: true
+      steps:
+      - 2
+      - 3
+      - 4
+      output_se: Tier1-Buffer
+      group_size: 3
+    - output_mode: Any
+      cpu: '100000'
+      priority: 8
+      type: MCMerge
+      steps:
+      - 5
+      output_se: Tier1_MC-DST
+      input_data_policy: download
+      input_plugin: BySize
+      group_size: 8
+      remove_inputs_flags: true
