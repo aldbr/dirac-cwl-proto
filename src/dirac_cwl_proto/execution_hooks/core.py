@@ -136,11 +136,19 @@ class ExecutionHooksBasePlugin(BaseModel):
         new_paths: dict[str, Path | list[Path]] = {}
         if inputs.lfns_input:
             for input_name, lfns in inputs.lfns_input.items():
-                paths = returnValueOrRaise(self._datamanager.getFile(lfns, job_path))[
-                    "Successful"
-                ]
-                if paths:
-                    new_paths[input_name] = [paths[lfn] for lfn in paths]
+                res = returnValueOrRaise(self._datamanager.getFile(lfns, str(job_path)))
+                if res["Failed"]:
+                    raise RuntimeError(f"Could not get files : {res['Failed']}")
+                paths = res["Successful"]
+                if paths and isinstance(lfns, list):
+                    new_paths[input_name] = [
+                        Path(paths[lfn]).relative_to(job_path.resolve())
+                        for lfn in paths
+                    ]
+                elif paths and isinstance(lfns, str):
+                    new_paths[input_name] = Path(paths[lfns]).relative_to(
+                        job_path.resolve()
+                    )
         return new_paths
 
     def update_inputs(self, inputs: Any, updates: dict[str, Path | list[Path]]):
@@ -301,7 +309,12 @@ class ExecutionHooksBasePlugin(BaseModel):
         if self.output_sandbox and output_name in self.output_sandbox:
             if isinstance(src_path, Path) or isinstance(src_path, str):
                 src_path = [src_path]
-            self._sandbox_store_client.uploadFilesAsSandbox(src_path)
+            sb_path = returnValueOrRaise(
+                self._sandbox_store_client.uploadFilesAsSandbox(src_path)
+            )
+            logger.info(
+                f"Successfully stored output {output_name} in Sandbox {sb_path}"
+            )
         else:
             lfn = self.output_paths.get(output_name, None)
 
@@ -316,6 +329,9 @@ class ExecutionHooksBasePlugin(BaseModel):
                             self._datamanager.putAndRegister(str(file_lfn), src, se)
                         )
                         if res["OK"]:
+                            logger.info(
+                                f"Successfully saved file {src} with LFN {file_lfn}"
+                            )
                             break
                     if res and not res["OK"]:
                         raise RuntimeError(

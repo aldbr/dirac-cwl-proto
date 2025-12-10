@@ -12,6 +12,7 @@ from typing import Any, ClassVar, List, Optional, Sequence, Union
 
 from DIRACCommon.Core.Utilities.ReturnValues import (  # type: ignore[import-untyped]
     returnSingleResult,
+    returnValueOrRaise,
 )
 from pydantic import Field
 
@@ -114,7 +115,12 @@ class QueryBasedPlugin(ExecutionHooksBasePlugin):
         if self.output_sandbox and output_name in self.output_sandbox:
             if isinstance(src_path, Path) or isinstance(src_path, str):
                 src_path = [src_path]
-            self._sandbox_store_client.uploadFilesAsSandbox(src_path)
+            sb_path = returnValueOrRaise(
+                self._sandbox_store_client.uploadFilesAsSandbox(src_path)
+            )
+            logger.info(
+                f"Successfully stored output {output_name} in Sandbox {sb_path}"
+            )
         else:
             if self.output_paths and output_name in self.output_paths:
                 lfn = self.output_paths[output_name]
@@ -132,8 +138,11 @@ class QueryBasedPlugin(ExecutionHooksBasePlugin):
                             self._datamanager.putAndRegister(str(file_lfn), src, se)
                         )
                         if res["OK"]:
+                            logger.info(
+                                f"Successfully saved file {src} with LFN {file_lfn}"
+                            )
                             break
                     if res and not res["OK"]:
                         raise RuntimeError(
-                            f"Could not save file {src} with LFN {str(lfn)} : {res['Message']}"
+                            f"Could not save file {src} with LFN {str(file_lfn)} : {res['Message']}"
                         )

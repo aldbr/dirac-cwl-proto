@@ -52,8 +52,10 @@ class MockDataManager(DataManager):
             )
             if not res["OK"]:
                 fail[lfn] = res["Message"]
+            elif res["Value"]["Failed"]:
+                fail[lfn] = res["Value"]["Failed"]
             else:
-                success[lfn] = Path(lfn).name
+                success[lfn] = str(Path(destinationDir).resolve() / Path(lfn).name)
         return S_OK({"Successful": success, "Failed": fail})
 
     def putAndRegister(
