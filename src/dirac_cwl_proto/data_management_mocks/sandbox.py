@@ -11,6 +11,10 @@ logger = logging.getLogger(__name__)
 
 
 class MockSandboxStoreClient(SandboxStoreClient):
+    """
+    Local mock for Dirac's SandboxStore Client.
+    """
+
     def __init__(self):
         pass
 
@@ -25,22 +29,14 @@ class MockSandboxStoreClient(SandboxStoreClient):
         Packages the provided files into a compressed tar archive and stores
         it under the local sandbox directory.
 
-        Parameters
-        ----------
-        fileList : Sequence[Path | str]
-            Files to be included in the sandbox.
-        sizeLimit : int, optional
-            Maximum allowed archive size in bytes. Currently unused.
-        assignTo : Optional[dict], optional
-            Mapping of job identifiers to sandbox types (e.g. { 'Job:<id>': '<type>' }).
+        :param Sequence[Path | str] fileList: Files to be included in the sandbox.
+        :param int sizeLimit: Maximum allowed archive size in bytes. Currently unused.
+        :param Optional[dict] assignTo: Mapping of job identifiers to sandbox types (e.g. { 'Job:<id>': '<type>' }).
 
-        Returns
-        -------
-        Optional[Path]
-            Path to the created sandbox archive, or ``None`` if no files were provided.
+        :return S_OK(sandbox_path): Path to the created sandbox archive, or `None` if no files were provided.
         """
         if len(fileList) == 0:
-            return None
+            return S_OK()
         sandbox_id = random.randint(1000, 9999)
         sandbox_path = Path("sandboxstore") / f"sandbox_{str(sandbox_id)}.tar.gz"
         sandbox_path.parent.mkdir(exist_ok=True, parents=True)
@@ -67,26 +63,12 @@ class MockSandboxStoreClient(SandboxStoreClient):
         Opens the given sandbox archive and extracts its contents to the specified
         directory.
 
-        Parameters
-        ----------
-        sbLocation : str | Path
-            Path to the sandbox archive file.
-        destinationDir : str, optional
-            Directory to extract the files into. Defaults to the current directory.
-        inMemory : bool, optional
-            Placeholder for in-memory extraction. Currently unused.
-        unpack : bool, optional
-            Whether to unpack the archive. Only unpacking is currently supported.
+        :param str|Path sbLocation: Path to the sandbox archive file.
+        :param str destinationDir: Directory to extract the files into. Defaults to the current directory.
+        :param bool inMemory: Placeholder for in-memory extraction.
+        :param bool unpack: Whether to unpack the archive. Only unpacking is currently supported.
 
-        Returns
-        -------
-        list[Path]
-            List of paths to the extracted files.
-
-        Raises
-        ------
-        NotImplementedError
-            If unpacking is disabled.
+        :return S_OK({list[Path]}): List of paths to the extracted files.
         """
         if not unpack or inMemory:
             raise NotImplementedError

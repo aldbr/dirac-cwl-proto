@@ -124,30 +124,14 @@ class ExecutionHooksBasePlugin(BaseModel):
     ) -> dict[str, Path | list[Path]]:
         """Download LFNs into the job working directory.
 
-        This method retrieves files referenced by LFNs from the job inputs
-        and copies them into the specified working directory. The LFNs are
-        expected to follow the format ``lfn:<path>``, which is resolved to
-        a local path. Each downloaded file path is then returned and can be
-        used to update CWL job inputs accordingly.
-
-        Parameters
-        ----------
-        inputs : JobInputModel
+        :param JobInputModel inputs:
             The job input model containing ``lfns_input``, a mapping from input names to one or more LFN paths.
-        job_path : Path
+        :param Path job_path:
             Path to the job working directory where files will be copied.
 
-        Returns
-        -------
-        dict[str, Path | list[Path]]
+        :return dict[str, Path | list[Path]]:
             A dictionary mapping each input name to the corresponding downloaded
             file path(s) located in the working directory.
-
-        Notes
-        -----
-        - Currently, this method performs a local copy of files and does not
-          use a remote data catalog or storage service.
-        - The returned paths are relative to the job working directory.
         """
         new_paths: dict[str, Path | list[Path]] = {}
         if inputs.lfns_input:
@@ -166,11 +150,9 @@ class ExecutionHooksBasePlugin(BaseModel):
         file paths for each input specified in `updates`. It supports both
         single files and lists of files.
 
-        Parameters
-        ----------
-        inputs : JobInputModel
-            The job input model whose ``cwl`` dictionary will be updated.
-        updates : dict[str, Path | list[Path]]
+        :param JobInputModel inputs:
+            The job input model whose `cwl` dictionary will be updated.
+        :param dict[str, Path | list[Path]] updates:
             Dictionary mapping input names to their corresponding local file
             paths. Each value can be a single `Path` or a list of `Path` objects.
 
@@ -198,42 +180,21 @@ class ExecutionHooksBasePlugin(BaseModel):
     ) -> List[str]:
         """Pre-process job inputs and command before execution.
 
-        This method prepares CWL job inputs by performing pre-execution tasks such as:
-        - downloading LFNs,
-        - updating CWL input definitions with local file paths,
-        - and serializing the final input parameters into a YAML file added to the command line.
-
-        The default implementation performs standard preparation steps,
-        but this method is designed to be **overridden by subclasses**
-        to implement custom pre-processing logic such as:
-        - specialized data staging or fetching strategies,
-        - environment setup before command execution.
-
-        Parameters
-        ----------
-        executable : CommandLineTool | Workflow | ExpressionTool
+        :param CommandLineTool | Workflow | ExpressionTool executable:
             The CWL tool, workflow, or expression to be executed.
-        arguments : JobInputModel, optional
+        :param JobInputModel arguments:
             The job inputs, including CWL and LFN data.
-        job_path : Path
+        :param Path job_path:
             Path to the job working directory.
-        command : list[str]
+        :param list[str] command:
             The command to be executed, which will be modified.
-        **kwargs : Any
+        :param Any **kwargs:
             Additional parameters, allowing extensions to pass extra context
             or configuration options.
 
-        Returns
-        -------
-        list[str]
+        :return list[str]:
             The modified command, typically including the serialized CWL
             input file path.
-
-        Notes
-        -----
-        Subclasses may override this method to customize pre-processing behavior.
-        When overriding, it is recommended to call ``super().pre_process(...)``
-        if the base pre-processing logic should be preserved.
         """
         for preprocess_command in self.preprocess_commands:
             if not issubclass(preprocess_command, PreProcessCommand):
@@ -264,10 +225,12 @@ class ExecutionHooksBasePlugin(BaseModel):
     ) -> bool:
         """Post-process job outputs.
 
-        Parameters
-        ----------
-        job_path : Path
+        :param Path job_path:
             Path to the job working directory.
+        :param str|None stdout:
+            cwltool standard output.
+        :param Any **kwargs:
+            Additional keyword arguments for extensibility.
         """
         for postprocess_command in self.postprocess_commands:
             if not issubclass(postprocess_command, PostProcessCommand):
@@ -292,14 +255,10 @@ class ExecutionHooksBasePlugin(BaseModel):
     def get_job_outputted_paths(self, stdout: str) -> dict[str, list[str]]:
         """Get the outputted filepaths per output.
 
-        Parameters
-        ----------
-        stdout : str
+        :param str stdout:
             The console output of the the job
 
-        Returns
-        ----------
-        dict[str, list[str]]
+        :return dict[str, list[str]]:
             The dict of the list of filepaths for each output
         """
         outputted_files: dict[str, list[str]] = {}
@@ -324,28 +283,14 @@ class ExecutionHooksBasePlugin(BaseModel):
     ) -> None:
         """Store an output file or set of files via the appropriate storage interface.
 
-        This method determines the correct destination for output files based on
-        the given ``output_name`` and delegates the storage operation accordingly.
-        If the output belongs to the configured sandbox, files are uploaded to
-        the sandbox via ``SandboxStoreClient``. Otherwise, they are registered
-        and stored using the data manager and LFNs.
-
-        Parameters
-        ----------
-        output_name : str
+        :param str output_name:
             The logical name of the output to store, used to determine the storage
             target (sandbox or output path).
-        src_path : str | Path | Sequence[str | Path]
+        :param str | Path | Sequence[str | Path] src_path:
             The path or list of paths to the source file(s) to be stored.
-            Can be a single path (string or ``Path``) or a sequence of paths.
-        **kwargs : Any
+            Can be a single path (string or Path) or a sequence of paths.
+        :param Any **kwargs:
             Additional keyword arguments for extensibility.
-
-        Raises
-        ------
-        KeyError
-            If ``output_name`` is not found in ``output_paths`` and no logical file
-            name (LFN) can be resolved via ``get_output_query()``.
         """
         logger.info(f"Storing output {output_name}, with source {src_path}")
 

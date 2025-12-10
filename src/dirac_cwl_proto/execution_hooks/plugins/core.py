@@ -96,28 +96,14 @@ class QueryBasedPlugin(ExecutionHooksBasePlugin):
     ) -> None:
         """Store an output file or set of files via the appropriate storage interface.
 
-        This method determines the correct destination for output files based on
-        the given ``output_name`` and delegates the storage operation accordingly.
-        If the output belongs to the configured sandbox, files are uploaded to
-        the sandbox via ``SandboxStoreClient``. Otherwise, they are registered
-        and stored using the data manager and LFNs.
-
-        Parameters
-        ----------
-        output_name : str
+        :param str output_name:
             The logical name of the output to store, used to determine the storage
             target (sandbox or output path).
-        src_path : str | Path | Sequence[str | Path]
+        :param str | Path | Sequence[str | Path] src_path:
             The path or list of paths to the source file(s) to be stored.
-            Can be a single path (string or ``Path``) or a sequence of paths.
-        **kwargs : Any
+            Can be a single path (string or Path) or a sequence of paths.
+        :param Any **kwargs:
             Additional keyword arguments for extensibility.
-
-        Raises
-        ------
-        KeyError
-            If ``output_name`` is not found in ``output_paths`` and no logical file
-            name (LFN) can be resolved via ``get_output_query()``.
         """
         logger.info(f"Storing output {output_name}, with source {src_path}")
 
