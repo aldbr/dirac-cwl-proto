@@ -12,6 +12,7 @@ from diracx.api.jobs import create_sandbox
 from diracx.client.aio import AsyncDiracClient
 from rich.console import Console
 
+from dirac_cwl_proto.core.utility import get_lfns
 from dirac_cwl_proto.execution_hooks import SchedulingHint
 from dirac_cwl_proto.submission_models import JobModel, JobSubmissionModel
 
@@ -172,5 +173,7 @@ class DIRACSubmissionClient(SubmissionClient):
             jdl_lines.append(f"Site = {job_scheduling.sites};")
 
         jdl_lines.append(f"InputSandbox = {sandbox_id};")
+        if job.input:
+            jdl_lines.append(f"InputData = {get_lfns(job.input.cwl)}")
 
         return "\n".join(jdl_lines)

@@ -6,7 +6,6 @@ metadata plugin system in DIRAC/DIRACX.
 
 from __future__ import annotations
 
-import json
 import logging
 import os
 from abc import ABC, abstractmethod
@@ -21,27 +20,21 @@ from typing import (
     Self,
     Sequence,
     TypeVar,
-    cast,
+    Union,
 )
 
-from cwl_utils.parser import save
 from cwl_utils.parser.cwl_v1_2 import (
     CommandLineTool,
     ExpressionTool,
-    File,
-    Saveable,
     Workflow,
 )
 from DIRAC.DataManagementSystem.Client.DataManager import (  # type: ignore[import-untyped]
     DataManager,
 )
-from DIRAC.WorkloadManagementSystem.Client.SandboxStoreClient import SandboxStoreClient  # type: ignore[import-untyped]
 from DIRACCommon.Core.Utilities.ReturnValues import (  # type: ignore[import-untyped]
     returnSingleResult,
-    returnValueOrRaise,
 )
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
-from ruamel.yaml import YAML
 
 from dirac_cwl_proto.commands import PostProcessCommand, PreProcessCommand
 from dirac_cwl_proto.core.exceptions import WorkflowProcessingException
@@ -78,12 +71,9 @@ class ExecutionHooksBasePlugin(BaseModel):
 
     output_paths: Dict[str, Any] = {}
     output_sandbox: list[str] = []
-
     output_se: list[str] = []
+
     _datamanager: DataManager = PrivateAttr(default_factory=DataManager)
-    _sandbox_store_client: SandboxStoreClient = PrivateAttr(
-        default_factory=SandboxStoreClient
-    )
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -118,65 +108,6 @@ class ExecutionHooksBasePlugin(BaseModel):
     def name(cls) -> str:
         """Auto-derive hook plugin identifier from class name."""
         return cls.__name__
-
-    def download_lfns(
-        self, inputs: Any, job_path: Path
-    ) -> dict[str, Path | list[Path]]:
-        """Download LFNs into the job working directory.
-
-        :param JobInputModel inputs:
-            The job input model containing ``lfns_input``, a mapping from input names to one or more LFN paths.
-        :param Path job_path:
-            Path to the job working directory where files will be copied.
-
-        :return dict[str, Path | list[Path]]:
-            A dictionary mapping each input name to the corresponding downloaded
-            file path(s) located in the working directory.
-        """
-        new_paths: dict[str, Path | list[Path]] = {}
-        if inputs.lfns_input:
-            for input_name, lfns in inputs.lfns_input.items():
-                res = returnValueOrRaise(self._datamanager.getFile(lfns, str(job_path)))
-                if res["Failed"]:
-                    raise RuntimeError(f"Could not get files : {res['Failed']}")
-                paths = res["Successful"]
-                if paths and isinstance(lfns, list):
-                    new_paths[input_name] = [
-                        Path(paths[lfn]).relative_to(job_path.resolve())
-                        for lfn in paths
-                    ]
-                elif paths and isinstance(lfns, str):
-                    new_paths[input_name] = Path(paths[lfns]).relative_to(
-                        job_path.resolve()
-                    )
-        return new_paths
-
-    def update_inputs(self, inputs: Any, updates: dict[str, Path | list[Path]]):
-        """Update CWL job inputs with new file paths.
-
-        This method updates the `inputs.cwl` object by replacing or adding
-        file paths for each input specified in `updates`. It supports both
-        single files and lists of files.
-
-        :param JobInputModel inputs:
-            The job input model whose `cwl` dictionary will be updated.
-        :param dict[str, Path | list[Path]] updates:
-            Dictionary mapping input names to their corresponding local file
-            paths. Each value can be a single `Path` or a list of `Path` objects.
-
-        Notes
-        -----
-        This method is typically called after downloading LFNs
-        using `download_lfns` to ensure that the CWL job inputs reference
-        the correct local files.
-        """
-        for input_name, path in updates.items():
-            if isinstance(path, Path):
-                inputs.cwl[input_name] = File(path=str(path))
-            else:
-                inputs.cwl[input_name] = []
-                for p in path:
-                    inputs.cwl[input_name].append(File(path=str(p)))
 
     def pre_process(
         self,
@@ -217,19 +148,13 @@ class ExecutionHooksBasePlugin(BaseModel):
                 logger.exception(msg)
                 raise WorkflowProcessingException(msg) from e
 
-        if arguments:
-            updates = self.download_lfns(arguments, job_path)
-            self.update_inputs(arguments, updates)
-
-            parameter_dict = save(cast(Saveable, arguments.cwl))
-            parameter_path = job_path / "parameter.cwl"
-            with open(parameter_path, "w") as parameter_file:
-                YAML().dump(parameter_dict, parameter_file)
-            command.append(str(parameter_path.name))
         return command
 
     def post_process(
-        self, job_path: Path, stdout: Optional[str] = None, **kwargs: Any
+        self,
+        job_path: Path,
+        outputs: dict[str, str | Path | Sequence[str | Path]] = {},
+        **kwargs: Any,
     ) -> bool:
         """Post-process job outputs.
 
@@ -253,69 +178,31 @@ class ExecutionHooksBasePlugin(BaseModel):
                 logger.exception(msg)
                 raise WorkflowProcessingException(msg) from e
 
-        # Get the outputs and outputted files from the cwltool standard output
-        if stdout:
-            outputs = self.get_job_outputted_paths(stdout)
-            for output, file_paths in outputs.items():
-                self.store_output(output, file_paths)
+        self.store_output(outputs)
         return True
-
-    def get_job_outputted_paths(self, stdout: str) -> dict[str, list[str]]:
-        """Get the outputted filepaths per output.
-
-        :param str stdout:
-            The console output of the the job
-
-        :return dict[str, list[str]]:
-            The dict of the list of filepaths for each output
-        """
-        outputted_files: dict[str, list[str]] = {}
-        outputs = json.loads(stdout)
-        for output, files in outputs.items():
-            if not files:
-                continue
-            if not isinstance(files, List):
-                files = [files]
-            file_paths = []
-            for file in files:
-                if file:
-                    file_paths.append(str(file["path"]))
-            outputted_files[output] = file_paths
-        return outputted_files
 
     def store_output(
         self,
-        output_name: str,
-        src_path: str | Path | Sequence[str | Path],
+        outputs: dict[str, str | Path | Sequence[str | Path]],
         **kwargs: Any,
     ) -> None:
         """Store an output file or set of files via the appropriate storage interface.
 
-        :param str output_name:
-            The logical name of the output to store, used to determine the storage
-            target (sandbox or output path).
-        :param str | Path | Sequence[str | Path] src_path:
-            The path or list of paths to the source file(s) to be stored.
-            Can be a single path (string or Path) or a sequence of paths.
+        :param dict[str, str | Path | Sequence[str | Path]] outputs:
+            Dictionary containing the path or list of paths to the source file(s) to be stored
+            for each cwl output.
         :param Any **kwargs:
             Additional keyword arguments for extensibility.
         """
-        logger.info(f"Storing output {output_name}, with source {src_path}")
 
-        if not src_path:
-            raise RuntimeError(
-                f"src_path parameter required for filesystem storage of {output_name}"
-            )
-        if self.output_sandbox and output_name in self.output_sandbox:
-            if isinstance(src_path, Path) or isinstance(src_path, str):
-                src_path = [src_path]
-            sb_path = returnValueOrRaise(
-                self._sandbox_store_client.uploadFilesAsSandbox(src_path)
-            )
-            logger.info(
-                f"Successfully stored output {output_name} in Sandbox {sb_path}"
-            )
-        else:
+        for output_name, src_path in outputs.items():
+            logger.info(f"Storing output {output_name}, with source {src_path}")
+
+            if not src_path:
+                raise RuntimeError(
+                    f"src_path parameter required for filesystem storage of {output_name}"
+                )
+
             lfn = self.output_paths.get(output_name, None)
 
             if lfn:
@@ -337,6 +224,16 @@ class ExecutionHooksBasePlugin(BaseModel):
                         raise RuntimeError(
                             f"Could not save file {src} with LFN {str(lfn)} : {res['Message']}"
                         )
+
+    def get_input_query(
+        self, input_name: str, **kwargs: Any
+    ) -> Union[Path, List[Path], None]:
+        """Generate LFN-based input query path.
+
+        Accepts and ignores extra kwargs for interface compatibility.
+        """
+        # Build LFN: /query_root/vo/campaign/site/data_type/input_name
+        pass
 
     @classmethod
     def get_schema_info(cls) -> Dict[str, Any]:

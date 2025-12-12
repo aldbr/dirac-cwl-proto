@@ -152,10 +152,6 @@ class TestRealWorldScenarios:
         assert "CERN" in str(input_path)
         assert "AOD" in str(input_path)
 
-        # Test output path generation
-        output_path = analysis_runtime.get_output_query("results")
-        assert output_path is not None
-
     def test_transformation_workflow_scenario(self):
         """Test a transformation (batch processing) workflow scenario."""
         # Create multiple task descriptions for a transformation

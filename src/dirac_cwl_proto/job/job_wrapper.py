@@ -1,11 +1,13 @@
 #!/usr/bin/env python
 
+import json
 import logging
+import os
 import random
 import shutil
 import subprocess
 from pathlib import Path
-from typing import cast
+from typing import Sequence, cast
 
 from cwl_utils.parser import (
     save,
@@ -13,12 +15,20 @@ from cwl_utils.parser import (
 from cwl_utils.parser.cwl_v1_2 import (
     CommandLineTool,
     ExpressionTool,
+    File,
     Saveable,
     Workflow,
 )
+from DIRAC.WorkloadManagementSystem.Client.SandboxStoreClient import SandboxStoreClient  # type: ignore[import-untyped]
+from DIRACCommon.Core.Utilities.ReturnValues import (  # type: ignore[import-untyped]
+    returnValueOrRaise,
+)
+from pydantic import PrivateAttr
 from rich.text import Text
 from ruamel.yaml import YAML
 
+from dirac_cwl_proto.core.utility import get_lfns
+from dirac_cwl_proto.data_management_mocks.sandbox import MockSandboxStoreClient
 from dirac_cwl_proto.execution_hooks import ExecutionHooksHint
 from dirac_cwl_proto.execution_hooks.core import ExecutionHooksBasePlugin
 from dirac_cwl_proto.submission_models import (
@@ -30,13 +40,21 @@ from dirac_cwl_proto.submission_models import (
 # JobWrapper
 # -----------------------------------------------------------------------------
 
+logger = logging.getLogger(__name__)
+
 
 class JobWrapper:
     """Job Wrapper for the execution hook."""
 
+    _sandbox_store_client: SandboxStoreClient = PrivateAttr(
+        default_factory=SandboxStoreClient
+    )
+
     def __init__(self) -> None:
         self.execution_hooks_plugin: ExecutionHooksBasePlugin | None = None
         self.job_path: Path = Path()
+        if os.getenv("DIRAC_PROTO_LOCAL") == "1":
+            self._sandbox_store_client = MockSandboxStoreClient()
 
     def __download_input_sandbox(
         self, arguments: JobInputModel, job_path: Path
@@ -52,13 +70,124 @@ class JobWrapper:
                 sandbox, job_path
             )
 
-    def __download_input_data(self, arguments: JobInputModel, job_path: Path) -> None:
-        """
-        Download input data
-        """
+    def __upload_output_sandbox(
+        self,
+        outputs: dict[str, str | Path | Sequence[str | Path]],
+    ):
         if not self.execution_hooks_plugin:
-            raise RuntimeError("Could not download input data")
-        self.execution_hooks_plugin.download_lfns(arguments, job_path)
+            raise RuntimeError(
+                "Could not upload sandbox : Execution hook is not defined."
+            )
+        for output_name, src_path in outputs.items():
+            if (
+                self.execution_hooks_plugin.output_sandbox
+                and output_name in self.execution_hooks_plugin.output_sandbox
+            ):
+                if isinstance(src_path, Path) or isinstance(src_path, str):
+                    src_path = [src_path]
+                sb_path = returnValueOrRaise(
+                    self._sandbox_store_client.uploadFilesAsSandbox(src_path)
+                )
+                logger.info(
+                    f"Successfully stored output {output_name} in Sandbox {sb_path}"
+                )
+
+    def __download_input_data(
+        self, inputs: JobInputModel, job_path: Path
+    ) -> dict[str, Path | list[Path]]:
+        """Download LFNs into the job working directory.
+
+        :param JobInputModel inputs:
+            The job input model containing ``lfns_input``, a mapping from input names to one or more LFN paths.
+        :param Path job_path:
+            Path to the job working directory where files will be copied.
+
+        :return dict[str, Path | list[Path]]:
+            A dictionary mapping each input name to the corresponding downloaded
+            file path(s) located in the working directory.
+        """
+        new_paths: dict[str, Path | list[Path]] = {}
+        if not self.execution_hooks_plugin:
+            raise RuntimeWarning(
+                "Could not download input data: Execution hook is not defined."
+            )
+
+        lfns_inputs = get_lfns(inputs.cwl)
+
+        if lfns_inputs:
+            for input_name, lfns in lfns_inputs.items():
+                res = returnValueOrRaise(
+                    self.execution_hooks_plugin._datamanager.getFile(
+                        lfns, str(job_path)
+                    )
+                )
+                if res["Failed"]:
+                    raise RuntimeError(f"Could not get files : {res['Failed']}")
+                paths = res["Successful"]
+                if paths and isinstance(lfns, list):
+                    new_paths[input_name] = [
+                        Path(paths[lfn]).relative_to(job_path.resolve())
+                        for lfn in paths
+                    ]
+                elif paths and isinstance(lfns, str):
+                    new_paths[input_name] = Path(paths[lfns]).relative_to(
+                        job_path.resolve()
+                    )
+        return new_paths
+
+    def __update_inputs(
+        self, inputs: JobInputModel, updates: dict[str, Path | list[Path]]
+    ):
+        """Update CWL job inputs with new file paths.
+
+        This method updates the `inputs.cwl` object by replacing or adding
+        file paths for each input specified in `updates`. It supports both
+        single files and lists of files.
+
+        :param JobInputModel inputs:
+            The job input model whose `cwl` dictionary will be updated.
+        :param dict[str, Path | list[Path]] updates:
+            Dictionary mapping input names to their corresponding local file
+            paths. Each value can be a single `Path` or a list of `Path` objects.
+
+        Notes
+        -----
+        This method is typically called after downloading LFNs
+        using `download_lfns` to ensure that the CWL job inputs reference
+        the correct local files.
+        """
+        for input_name, path in updates.items():
+            if isinstance(path, Path):
+                inputs.cwl[input_name] = File(path=str(path))
+            else:
+                inputs.cwl[input_name] = []
+                for p in path:
+                    inputs.cwl[input_name].append(File(path=str(p)))
+
+    def __parse_output_filepaths(
+        self, stdout: str
+    ) -> dict[str, str | Path | Sequence[str | Path]]:
+        """Get the outputted filepaths per output.
+
+        :param str stdout:
+            The console output of the the job
+
+        :return dict[str, list[str]]:
+            The dict of the list of filepaths for each output
+        """
+        outputted_files: dict[str, str | Path | Sequence[str | Path]] = {}
+        outputs = json.loads(stdout)
+        for output, files in outputs.items():
+            if not files:
+                continue
+            if not isinstance(files, list):
+                files = [files]
+            file_paths = []
+            for file in files:
+                if file:
+                    file_paths.append(str(file["path"]))
+            outputted_files[output] = file_paths
+        return outputted_files
 
     def _pre_process(
         self,
@@ -82,11 +211,21 @@ class JobWrapper:
             YAML().dump(task_dict, task_file)
         command.append(str(task_path.name))
 
-        if arguments and arguments.sandbox:
-            # Download the files from the sandbox store
-            logger.info("Downloading the files from the sandbox store...")
-            self.__download_input_sandbox(arguments, self.job_path)
-            logger.info("Files downloaded successfully!")
+        if arguments:
+            if arguments.sandbox:
+                # Download the files from the sandbox store
+                logger.info("Downloading the files from the sandbox store...")
+                self.__download_input_sandbox(arguments, self.job_path)
+                logger.info("Files downloaded successfully!")
+
+            updates = self.__download_input_data(arguments, self.job_path)
+            self.__update_inputs(arguments, updates)
+
+            parameter_dict = save(cast(Saveable, arguments.cwl))
+            parameter_path = self.job_path / "parameter.cwl"
+            with open(parameter_path, "w") as parameter_file:
+                YAML().dump(parameter_dict, parameter_file)
+            command.append(str(parameter_path.name))
 
         if self.execution_hooks_plugin:
             return self.execution_hooks_plugin.pre_process(
@@ -122,10 +261,14 @@ class JobWrapper:
         logger.info(stdout)
         logger.info(stderr)
 
+        outputs = self.__parse_output_filepaths(stdout)
+
         if self.execution_hooks_plugin:
             return self.execution_hooks_plugin.post_process(
-                self.job_path, stdout=stdout
+                self.job_path, outputs=outputs
             )
+
+        self.__upload_output_sandbox(outputs=outputs)
 
         return True
 
