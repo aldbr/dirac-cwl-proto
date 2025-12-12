@@ -51,10 +51,7 @@ def submit_transformation_client(
     - Validate the workflow
     - Start the transformation
     """
-    if local:
-        os.environ["DIRAC_PROTO_LOCAL"] = "1"
-    else:
-        os.environ["DIRAC_PROTO_LOCAL"] = "0"
+    os.environ["DIRAC_PROTO_LOCAL"] = "0"
     # Validate the workflow
     console.print(
         "[blue]:information_source:[/blue] [bold]CLI:[/bold] Validating the transformation..."

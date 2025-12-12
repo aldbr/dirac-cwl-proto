@@ -54,10 +54,7 @@ def submit_production_client(
     - Start the production
     """
 
-    if local:
-        os.environ["DIRAC_PROTO_LOCAL"] = "1"
-    else:
-        os.environ["DIRAC_PROTO_LOCAL"] = "0"
+    os.environ["DIRAC_PROTO_LOCAL"] = "0"
 
     # Validate the workflow
     console.print(

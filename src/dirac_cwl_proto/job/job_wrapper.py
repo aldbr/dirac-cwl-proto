@@ -219,6 +219,7 @@ class JobWrapper:
             updates = self.__download_input_data(arguments, self.job_path)
             self.__update_inputs(arguments, updates)
 
+            logger.info("Preparing the parameters for cwltool...")
             parameter_dict = save(cast(Saveable, arguments.cwl))
             parameter_path = self.job_path / "parameter.cwl"
             with open(parameter_path, "w") as parameter_file:
@@ -229,15 +230,6 @@ class JobWrapper:
             return self.execution_hooks_plugin.pre_process(
                 executable, arguments, self.job_path, command
             )
-        else:  # done in execution hooks otherwise
-            if arguments:
-                # Prepare the parameters for cwltool
-                logger.info("Preparing the parameters for cwltool...")
-                parameter_dict = save(cast(Saveable, arguments.cwl))
-                parameter_path = self.job_path / "parameter.cwl"
-                with open(parameter_path, "w") as parameter_file:
-                    YAML().dump(parameter_dict, parameter_file)
-                command.append(str(parameter_path.name))
 
         return command
 
@@ -320,8 +312,8 @@ class JobWrapper:
             logger.error("Failed to post-process Task")
             return False
 
-        except Exception as e:
-            logger.exception(f"JobWrapper: Failed to execute workflow : {e}")
+        except Exception:
+            logger.exception("JobWrapper: Failed to execute workflow")
             return False
         finally:
             # Clean up
