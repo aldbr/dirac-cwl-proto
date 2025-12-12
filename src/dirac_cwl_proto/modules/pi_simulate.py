@@ -9,9 +9,7 @@ console = Console()
 
 
 @app.command()
-def simulate(
-    num_points: int = typer.Argument(..., help="Number of random points to generate")
-):
+def simulate(num_points: int = typer.Argument(..., help="Number of random points to generate")):
     """
     Simulate random points inside a square (Monte Carlo method).
     """

@@ -42,9 +42,7 @@ console = Console()
 def submit_production_client(
     task_path: str = typer.Argument(..., help="Path to the CWL file"),
     # Specific parameter for the purpose of the prototype
-    local: Optional[bool] = typer.Option(
-        True, help="Run the job locally instead of submitting it to the router"
-    ),
+    local: Optional[bool] = typer.Option(True, help="Run the job locally instead of submitting it to the router"),
 ):
     """
     Correspond to the dirac-cli command to submit productions
@@ -57,43 +55,29 @@ def submit_production_client(
     os.environ["DIRAC_PROTO_LOCAL"] = "0"
 
     # Validate the workflow
-    console.print(
-        "[blue]:information_source:[/blue] [bold]CLI:[/bold] Validating the production..."
-    )
+    console.print("[blue]:information_source:[/blue] [bold]CLI:[/bold] Validating the production...")
     try:
         task = load_document(pack(task_path))
     except FileNotFoundError as ex:
-        console.print(
-            f"[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to load the task:\n{ex}"
-        )
+        console.print(f"[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to load the task:\n{ex}")
         return typer.Exit(code=1)
     except ValidationException as ex:
-        console.print(
-            f"[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to validate the task:\n{ex}"
-        )
+        console.print(f"[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to validate the task:\n{ex}")
         return typer.Exit(code=1)
     console.print(f"\t[green]:heavy_check_mark:[/green] Task {task_path}")
     console.print("\t[green]:heavy_check_mark:[/green] Metadata")
 
     # Create the production
     production = ProductionSubmissionModel(task=task)
-    console.print(
-        "[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Production validated."
-    )
+    console.print("[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Production validated.")
 
     # Submit the tranaformation
-    console.print(
-        "[blue]:information_source:[/blue] [bold]CLI:[/bold] Submitting the production..."
-    )
+    console.print("[blue]:information_source:[/blue] [bold]CLI:[/bold] Submitting the production...")
     print_json(production.model_dump_json(indent=4))
     if not submit_production_router(production):
-        console.print(
-            "[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to run production."
-        )
+        console.print("[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to run production.")
         return typer.Exit(code=1)
-    console.print(
-        "[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Production done."
-    )
+    console.print("[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Production done.")
 
 
 # -----------------------------------------------------------------------------
@@ -144,9 +128,7 @@ def _get_transformations(
     transformations = []
 
     for step in production.task.steps:
-        step_task = _create_subworkflow(
-            step, str(production.task.cwlVersion), production.task.inputs
-        )
+        step_task = _create_subworkflow(step, str(production.task.cwlVersion), production.task.inputs)
 
         transformations.append(
             TransformationSubmissionModel(

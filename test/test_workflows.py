@@ -73,9 +73,7 @@ def pi_test_files():
         # A string input is passed
         (
             "test/workflows/helloworld/description_with_inputs.cwl",
-            [
-                "test/workflows/helloworld/type_dependencies/job/inputs-helloworld_with_inputs1.yaml"
-            ],
+            ["test/workflows/helloworld/type_dependencies/job/inputs-helloworld_with_inputs1.yaml"],
         ),
         # Multiple string inputs are passed
         (
@@ -184,9 +182,7 @@ def test_run_job_success(cli_runner, cleanup, pi_test_files, cwl_file, inputs):
         ),
     ],
 )
-def test_run_job_validation_failure(
-    cli_runner, cleanup, cwl_file, inputs, expected_error
-):
+def test_run_job_validation_failure(cli_runner, cleanup, cwl_file, inputs, expected_error):
     command = ["job", "submit", cwl_file]
     for input in inputs:
         command.extend(["--parameter-path", input])
@@ -200,9 +196,7 @@ def test_run_job_validation_failure(
         clean_stderr = re.sub(r"\s+", "", result.stderr or "")
     except (ValueError, AttributeError):
         clean_stderr = ""
-    clean_exception = re.sub(
-        r"\s+", "", str(result.exception) if result.exception else ""
-    )
+    clean_exception = re.sub(r"\s+", "", str(result.exception) if result.exception else "")
 
     # Handle different possible error messages for circular references
     if expected_error == "Recursingintostep":
@@ -214,9 +208,7 @@ def test_run_job_validation_failure(
             "circularreference",
         ]
         error_found = any(
-            pattern in clean_output
-            or pattern in clean_stderr
-            or pattern in clean_exception
+            pattern in clean_output or pattern in clean_stderr or pattern in clean_exception
             for pattern in circular_ref_patterns
         )
         assert error_found, (
@@ -225,9 +217,7 @@ def test_run_job_validation_failure(
         )
     else:
         error_found = (
-            expected_error in clean_output
-            or expected_error in clean_stderr
-            or expected_error in clean_exception
+            expected_error in clean_output or expected_error in clean_stderr or expected_error in clean_exception
         )
         assert error_found, (
             f"Expected error '{expected_error}' not found in "
@@ -296,9 +286,7 @@ def test_run_job_parallely():
         ),
     ],
 )
-def test_run_job_with_input_data(
-    cli_runner, cleanup, pi_test_files, cwl_file, inputs, destination_source_input_data
-):
+def test_run_job_with_input_data(cli_runner, cleanup, pi_test_files, cwl_file, inputs, destination_source_input_data):
     for destination, inputs_data in destination_source_input_data.items():
         # Copy the input data to the destination
         destination = Path(destination)
@@ -352,9 +340,7 @@ def test_run_nonblocking_transformation_success(cli_runner, cleanup, cwl_file):
 
     result = cli_runner.invoke(app, command)
     clean_output = strip_ansi_codes(result.stdout)
-    assert (
-        "Transformation done" in clean_output
-    ), f"Failed to run the transformation: {result.stdout}"
+    assert "Transformation done" in clean_output, f"Failed to run the transformation: {result.stdout}"
 
 
 @pytest.mark.parametrize(
@@ -376,9 +362,7 @@ def test_run_nonblocking_transformation_success(cli_runner, cleanup, cwl_file):
         ),
     ],
 )
-def test_run_blocking_transformation_success(
-    cli_runner, cleanup, cwl_file, destination_source_input_data
-):
+def test_run_blocking_transformation_success(cli_runner, cleanup, cwl_file, destination_source_input_data):
     # Define a function to run the transformation command and return the result
     def run_transformation():
         command = ["transformation", "submit", cwl_file]
@@ -399,9 +383,7 @@ def test_run_blocking_transformation_success(
     time.sleep(2)
 
     # Verify the transformation is still running (waiting for files)
-    assert (
-        transformation_thread.is_alive()
-    ), "The transformation should be waiting for files."
+    assert transformation_thread.is_alive(), "The transformation should be waiting for files."
 
     # Now create the input files (simulating files becoming available)
     for destination, inputs in destination_source_input_data.items():
@@ -417,13 +399,9 @@ def test_run_blocking_transformation_success(
     transformation_thread.join(timeout=30)
 
     # Check if the transformation completed successfully
-    assert (
-        transformation_result is not None
-    ), "The transformation result was not captured."
+    assert transformation_result is not None, "The transformation result was not captured."
     clean_transformation_output = strip_ansi_codes(transformation_result.stdout)
-    assert (
-        "Transformation done" in clean_transformation_output
-    ), "The transformation did not complete successfully."
+    assert "Transformation done" in clean_transformation_output, "The transformation did not complete successfully."
 
 
 @pytest.mark.parametrize(
@@ -456,15 +434,11 @@ def test_run_blocking_transformation_success(
         ),
     ],
 )
-def test_run_transformation_validation_failure(
-    cli_runner, cwl_file, cleanup, expected_error
-):
+def test_run_transformation_validation_failure(cli_runner, cwl_file, cleanup, expected_error):
     command = ["transformation", "submit", cwl_file]
     result = cli_runner.invoke(app, command)
     clean_stdout = strip_ansi_codes(result.stdout)
-    assert (
-        "Transformation done" not in clean_stdout
-    ), "The transformation did complete successfully."
+    assert "Transformation done" not in clean_stdout, "The transformation did complete successfully."
 
     # Check all possible output sources
     clean_output = re.sub(r"\s+", "", result.stdout)
@@ -472,9 +446,7 @@ def test_run_transformation_validation_failure(
         clean_stderr = re.sub(r"\s+", "", result.stderr or "")
     except (ValueError, AttributeError):
         clean_stderr = ""
-    clean_exception = re.sub(
-        r"\s+", "", str(result.exception) if result.exception else ""
-    )
+    clean_exception = re.sub(r"\s+", "", str(result.exception) if result.exception else "")
 
     # Handle multiple possible error patterns for circular references
     if expected_error == "Recursingintostep":
@@ -486,9 +458,7 @@ def test_run_transformation_validation_failure(
             "circularreference",
         ]
         error_found = any(
-            pattern in clean_output
-            or pattern in clean_stderr
-            or pattern in clean_exception
+            pattern in clean_output or pattern in clean_stderr or pattern in clean_exception
             for pattern in circular_ref_patterns
         )
         assert error_found, (
@@ -497,9 +467,7 @@ def test_run_transformation_validation_failure(
         )
     else:
         error_found = (
-            expected_error in clean_output
-            or expected_error in clean_stderr
-            or expected_error in clean_exception
+            expected_error in clean_output or expected_error in clean_stderr or expected_error in clean_exception
         )
         assert error_found, (
             f"Expected error '{expected_error}' not found in "
@@ -526,9 +494,7 @@ def test_run_simple_production_success(cli_runner, cleanup, pi_test_files, cwl_f
 
     result = cli_runner.invoke(app, command)
     clean_output = strip_ansi_codes(result.stdout)
-    assert (
-        "Production done" in clean_output
-    ), f"Failed to run the production: {result.stdout}"
+    assert "Production done" in clean_output, f"Failed to run the production: {result.stdout}"
 
 
 @pytest.mark.parametrize(
@@ -566,16 +532,12 @@ def test_run_simple_production_success(cli_runner, cleanup, pi_test_files, cwl_f
         ),
     ],
 )
-def test_run_production_validation_failure(
-    cli_runner, cleanup, cwl_file, expected_error
-):
+def test_run_production_validation_failure(cli_runner, cleanup, cwl_file, expected_error):
     command = ["production", "submit", cwl_file]
     result = cli_runner.invoke(app, command)
 
     clean_stdout = strip_ansi_codes(result.stdout)
-    assert (
-        "Transformation done" not in clean_stdout
-    ), "The transformation did complete successfully."
+    assert "Transformation done" not in clean_stdout, "The transformation did complete successfully."
 
     # Check all possible output sources
     clean_output = re.sub(r"\s+", "", f"{result.stdout}")
@@ -594,9 +556,7 @@ def test_run_production_validation_failure(
             "circularreference",
         ]
         error_found = any(
-            pattern in clean_output
-            or pattern in clean_stderr
-            or pattern in clean_exception
+            pattern in clean_output or pattern in clean_stderr or pattern in clean_exception
             for pattern in circular_ref_patterns
         )
         assert error_found, (
@@ -605,9 +565,7 @@ def test_run_production_validation_failure(
         )
     else:
         error_found = (
-            expected_error in clean_output
-            or expected_error in clean_stderr
-            or expected_error in clean_exception
+            expected_error in clean_output or expected_error in clean_stderr or expected_error in clean_exception
         )
         assert error_found, (
             f"Expected error '{expected_error}' not found in "

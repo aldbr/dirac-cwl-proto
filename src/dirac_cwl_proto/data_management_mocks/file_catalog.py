@@ -15,9 +15,7 @@ class InMemoryFileCatalog(FileCatalog):
         super(FileCatalog, self).__init__()
 
     def _getEligibleCatalogs(self):
-        self._eligibleCatalogs = {
-            "MyMockCatalog": {"Type": "MockFileCatalog", "Backend": "Memory"}
-        }
+        self._eligibleCatalogs = {"MyMockCatalog": {"Type": "MockFileCatalog", "Backend": "Memory"}}
         return S_OK(self._eligibleCatalogs)
 
     def findFile(self, lfn):
@@ -34,9 +32,7 @@ class InMemoryFileCatalog(FileCatalog):
 
 class LocalFileCatalog(FileCatalog):
     def __init__(self, catalogs=None, vo=None):
-        self._eligibleCatalogs = {
-            "MyMockCatalog": {"Type": "MockFileCatalog", "Backend": "LocalFileSystem"}
-        }
+        self._eligibleCatalogs = {"MyMockCatalog": {"Type": "MockFileCatalog", "Backend": "LocalFileSystem"}}
         self._metadataPath = "filecatalog/metadata.json"
         super(FileCatalog, self).__init__()
 

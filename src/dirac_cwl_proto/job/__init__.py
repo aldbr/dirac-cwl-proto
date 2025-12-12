@@ -42,13 +42,9 @@ console = Console()
 @app.async_command("submit")
 async def submit_job_client(
     task_path: str = typer.Argument(..., help="Path to the CWL file"),
-    parameter_path: list[str]
-    | None = typer.Option(None, help="Path to the files containing the metadata"),
+    parameter_path: list[str] | None = typer.Option(None, help="Path to the files containing the metadata"),
     # Specific parameter for the purpose of the prototype
-    local: bool
-    | None = typer.Option(
-        True, help="Run the job locally instead of submitting it to the router"
-    ),
+    local: bool | None = typer.Option(True, help="Run the job locally instead of submitting it to the router"),
 ):
     """
     Correspond to the dirac-cli command to submit jobs
@@ -58,27 +54,19 @@ async def submit_job_client(
     - Start the jobs
     """
     # Select submission strategy based on local flag
-    submission_client: SubmissionClient = (
-        PrototypeSubmissionClient() if local else DIRACSubmissionClient()
-    )
+    submission_client: SubmissionClient = PrototypeSubmissionClient() if local else DIRACSubmissionClient()
 
     os.environ["DIRAC_PROTO_LOCAL"] = "0"
 
     # Validate the workflow
-    console.print(
-        "[blue]:information_source:[/blue] [bold]CLI:[/bold] Validating the job(s)..."
-    )
+    console.print("[blue]:information_source:[/blue] [bold]CLI:[/bold] Validating the job(s)...")
     try:
         task = load_document(pack(task_path))
     except FileNotFoundError as ex:
-        console.print(
-            f"[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to load the task:\n{ex}"
-        )
+        console.print(f"[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to load the task:\n{ex}")
         return typer.Exit(code=1)
     except ValidationException as ex:
-        console.print(
-            f"[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to validate the task:\n{ex}"
-        )
+        console.print(f"[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to validate the task:\n{ex}")
         return typer.Exit(code=1)
 
     console.print(f"\t[green]:heavy_check_mark:[/green] Task {task_path}")
@@ -108,28 +96,20 @@ async def submit_job_client(
                     cwl=parameter,
                 )
             )
-            console.print(
-                f"\t[green]:heavy_check_mark:[/green] Parameter {parameter_p}"
-            )
+            console.print(f"\t[green]:heavy_check_mark:[/green] Parameter {parameter_p}")
 
     job = JobSubmissionModel(
         task=task,
         inputs=parameters,
     )
-    console.print(
-        "[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Job(s) validated."
-    )
+    console.print("[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Job(s) validated.")
 
     # Submit the job
-    console.print(
-        "[blue]:information_source:[/blue] [bold]CLI:[/bold] Submitting the job(s)..."
-    )
+    console.print("[blue]:information_source:[/blue] [bold]CLI:[/bold] Submitting the job(s)...")
     print_json(job.model_dump_json(indent=4))
 
     if not await submission_client.submit_job(job):
-        console.print(
-            "[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to submit job(s)."
-        )
+        console.print("[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to submit job(s).")
         return typer.Exit(code=1)
 
 
@@ -141,9 +121,7 @@ def validate_jobs(job: JobSubmissionModel) -> list[JobModel]:
 
     :return: The list of jobs to execute
     """
-    console.print(
-        "[blue]:information_source:[/blue] [bold]CLI:[/bold] Validating the job(s)..."
-    )
+    console.print("[blue]:information_source:[/blue] [bold]CLI:[/bold] Validating the job(s)...")
     # Initiate 1 job per parameter
     jobs = []
     if not job.inputs:
@@ -160,9 +138,7 @@ def validate_jobs(job: JobSubmissionModel) -> list[JobModel]:
                     input=parameter,
                 )
             )
-    console.print(
-        "[green]:information_source:[/green] [bold]CLI:[/bold] Job(s) validated!"
-    )
+    console.print("[green]:information_source:[/green] [bold]CLI:[/bold] Job(s) validated!")
     return jobs
 
 
