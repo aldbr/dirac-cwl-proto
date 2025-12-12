@@ -46,9 +46,7 @@ logger = logging.getLogger(__name__)
 class JobWrapper:
     """Job Wrapper for the execution hook."""
 
-    _sandbox_store_client: SandboxStoreClient = PrivateAttr(
-        default_factory=SandboxStoreClient
-    )
+    _sandbox_store_client: SandboxStoreClient = PrivateAttr(default_factory=SandboxStoreClient)
 
     def __init__(self) -> None:
         self.execution_hooks_plugin: ExecutionHooksBasePlugin | None = None
@@ -56,9 +54,7 @@ class JobWrapper:
         if os.getenv("DIRAC_PROTO_LOCAL") == "1":
             self._sandbox_store_client = MockSandboxStoreClient()
 
-    def __download_input_sandbox(
-        self, arguments: JobInputModel, job_path: Path
-    ) -> None:
+    def __download_input_sandbox(self, arguments: JobInputModel, job_path: Path) -> None:
         """
         Download the files from the sandbox store
         """
@@ -73,26 +69,15 @@ class JobWrapper:
         outputs: dict[str, str | Path | Sequence[str | Path]],
     ):
         if not self.execution_hooks_plugin:
-            raise RuntimeError(
-                "Could not upload sandbox : Execution hook is not defined."
-            )
+            raise RuntimeError("Could not upload sandbox : Execution hook is not defined.")
         for output_name, src_path in outputs.items():
-            if (
-                self.execution_hooks_plugin.output_sandbox
-                and output_name in self.execution_hooks_plugin.output_sandbox
-            ):
+            if self.execution_hooks_plugin.output_sandbox and output_name in self.execution_hooks_plugin.output_sandbox:
                 if isinstance(src_path, Path) or isinstance(src_path, str):
                     src_path = [src_path]
-                sb_path = returnValueOrRaise(
-                    self._sandbox_store_client.uploadFilesAsSandbox(src_path)
-                )
-                logger.info(
-                    f"Successfully stored output {output_name} in Sandbox {sb_path}"
-                )
+                sb_path = returnValueOrRaise(self._sandbox_store_client.uploadFilesAsSandbox(src_path))
+                logger.info(f"Successfully stored output {output_name} in Sandbox {sb_path}")
 
-    def __download_input_data(
-        self, inputs: JobInputModel, job_path: Path
-    ) -> dict[str, Path | list[Path]]:
+    def __download_input_data(self, inputs: JobInputModel, job_path: Path) -> dict[str, Path | list[Path]]:
         """Download LFNs into the job working directory.
 
         :param JobInputModel inputs:
@@ -106,36 +91,23 @@ class JobWrapper:
         """
         new_paths: dict[str, Path | list[Path]] = {}
         if not self.execution_hooks_plugin:
-            raise RuntimeWarning(
-                "Could not download input data: Execution hook is not defined."
-            )
+            raise RuntimeWarning("Could not download input data: Execution hook is not defined.")
 
         lfns_inputs = get_lfns(inputs.cwl)
 
         if lfns_inputs:
             for input_name, lfns in lfns_inputs.items():
-                res = returnValueOrRaise(
-                    self.execution_hooks_plugin._datamanager.getFile(
-                        lfns, str(job_path)
-                    )
-                )
+                res = returnValueOrRaise(self.execution_hooks_plugin._datamanager.getFile(lfns, str(job_path)))
                 if res["Failed"]:
                     raise RuntimeError(f"Could not get files : {res['Failed']}")
                 paths = res["Successful"]
                 if paths and isinstance(lfns, list):
-                    new_paths[input_name] = [
-                        Path(paths[lfn]).relative_to(job_path.resolve())
-                        for lfn in paths
-                    ]
+                    new_paths[input_name] = [Path(paths[lfn]).relative_to(job_path.resolve()) for lfn in paths]
                 elif paths and isinstance(lfns, str):
-                    new_paths[input_name] = Path(paths[lfns]).relative_to(
-                        job_path.resolve()
-                    )
+                    new_paths[input_name] = Path(paths[lfns]).relative_to(job_path.resolve())
         return new_paths
 
-    def __update_inputs(
-        self, inputs: JobInputModel, updates: dict[str, Path | list[Path]]
-    ):
+    def __update_inputs(self, inputs: JobInputModel, updates: dict[str, Path | list[Path]]):
         """Update CWL job inputs with new file paths.
 
         This method updates the `inputs.cwl` object by replacing or adding
@@ -162,9 +134,7 @@ class JobWrapper:
                 for p in path:
                     inputs.cwl[input_name].append(File(path=str(p)))
 
-    def __parse_output_filepaths(
-        self, stdout: str
-    ) -> dict[str, str | Path | Sequence[str | Path]]:
+    def __parse_output_filepaths(self, stdout: str) -> dict[str, str | Path | Sequence[str | Path]]:
         """Get the outputted filepaths per output.
 
         :param str stdout:
@@ -227,9 +197,7 @@ class JobWrapper:
             command.append(str(parameter_path.name))
 
         if self.execution_hooks_plugin:
-            return self.execution_hooks_plugin.pre_process(
-                executable, arguments, self.job_path, command
-            )
+            return self.execution_hooks_plugin.pre_process(executable, arguments, self.job_path, command)
 
         return command
 
@@ -254,9 +222,7 @@ class JobWrapper:
         outputs = self.__parse_output_filepaths(stdout)
 
         if self.execution_hooks_plugin:
-            return self.execution_hooks_plugin.post_process(
-                self.job_path, outputs=outputs
-            )
+            return self.execution_hooks_plugin.post_process(self.job_path, outputs=outputs)
 
         self.__upload_output_sandbox(outputs=outputs)
 
@@ -273,9 +239,7 @@ class JobWrapper:
         # Instantiate runtime metadata from the serializable descriptor and
         # the job context so implementations can access task inputs/overrides.
         job_execution_hooks = ExecutionHooksHint.from_cwl(job.task)
-        self.execution_hooks_plugin = (
-            job_execution_hooks.to_runtime(job) if job_execution_hooks else None
-        )
+        self.execution_hooks_plugin = job_execution_hooks.to_runtime(job) if job_execution_hooks else None
 
         # Isolate the job in a specific directory
         self.job_path = Path(".") / "workernode" / f"{random.randint(1000, 9999)}"
@@ -289,14 +253,10 @@ class JobWrapper:
 
             # Execute the task
             logger.info(f"Executing Task: {command}")
-            result = subprocess.run(
-                command, capture_output=True, text=True, cwd=self.job_path
-            )
+            result = subprocess.run(command, capture_output=True, text=True, cwd=self.job_path)
 
             if result.returncode != 0:
-                logger.error(
-                    f"Error in executing workflow:\n{Text.from_ansi(result.stderr)}"
-                )
+                logger.error(f"Error in executing workflow:\n{Text.from_ansi(result.stderr)}")
                 return False
             logger.info("Task executed successfully!")
 

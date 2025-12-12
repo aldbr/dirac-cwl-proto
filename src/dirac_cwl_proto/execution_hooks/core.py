@@ -197,9 +197,7 @@ class ExecutionHooksBasePlugin(BaseModel):
             logger.info(f"Storing output {output_name}, with source {src_path}")
 
             if not src_path:
-                raise RuntimeError(
-                    f"src_path parameter required for filesystem storage of {output_name}"
-                )
+                raise RuntimeError(f"src_path parameter required for filesystem storage of {output_name}")
 
             lfn = self.output_paths.get(output_name, None)
 
@@ -210,22 +208,14 @@ class ExecutionHooksBasePlugin(BaseModel):
                     file_lfn = Path(lfn) / Path(src).name
                     res = None
                     for se in self.output_se:
-                        res = returnSingleResult(
-                            self._datamanager.putAndRegister(str(file_lfn), src, se)
-                        )
+                        res = returnSingleResult(self._datamanager.putAndRegister(str(file_lfn), src, se))
                         if res["OK"]:
-                            logger.info(
-                                f"Successfully saved file {src} with LFN {file_lfn}"
-                            )
+                            logger.info(f"Successfully saved file {src} with LFN {file_lfn}")
                             break
                     if res and not res["OK"]:
-                        raise RuntimeError(
-                            f"Could not save file {src} with LFN {str(lfn)} : {res['Message']}"
-                        )
+                        raise RuntimeError(f"Could not save file {src} with LFN {str(lfn)} : {res['Message']}")
 
-    def get_input_query(
-        self, input_name: str, **kwargs: Any
-    ) -> Union[Path, List[Path], None]:
+    def get_input_query(self, input_name: str, **kwargs: Any) -> Union[Path, List[Path], None]:
         """Generate LFN-based input query path.
 
         Accepts and ignores extra kwargs for interface compatibility.
@@ -260,17 +250,11 @@ class SchedulingHint(BaseModel, Hint):
 
     model_config = ConfigDict(extra="forbid", validate_assignment=True)
 
-    platform: Optional[str] = Field(
-        default=None, description="Target platform (e.g., 'DIRAC', 'DIRACX')"
-    )
+    platform: Optional[str] = Field(default=None, description="Target platform (e.g., 'DIRAC', 'DIRACX')")
 
-    priority: int = Field(
-        default=10, description="Job priority (higher values = higher priority)"
-    )
+    priority: int = Field(default=10, description="Job priority (higher values = higher priority)")
 
-    sites: Optional[List[str]] = Field(
-        default=None, description="Candidate execution sites"
-    )
+    sites: Optional[List[str]] = Field(default=None, description="Candidate execution sites")
 
     @classmethod
     def from_cwl(cls: type[T], cwl_object: Any) -> T:
@@ -315,9 +299,7 @@ class ExecutionHooksHint(BaseModel, Hint):
         default_factory=dict, description="Additional parameters for metadata plugins"
     )
 
-    output_paths: Dict[str, Any] = Field(
-        default_factory=dict, description="LFNs for outputs on the Data Catalog"
-    )
+    output_paths: Dict[str, Any] = Field(default_factory=dict, description="LFNs for outputs on the Data Catalog")
 
     output_sandbox: list[str] = Field(
         default_factory=list,
@@ -343,11 +325,7 @@ class ExecutionHooksHint(BaseModel, Hint):
 
         merged_update = {}
         for key, value in update.items():
-            if (
-                hasattr(self, key)
-                and isinstance(getattr(self, key), dict)
-                and isinstance(value, dict)
-            ):
+            if hasattr(self, key) and isinstance(getattr(self, key), dict) and isinstance(value, dict):
                 existing_value = getattr(self, key).copy()
                 existing_value.update(value)
                 merged_update[key] = existing_value

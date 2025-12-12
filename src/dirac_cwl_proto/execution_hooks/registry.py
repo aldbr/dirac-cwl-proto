@@ -30,9 +30,7 @@ class ExecutionHooksPluginRegistry:
         self._vo_plugins: Dict[str, Dict[str, Type[ExecutionHooksBasePlugin]]] = {}
         self._plugin_info: Dict[str, Dict[str, Any]] = {}
 
-    def register_plugin(
-        self, plugin_class: Type[ExecutionHooksBasePlugin], override: bool = False
-    ) -> None:
+    def register_plugin(self, plugin_class: Type[ExecutionHooksBasePlugin], override: bool = False) -> None:
         """Register a metadata plugin.
 
         Parameters
@@ -48,9 +46,7 @@ class ExecutionHooksPluginRegistry:
             If plugin is already registered and override=False.
         """
         if not issubclass(plugin_class, ExecutionHooksBasePlugin):
-            raise ValueError(
-                f"Plugin {plugin_class} must inherit from ExecutionHooksBasePlugin"
-            )
+            raise ValueError(f"Plugin {plugin_class} must inherit from ExecutionHooksBasePlugin")
 
         plugin_key = plugin_class.name()
         vo = plugin_class.vo
@@ -79,9 +75,7 @@ class ExecutionHooksPluginRegistry:
             f"{f' (VO: {vo})' if vo else ''}"
         )
 
-    def get_plugin(
-        self, plugin_key: str, vo: Optional[str] = None
-    ) -> Optional[Type[ExecutionHooksBasePlugin]]:
+    def get_plugin(self, plugin_key: str, vo: Optional[str] = None) -> Optional[Type[ExecutionHooksBasePlugin]]:
         """Get a registered plugin.
 
         Parameters
@@ -104,9 +98,7 @@ class ExecutionHooksPluginRegistry:
         # Fall back to global registry
         return self._plugins.get(plugin_key)
 
-    def instantiate_plugin(
-        self, descriptor: ExecutionHooksHint, **kwargs: Any
-    ) -> ExecutionHooksBasePlugin:
+    def instantiate_plugin(self, descriptor: ExecutionHooksHint, **kwargs: Any) -> ExecutionHooksBasePlugin:
         """Instantiate a metadata plugin from a descriptor.
 
         Parameters
@@ -132,10 +124,7 @@ class ExecutionHooksPluginRegistry:
 
         if plugin_class is None:
             available = self.list_plugins()
-            raise KeyError(
-                f"Unknown execution hooks plugin: '{descriptor.hook_plugin}'"
-                f"Available: {available}"
-            )
+            raise KeyError(f"Unknown execution hooks plugin: '{descriptor.hook_plugin}'" f"Available: {available}")
 
         # Extract plugin parameters from descriptor
         plugin_params = descriptor.model_dump(
@@ -148,9 +137,7 @@ class ExecutionHooksPluginRegistry:
         try:
             return plugin_class(**plugin_params)
         except Exception as e:
-            raise ValueError(
-                f"Failed to instantiate plugin '{descriptor.hook_plugin}': {e}"
-            ) from e
+            raise ValueError(f"Failed to instantiate plugin '{descriptor.hook_plugin}': {e}") from e
 
     def list_plugins(self, vo: Optional[str] = None) -> List[str]:
         """List available plugins.
@@ -223,10 +210,7 @@ class ExecutionHooksPluginRegistry:
 
         if plugin_class is None:
             available = self.list_plugins()
-            errors.append(
-                f"Unknown metadata plugin: '{descriptor.hook_plugin}'. "
-                f"Available: {available}"
-            )
+            errors.append(f"Unknown metadata plugin: '{descriptor.hook_plugin}'. " f"Available: {available}")
             return errors
 
         # Validate descriptor against plugin schema

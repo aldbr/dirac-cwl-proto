@@ -83,9 +83,7 @@ class PrototypeSubmissionClient(SubmissionClient):
 
         result = submit_job_router(job_submission)
         if result:
-            console.print(
-                "[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Job(s) done."
-            )
+            console.print("[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Job(s) done.")
         return result
 
 
@@ -123,18 +121,14 @@ class DIRACSubmissionClient(SubmissionClient):
                 f.write(job.model_dump_json())
 
             # Convert job.json to jdl
-            console.print(
-                "\t\t[blue]:information_source:[/blue] [bold]CLI:[/bold] Converting job model to jdl..."
-            )
+            console.print("\t\t[blue]:information_source:[/blue] [bold]CLI:[/bold] Converting job model to jdl...")
             sandbox_id = await create_sandbox([job_submission_path])
             job_submission_path.unlink()
 
             jdl = self.convert_to_jdl(job, sandbox_id)
             jdls.append(jdl)
 
-        console.print(
-            "\t\t[blue]:information_source:[/blue] [bold]CLI:[/bold] Call diracx: jobs/jdl router..."
-        )
+        console.print("\t\t[blue]:information_source:[/blue] [bold]CLI:[/bold] Call diracx: jobs/jdl router...")
 
         async with AsyncDiracClient() as api:
             jdl_jobs = await api.jobs.submit_jdl_jobs(jdls)
@@ -158,9 +152,7 @@ class DIRACSubmissionClient(SubmissionClient):
         jdl_lines.append("Arguments = job.json;")
 
         if job.task.requirements and job.task.requirements[0].coresMin:
-            jdl_lines.append(
-                f"NumberOfProcessors = {job.task.requirements[0].coresMin};"
-            )
+            jdl_lines.append(f"NumberOfProcessors = {job.task.requirements[0].coresMin};")
 
         jdl_lines.append("JobName = test;")
         jdl_lines.append("OutputSandbox = {std.out, std.err};")

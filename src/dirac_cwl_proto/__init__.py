@@ -7,9 +7,7 @@ from dirac_cwl_proto.job import app as job_app
 from dirac_cwl_proto.production import app as production_app
 from dirac_cwl_proto.transformation import app as transformation_app
 
-logging.basicConfig(
-    level=logging.DEBUG, format="%(asctime)s | %(name)s | %(levelname)s | %(message)s"
-)
+logging.basicConfig(level=logging.DEBUG, format="%(asctime)s | %(name)s | %(levelname)s | %(message)s")
 
 try:
     __version__ = version("dirac-cwl-proto")
