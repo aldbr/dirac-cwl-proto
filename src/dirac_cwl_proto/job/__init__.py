@@ -62,10 +62,7 @@ async def submit_job_client(
         PrototypeSubmissionClient() if local else DIRACSubmissionClient()
     )
 
-    if local:
-        os.environ["DIRAC_PROTO_LOCAL"] = "1"
-    else:
-        os.environ["DIRAC_PROTO_LOCAL"] = "0"
+    os.environ["DIRAC_PROTO_LOCAL"] = "0"
 
     # Validate the workflow
     console.print(
@@ -215,6 +212,8 @@ def submit_job_router(job: JobSubmissionModel) -> bool:
     :return: True if the job executed successfully, False otherwise
     """
     logger = logging.getLogger("JobRouter")
+
+    os.environ["DIRAC_PROTO_LOCAL"] = "1"
 
     # Validate the jobs
     jobs = validate_jobs(job)
