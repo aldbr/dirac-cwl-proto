@@ -66,9 +66,7 @@ class JobWrapper:
         if not self.execution_hooks_plugin:
             raise RuntimeError("Could not download sandboxes")
         for sandbox in arguments.sandbox:
-            self.execution_hooks_plugin._sandbox_store_client.downloadSandbox(
-                sandbox, job_path
-            )
+            self._sandbox_store_client.downloadSandbox(sandbox, job_path)
 
     def __upload_output_sandbox(
         self,

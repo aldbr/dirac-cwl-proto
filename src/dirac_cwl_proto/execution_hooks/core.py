@@ -39,7 +39,6 @@ from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
 from dirac_cwl_proto.commands import PostProcessCommand, PreProcessCommand
 from dirac_cwl_proto.core.exceptions import WorkflowProcessingException
 from dirac_cwl_proto.data_management_mocks.data_manager import MockDataManager
-from dirac_cwl_proto.data_management_mocks.sandbox import MockSandboxStoreClient
 
 logger = logging.getLogger(__name__)
 
@@ -79,7 +78,6 @@ class ExecutionHooksBasePlugin(BaseModel):
         super().__init__(**kwargs)
         if os.getenv("DIRAC_PROTO_LOCAL") == "1":
             self._datamanager = MockDataManager()
-            self._sandbox_store_client = MockSandboxStoreClient()
 
     _preprocess_commands: List[type[PreProcessCommand]] = PrivateAttr(default=[])
     _postprocess_commands: List[type[PostProcessCommand]] = PrivateAttr(default=[])
