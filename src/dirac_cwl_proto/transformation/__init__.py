@@ -4,6 +4,7 @@ CLI interface to run a workflow as a transformation.
 
 import glob
 import logging
+import os
 import time
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -50,6 +51,7 @@ def submit_transformation_client(
     - Validate the workflow
     - Start the transformation
     """
+    os.environ["DIRAC_PROTO_LOCAL"] = "0"
     # Validate the workflow
     console.print(
         "[blue]:information_source:[/blue] [bold]CLI:[/bold] Validating the transformation..."
@@ -188,11 +190,11 @@ def _get_inputs(input_query: Path | list[Path], group_size: int) -> List[List[st
 
     # Retrieve all input paths matching the query
     if isinstance(input_query, Path):
-        input_paths = glob.glob(str(input_query / "*"))
+        input_paths = glob.glob(str(input_query / "*"), root_dir="filecatalog")
     else:
         input_paths = []
         for query in input_query:
-            input_paths.extend(glob.glob(str(query / "*")))
+            input_paths.extend(glob.glob(str(query / "*"), root_dir="filecatalog"))
     len_input_paths = len(input_paths)
 
     # Ensure there are enough inputs to form at least one group
@@ -226,7 +228,7 @@ def _generate_job_model_parameter(
         cwl_inputs = {}
         for input_name, input_data in group.items():
             cwl_inputs[input_name] = [
-                File(path=str(Path(path).resolve())) for path in input_data
+                File(location=str(Path("lfn:") / path)) for path in input_data
             ]
 
         job_model_params.append(JobInputModel(sandbox=None, cwl=cwl_inputs))

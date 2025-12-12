@@ -5,8 +5,6 @@ This module contains functions to manage job submission to the prototype, DIRAC,
 It is not meant to be integrated to DiracX logic itself in the future.
 """
 
-import random
-import tarfile
 from abc import ABC, abstractmethod
 from pathlib import Path
 
@@ -14,6 +12,7 @@ from diracx.api.jobs import create_sandbox
 from diracx.client.aio import AsyncDiracClient
 from rich.console import Console
 
+from dirac_cwl_proto.core.utility import get_lfns
 from dirac_cwl_proto.execution_hooks import SchedulingHint
 from dirac_cwl_proto.submission_models import JobModel, JobSubmissionModel
 
@@ -55,27 +54,23 @@ class PrototypeSubmissionClient(SubmissionClient):
         :param parameter_path: Path to the parameter file (not used in local mode)
         :return: Sandbox ID or None
         """
+        from dirac_cwl_proto.data_management_mocks.sandbox import (
+            MockSandboxStoreClient,
+        )
+
         if not isb_file_paths:
             return None
 
         Path("sandboxstore").mkdir(exist_ok=True)
         # Tar the files and upload them to the file catalog
-        sandbox_path = (
-            Path("sandboxstore") / f"input_sandbox_{random.randint(1000, 9999)}.tar.gz"
-        )
+        res = MockSandboxStoreClient().uploadFilesAsSandbox(fileList=isb_file_paths)
 
-        with tarfile.open(sandbox_path, "w:gz") as tar:
-            for file_path in isb_file_paths:
-                console.print(
-                    f"\t\t[blue]:information_source:[/blue] Found {file_path},"
-                    "uploading it to the local sandbox store..."
-                )
-                tar.add(file_path, arcname=file_path.name)
-        console.print(
-            f"\t\t[blue]:information_source:[/blue] File(s) will be available through {sandbox_path}"
-        )
+        if not res["OK"]:
+            raise RuntimeError(f"Could not create sandbox : {res['Message']}")
 
-        sandbox_id = sandbox_path.name.replace(".tar.gz", "")
+        sandbox_path = Path(res["Value"])
+
+        sandbox_id = sandbox_path.name.replace(".tar.gz", "") if sandbox_path else None
         return sandbox_id
 
     async def submit_job(self, job_submission: JobSubmissionModel) -> bool:
@@ -178,5 +173,7 @@ class DIRACSubmissionClient(SubmissionClient):
             jdl_lines.append(f"Site = {job_scheduling.sites};")
 
         jdl_lines.append(f"InputSandbox = {sandbox_id};")
+        if job.input:
+            jdl_lines.append(f"InputData = {get_lfns(job.input.cwl)}")
 
         return "\n".join(jdl_lines)

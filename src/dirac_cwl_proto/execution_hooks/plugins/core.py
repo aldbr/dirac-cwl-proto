@@ -6,14 +6,17 @@ These serve as examples and provide basic functionality for common use cases.
 
 from __future__ import annotations
 
-from typing import ClassVar, Optional
+import logging
+from pathlib import Path
+from typing import Any, ClassVar, List, Optional, Union
 
 from pydantic import Field
 
 from ..core import (
-    DefaultDataCatalogInterface,
     ExecutionHooksBasePlugin,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class QueryBasedPlugin(ExecutionHooksBasePlugin):
@@ -39,12 +42,27 @@ class QueryBasedPlugin(ExecutionHooksBasePlugin):
         default=None, description="Data type classification"
     )
 
-    def __init__(self, **data):
-        super().__init__(**data)
-        # Create data catalog with current parameters
-        self.data_catalog = DefaultDataCatalogInterface(
-            campaign=self.campaign,
-            site=self.site,
-            data_type=self.data_type,
-            base_path=self.query_root,
-        )
+    def get_input_query(
+        self, input_name: str, **kwargs: Any
+    ) -> Union[Path, List[Path], None]:
+        """Generate LFN-based input query path.
+
+        Accepts and ignores extra kwargs for interface compatibility.
+        """
+        # Build LFN: /query_root/vo/campaign/site/data_type/input_name
+        path_parts = []
+
+        if self.vo:
+            path_parts.append(self.vo)
+
+        if self.campaign:
+            path_parts.append(self.campaign)
+        if self.site:
+            path_parts.append(self.site)
+        if self.data_type:
+            path_parts.append(self.data_type)
+
+        if len(path_parts) > 0:  # More than just VO
+            return Path(self.query_root) / Path(*path_parts) / Path(input_name)
+
+        return Path(self.query_root) / Path(input_name)

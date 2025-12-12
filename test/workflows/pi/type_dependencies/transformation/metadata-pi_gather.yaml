@@ -4,6 +4,6 @@
     input-data: 5
   configuration:
     num_points: 100
-    query_root: "./filecatalog"
+    query_root: "."
     campaign: "pi"
     data_type: "100"

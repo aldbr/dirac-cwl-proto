@@ -7,215 +7,43 @@ metadata plugin system in DIRAC/DIRACX.
 from __future__ import annotations
 
 import logging
+import os
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, ClassVar, Dict, List, Mapping, Optional, Self, TypeVar, Union
+from typing import (
+    Any,
+    ClassVar,
+    Dict,
+    List,
+    Mapping,
+    Optional,
+    Self,
+    Sequence,
+    TypeVar,
+    Union,
+)
 
+from cwl_utils.parser.cwl_v1_2 import (
+    CommandLineTool,
+    ExpressionTool,
+    Workflow,
+)
+from DIRAC.DataManagementSystem.Client.DataManager import (  # type: ignore[import-untyped]
+    DataManager,
+)
+from DIRACCommon.Core.Utilities.ReturnValues import (  # type: ignore[import-untyped]
+    returnSingleResult,
+)
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
 
 from dirac_cwl_proto.commands import PostProcessCommand, PreProcessCommand
 from dirac_cwl_proto.core.exceptions import WorkflowProcessingException
+from dirac_cwl_proto.data_management_mocks.data_manager import MockDataManager
 
 logger = logging.getLogger(__name__)
 
 # TypeVar for generic class methods
 T = TypeVar("T", bound="SchedulingHint")
-
-
-class DataCatalogInterface(ABC):
-    """Abstract interface for data catalog operations.
-
-    This interface defines the contract for data discovery and output registration
-    in various data management systems. Implementations can range from simple
-    filesystem-based catalogs to complex distributed data management systems.
-
-    The interface is designed to be storage-agnostic and allows different
-    implementations to handle data in ways appropriate to their underlying
-    storage and metadata systems.
-    """
-
-    @abstractmethod
-    def get_input_query(
-        self, input_name: str, **kwargs: Any
-    ) -> Union[Path, List[Path], None]:
-        """Resolve input data locations for processing.
-
-        This method provides a mechanism to discover input data based on
-        logical names and additional query parameters. The implementation
-        determines how to translate logical input names into concrete data
-        locations.
-
-        Parameters
-        ----------
-        input_name : str
-            Logical name or identifier for the input data. This serves as
-            a documentation label and lookup key for the data catalog.
-        **kwargs : Any
-            Implementation-specific query parameters that may influence
-            data discovery (e.g., version, campaign, site, data_type).
-
-        Returns
-        -------
-        Union[Path, List[Path], None]
-            Resolved data location(s). Returns:
-            - Path: Single data location
-            - List[Path]: Multiple data locations for the same logical input
-            - None: No data found matching the query criteria
-        """
-        pass
-
-    @abstractmethod
-    def get_output_query(self, output_name: str, **kwargs: Any) -> Optional[Path]:
-        """Determine where output data should be stored.
-
-        This method generates appropriate storage locations for output data
-        based on the output name and catalog configuration. The returned
-        location serves as a staging area or final destination for outputs.
-
-        Parameters
-        ----------
-        output_name : str
-            Logical name or identifier for the output data. This serves as
-            a documentation label and determines output organization.
-        **kwargs : Any
-            Implementation-specific parameters that may influence output
-            placement (e.g., campaign, site, data classification).
-
-        Returns
-        -------
-        Optional[Path]
-            Designated output location where data should be stored.
-            Returns None if no suitable output location can be determined.
-        """
-        pass
-
-    @abstractmethod
-    def store_output(self, output_name: str, **kwargs: Any) -> None:
-        """Register or store output data in the catalog.
-
-        This method handles the catalog-specific operations needed to make
-        output data available through the data management system. The actual
-        storage mechanism is implementation-dependent and may involve file
-        operations, database registrations, or API calls to external systems.
-
-        Parameters
-        ----------
-        output_name : str
-            Logical name or identifier for the output data. This serves as
-            a documentation label for organizing and retrieving the data.
-        **kwargs : Any
-            Implementation-specific parameters that provide the necessary
-            information for storing the output (e.g., source paths, metadata,
-            checksums, file sizes, destination parameters).
-        """
-        pass
-
-
-class DefaultDataCatalogInterface(DataCatalogInterface):
-    """Default filesystem-based data catalog using Logical File Names (LFNs).
-
-    This provides a simple, filesystem-based implementation suitable for
-    examples and testing. Uses a structured LFN path format:
-    /vo/campaign/site/data_type/files
-    """
-
-    def __init__(
-        self,
-        vo: Optional[str] = None,
-        campaign: Optional[str] = None,
-        site: Optional[str] = None,
-        data_type: Optional[str] = None,
-        base_path: str = "/",
-    ):
-        self.vo = vo
-        self.campaign = campaign
-        self.site = site
-        self.data_type = data_type
-        self.base_path = Path(base_path)
-
-    def get_input_query(
-        self, input_name: str, **kwargs: Any
-    ) -> Union[Path, List[Path], None]:
-        """Generate LFN-based input query path.
-
-        Accepts and ignores extra kwargs for interface compatibility.
-        """
-        # Build LFN: /base_path/vo/campaign/site/data_type/input_name
-        path_parts = []
-
-        if self.vo:
-            path_parts.append(self.vo)
-
-        if self.campaign:
-            path_parts.append(self.campaign)
-        if self.site:
-            path_parts.append(self.site)
-        if self.data_type:
-            path_parts.append(self.data_type)
-
-        if len(path_parts) > 0:  # More than just VO
-            return self.base_path / Path(*path_parts) / Path(input_name)
-
-        return self.base_path / Path(input_name)
-
-    def get_output_query(self, output_name: str, **kwargs: Any) -> Optional[Path]:
-        """Generate LFN-based output path.
-
-        Accepts and ignores extra kwargs for interface compatibility.
-        """
-        # Output path: /grid/data/vo/outputs/campaign/site
-        output_base = self.base_path
-        if self.vo:
-            output_base = output_base / self.vo
-        output_base = output_base / "outputs"
-
-        if self.campaign:
-            output_base = output_base / self.campaign
-        if self.site:
-            output_base = output_base / self.site
-
-        return output_base
-
-    def store_output(self, output_name: str, **kwargs: Any) -> None:
-        """Store output file in the filesystem-based catalog.
-
-        This implementation handles filesystem operations to move output files
-        to their designated LFN-based storage locations.
-
-        Parameters
-        ----------
-        output_name : str
-            Logical name for the output data.
-        **kwargs : Any
-            Expected parameters:
-            - src_path (str | Path): Source path of the output file to store
-            Additional parameters are passed to get_output_query.
-
-        Raises
-        ------
-        RuntimeError
-            If no output path can be determined or if src_path is not provided.
-        """
-        # Extract the filesystem-specific parameter
-        src_path = kwargs.get("src_path")
-        if not src_path:
-            raise RuntimeError(
-                f"src_path parameter required for filesystem storage of {output_name}"
-            )
-
-        # Get the output directory
-        output_path = self.get_output_query(output_name, **kwargs)
-        if not output_path:
-            raise RuntimeError(f"No output path defined for {output_name}")
-
-        # Ensure output directory exists
-        output_path.mkdir(exist_ok=True, parents=True)
-
-        # Move file to destination
-        src_path_obj = Path(src_path)
-        dest = output_path / src_path_obj.name
-        src_path_obj.rename(dest)
-        logger.info(f"Output {output_name} stored in {dest}")
 
 
 class ExecutionHooksBasePlugin(BaseModel):
@@ -240,23 +68,19 @@ class ExecutionHooksBasePlugin(BaseModel):
     version: ClassVar[str] = "1.0.0"
     description: ClassVar[str] = "Base metadata model"
 
-    # Private attribute for data catalog interface - not part of Pydantic model validation
-    _data_catalog: Optional[DataCatalogInterface] = PrivateAttr(
-        default_factory=lambda: DefaultDataCatalogInterface()
-    )
+    output_paths: Dict[str, Any] = {}
+    output_sandbox: list[str] = []
+    output_se: list[str] = []
+
+    _datamanager: DataManager = PrivateAttr(default_factory=DataManager)
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        if os.getenv("DIRAC_PROTO_LOCAL") == "1":
+            self._datamanager = MockDataManager()
 
     _preprocess_commands: List[type[PreProcessCommand]] = PrivateAttr(default=[])
     _postprocess_commands: List[type[PostProcessCommand]] = PrivateAttr(default=[])
-
-    @property
-    def data_catalog(self) -> Optional[DataCatalogInterface]:
-        """Get the data catalog interface."""
-        return self._data_catalog
-
-    @data_catalog.setter
-    def data_catalog(self, value: DataCatalogInterface) -> None:
-        """Set the data catalog interface."""
-        self._data_catalog = value
 
     @property
     def preprocess_commands(self) -> List[type[PreProcessCommand]]:
@@ -278,32 +102,36 @@ class ExecutionHooksBasePlugin(BaseModel):
         """Set the list of post-processing commands."""
         self._postprocess_commands = value
 
-    def __init__(self, **data):
-        """Initialize with data catalog interface."""
-        super().__init__(**data)
-        # Data catalog will be set by subclasses as needed
-
     @classmethod
     def name(cls) -> str:
         """Auto-derive hook plugin identifier from class name."""
         return cls.__name__
 
     def pre_process(
-        self, job_path: Path, command: List[str], **kwargs: Any
+        self,
+        executable: CommandLineTool | Workflow | ExpressionTool,
+        arguments: Any | None,
+        job_path: Path,
+        command: List[str],
+        **kwargs: Any,
     ) -> List[str]:
-        """Pre-process job inputs and command.
+        """Pre-process job inputs and command before execution.
 
-        Parameters
-        ----------
-        job_path : Path
+        :param CommandLineTool | Workflow | ExpressionTool executable:
+            The CWL tool, workflow, or expression to be executed.
+        :param JobInputModel arguments:
+            The job inputs, including CWL and LFN data.
+        :param Path job_path:
             Path to the job working directory.
-        command : List[str]
-            The command to be executed.
+        :param list[str] command:
+            The command to be executed, which will be modified.
+        :param Any **kwargs:
+            Additional parameters, allowing extensions to pass extra context
+            or configuration options.
 
-        Returns
-        -------
-        List[str]
-            Modified command list.
+        :return list[str]:
+            The modified command, typically including the serialized CWL
+            input file path.
         """
         for preprocess_command in self.preprocess_commands:
             if not issubclass(preprocess_command, PreProcessCommand):
@@ -320,13 +148,20 @@ class ExecutionHooksBasePlugin(BaseModel):
 
         return command
 
-    def post_process(self, job_path: Path, **kwargs: Any) -> bool:
+    def post_process(
+        self,
+        job_path: Path,
+        outputs: dict[str, str | Path | Sequence[str | Path]] = {},
+        **kwargs: Any,
+    ) -> bool:
         """Post-process job outputs.
 
-        Parameters
-        ----------
-        job_path : Path
+        :param Path job_path:
             Path to the job working directory.
+        :param str|None stdout:
+            cwltool standard output.
+        :param Any **kwargs:
+            Additional keyword arguments for extensibility.
         """
         for postprocess_command in self.postprocess_commands:
             if not issubclass(postprocess_command, PostProcessCommand):
@@ -341,36 +176,62 @@ class ExecutionHooksBasePlugin(BaseModel):
                 logger.exception(msg)
                 raise WorkflowProcessingException(msg) from e
 
+        self.store_output(outputs)
         return True
+
+    def store_output(
+        self,
+        outputs: dict[str, str | Path | Sequence[str | Path]],
+        **kwargs: Any,
+    ) -> None:
+        """Store an output file or set of files via the appropriate storage interface.
+
+        :param dict[str, str | Path | Sequence[str | Path]] outputs:
+            Dictionary containing the path or list of paths to the source file(s) to be stored
+            for each cwl output.
+        :param Any **kwargs:
+            Additional keyword arguments for extensibility.
+        """
+
+        for output_name, src_path in outputs.items():
+            logger.info(f"Storing output {output_name}, with source {src_path}")
+
+            if not src_path:
+                raise RuntimeError(
+                    f"src_path parameter required for filesystem storage of {output_name}"
+                )
+
+            lfn = self.output_paths.get(output_name, None)
+
+            if lfn:
+                if isinstance(src_path, str) or isinstance(src_path, Path):
+                    src_path = [src_path]
+                for src in src_path:
+                    file_lfn = Path(lfn) / Path(src).name
+                    res = None
+                    for se in self.output_se:
+                        res = returnSingleResult(
+                            self._datamanager.putAndRegister(str(file_lfn), src, se)
+                        )
+                        if res["OK"]:
+                            logger.info(
+                                f"Successfully saved file {src} with LFN {file_lfn}"
+                            )
+                            break
+                    if res and not res["OK"]:
+                        raise RuntimeError(
+                            f"Could not save file {src} with LFN {str(lfn)} : {res['Message']}"
+                        )
 
     def get_input_query(
         self, input_name: str, **kwargs: Any
     ) -> Union[Path, List[Path], None]:
-        """Delegate to data catalog interface."""
-        if self.data_catalog is None:
-            return None
-        return self.data_catalog.get_input_query(input_name, **kwargs)
+        """Generate LFN-based input query path.
 
-    def get_output_query(self, output_name: str, **kwargs: Any) -> Optional[Path]:
-        """Delegate to data catalog interface."""
-        if self.data_catalog is None:
-            return None
-        return self.data_catalog.get_output_query(output_name, **kwargs)
-
-    def store_output(self, output_name: str, src_path: str, **kwargs: Any) -> None:
-        """Delegate to data catalog interface.
-
-        This method provides backward compatibility by forwarding the src_path
-        parameter through kwargs to the data catalog implementation.
+        Accepts and ignores extra kwargs for interface compatibility.
         """
-        if self.data_catalog is None:
-            logger.warning(
-                f"No data catalog available, cannot store output {output_name}"
-            )
-            return
-        # Forward src_path through kwargs to maintain interface compatibility
-        kwargs["src_path"] = src_path
-        self.data_catalog.store_output(output_name, **kwargs)
+        # Build LFN: /query_root/vo/campaign/site/data_type/input_name
+        pass
 
     @classmethod
     def get_schema_info(cls) -> Dict[str, Any]:
@@ -454,6 +315,20 @@ class ExecutionHooksHint(BaseModel, Hint):
         default_factory=dict, description="Additional parameters for metadata plugins"
     )
 
+    output_paths: Dict[str, Any] = Field(
+        default_factory=dict, description="LFNs for outputs on the Data Catalog"
+    )
+
+    output_sandbox: list[str] = Field(
+        default_factory=list,
+        description="List of the outputs stored in the output sandbox",
+    )
+
+    output_se: list[str] = Field(
+        default_factory=lambda: ["SE-USER"],
+        description="List of Storage Elements that can be used to store the outputs",
+    )
+
     def model_copy(
         self,
         update: Optional[Mapping[str, Any]] = None,
@@ -494,7 +369,7 @@ class ExecutionHooksHint(BaseModel, Hint):
                if present.
             3. The descriptor's ``configuration``.
 
-            During merging, keys are normalised from dash-case to snake_case to
+            During merging, keys are normalized from dash-case to snake_case to
             align with typical Python argument names used by runtime implementations.
 
             Parameters
@@ -517,7 +392,11 @@ class ExecutionHooksHint(BaseModel, Hint):
 
         if submitted is None:
             descriptor = ExecutionHooksHint(
-                hook_plugin=self.hook_plugin, **self.configuration
+                hook_plugin=self.hook_plugin,
+                output_paths=self.output_paths,
+                output_sandbox=self.output_sandbox,
+                output_se=self.output_se,
+                **self.configuration,
             )
             return get_registry().instantiate_plugin(descriptor)
 
@@ -537,7 +416,13 @@ class ExecutionHooksHint(BaseModel, Hint):
 
         params = {_dash_to_snake(key): value for key, value in inputs.items()}
 
-        descriptor = ExecutionHooksHint(hook_plugin=self.hook_plugin, **params)
+        descriptor = ExecutionHooksHint(
+            hook_plugin=self.hook_plugin,
+            output_paths=self.output_paths,
+            output_sandbox=self.output_sandbox,
+            output_se=self.output_se,
+            **params,
+        )
         return get_registry().instantiate_plugin(descriptor)
 
     @classmethod

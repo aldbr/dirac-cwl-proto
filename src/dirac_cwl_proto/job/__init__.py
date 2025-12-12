@@ -3,6 +3,7 @@ CLI interface to run a workflow as a job.
 """
 
 import logging
+import os
 import random
 import subprocess
 from pathlib import Path
@@ -34,11 +35,10 @@ from dirac_cwl_proto.submission_models import (
 app = AsyncTyper()
 console = Console()
 
+
 # -----------------------------------------------------------------------------
 # dirac-cli commands
 # -----------------------------------------------------------------------------
-
-
 @app.async_command("submit")
 async def submit_job_client(
     task_path: str = typer.Argument(..., help="Path to the CWL file"),
@@ -61,6 +61,8 @@ async def submit_job_client(
     submission_client: SubmissionClient = (
         PrototypeSubmissionClient() if local else DIRACSubmissionClient()
     )
+
+    os.environ["DIRAC_PROTO_LOCAL"] = "0"
 
     # Validate the workflow
     console.print(
@@ -186,11 +188,12 @@ def prepare_input_sandbox(input_data: dict[str, Any]) -> list[Path]:
     files_path = []
     for file in files:
         # TODO: path is not the only attribute to consider, but so far it is the only one used
-        if not file.path:
+        if not file.location and not file.path:
             raise NotImplementedError("File path is not defined.")
 
-        file_path = Path(file.path.replace("file://", ""))
-        files_path.append(file_path)
+        if file.path:
+            file_path = Path(file.path.replace("file://", ""))
+            files_path.append(file_path)
 
     return files_path
 
@@ -209,6 +212,8 @@ def submit_job_router(job: JobSubmissionModel) -> bool:
     :return: True if the job executed successfully, False otherwise
     """
     logger = logging.getLogger("JobRouter")
+
+    os.environ["DIRAC_PROTO_LOCAL"] = "1"
 
     # Validate the jobs
     jobs = validate_jobs(job)

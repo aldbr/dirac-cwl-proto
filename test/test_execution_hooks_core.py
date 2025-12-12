@@ -7,13 +7,12 @@ abstract interfaces.
 """
 
 from pathlib import Path
-from typing import Any, List, Optional, Union
+from typing import Any, List, Optional
 
 import pytest
+from pytest_mock import MockerFixture
 
 from dirac_cwl_proto.execution_hooks.core import (
-    DataCatalogInterface,
-    DefaultDataCatalogInterface,
     ExecutionHooksBasePlugin,
     ExecutionHooksHint,
     SchedulingHint,
@@ -30,7 +29,7 @@ class TestExecutionHook:
 
         # Test default pre_process behavior
         command = ["echo", "hello"]
-        result = hook.pre_process(Path("/tmp"), command)
+        result = hook.pre_process({}, None, Path("/tmp"), command)
         assert result == command  # Should return command unchanged
 
         # Test default post_process behavior
@@ -41,57 +40,26 @@ class TestExecutionHook:
 
         class ConcreteHook(ExecutionHooksBasePlugin):
             def pre_process(
-                self, job_path: Path, command: List[str], **kwargs: Any
+                self,
+                executable,
+                arguments,
+                job_path: Path,
+                command: List[str],
+                **kwargs: Any,
             ) -> List[str]:
+                command = super().pre_process(
+                    executable, arguments, job_path, command, **kwargs
+                )
                 return command + ["--processed"]
 
         processor = ConcreteHook()
 
         # Test pre_process
-        result = processor.pre_process(Path("/tmp"), ["echo", "hello"])
+        result = processor.pre_process({}, None, Path("/tmp"), ["echo", "hello"])
         assert result == ["echo", "hello", "--processed"]
 
         # Test post_process
         processor.post_process(Path("/tmp"))  # Should not raise exception
-
-
-class TestDataCatalogInterface:
-    """Test the DataCatalogInterface abstract base class."""
-
-    def test_abstract_methods(self):
-        """Test that DataCatalogInterface cannot be instantiated directly."""
-        with pytest.raises(TypeError):
-            DataCatalogInterface()
-
-    def test_concrete_implementation(self):
-        """Test that concrete implementations work correctly."""
-
-        class ConcreteCatalog(DataCatalogInterface):
-            def get_input_query(
-                self, input_name: str, **kwargs: Any
-            ) -> Union[Path, List[Path], None]:
-                return Path(f"/data/{input_name}")
-
-            def get_output_query(
-                self, output_name: str, **kwargs: Any
-            ) -> Optional[Path]:
-                return Path(f"/output/{output_name}")
-
-            def store_output(self, output_name: str, **kwargs: Any) -> None:
-                pass
-
-        catalog = ConcreteCatalog()
-
-        # Test get_input_query
-        result = catalog.get_input_query("test_input")
-        assert result == Path("/data/test_input")
-
-        # Test get_output_query
-        result = catalog.get_output_query("test_output")
-        assert result == Path("/output/test_output")
-
-        # Test store_output
-        catalog.store_output("test_output")  # Should not raise an error
 
 
 class TestExecutionHookExtended:
@@ -131,17 +99,53 @@ class TestExecutionHookExtended:
         class TestModel(ExecutionHooksBasePlugin):
             pass
 
-        model = TestModel()
         # Use a temp directory for the data catalog to avoid system path issues
-        model.data_catalog = DefaultDataCatalogInterface(base_path=tmp_path)
-
-        # Test DataCatalogInterface methods
-        assert str(model.get_input_query("test")) == str(tmp_path / "test")
-        assert str(model.get_output_query("test")) == str(tmp_path / "outputs")
+        model = TestModel(base_path=tmp_path)
 
         # Test store_output raises RuntimeError when src_path is missing
         with pytest.raises(RuntimeError, match="src_path parameter required"):
-            model.store_output("test", src_path=None)
+            model.store_output({"test": None})
+
+    def test_output(self, mocker: MockerFixture):
+        """Test that the Hook uses the correct interface for each output type."""
+
+        model = ExecutionHooksBasePlugin(
+            output_paths={"test_lfn": "lfn:test"},
+            output_sandbox=["test_sb"],
+            output_se=["SE-USER"],
+        )
+
+        put_mock = mocker.patch.object(
+            model._datamanager,
+            "putAndRegister",
+            return_value={
+                "OK": True,
+                "Value": {"Successful": {"test": "test"}, "Failed": {}},
+            },
+        )
+        # FIXME
+        # sb_upload_mock = mocker.patch.object(
+        #     model._sandbox_store_client,
+        #     "uploadFilesAsSandbox",
+        #     return_value={
+        #         "OK": True,
+        #         "Value": "test",
+        #     },
+        # )
+
+        # Use data manager if output is in output_paths hint
+        model.store_output({"test_lfn": "file.test"})
+        assert "test_lfn" in model.output_paths
+        put_mock.assert_called_once()
+        # sb_upload_mock.assert_not_called()
+
+        put_mock.reset_mock()
+
+        # # Sandbox if in output_sandbox hint
+        # model.store_output("test_sb", "file.test")
+        # assert "test_sb" not in model.output_paths
+        # sb_upload_mock.assert_called_once()
+        # put_mock.assert_not_called()
 
     def test_model_serialization(self):
         """Test that model serialization works correctly."""
@@ -154,7 +158,13 @@ class TestExecutionHookExtended:
 
         # Test dict conversion
         data = model.model_dump()
-        assert data == {"field": "test", "value": 42}
+        assert data == {
+            "field": "test",
+            "value": 42,
+            "output_paths": {},
+            "output_sandbox": [],
+            "output_se": [],
+        }
 
         # Test JSON schema generation
         schema = model.model_json_schema()
