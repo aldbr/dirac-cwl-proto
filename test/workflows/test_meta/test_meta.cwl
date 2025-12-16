@@ -24,5 +24,5 @@ hints:
 
   - class: dirac:Scheduling
     platform: x86_64
-    priority: 10
-    sites: null
+    priority: 100
+    sites: CTAO.DESY-ZN.de, CTAO.PIC.es
