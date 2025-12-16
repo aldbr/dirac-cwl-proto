@@ -174,6 +174,14 @@ class DIRACSubmissionClient(SubmissionClient):
 
         jdl_lines.append(f"InputSandbox = {sandbox_id};")
         if job.input:
-            jdl_lines.append(f"InputData = {get_lfns(job.input.cwl)}")
+            formatted_lfns = []
+            lfns_list = get_lfns(job.input.cwl).values()
+            for lfns in lfns_list:
+                for lfn in lfns:
+                    formatted_lfns.append(str(lfn).replace("lfn:", "LFN:", 1))
+
+            lfns_str = ", ".join(formatted_lfns)
+            if lfns_str:
+                jdl_lines.append(f"InputData = {lfns_str};")
 
         return "\n".join(jdl_lines)

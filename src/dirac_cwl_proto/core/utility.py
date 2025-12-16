@@ -6,7 +6,7 @@ from cwl_utils.parser.cwl_v1_2 import (
 )
 
 
-def get_lfns(input_data: dict[str, Any]) -> dict[str, Path | list[Path]]:
+def get_lfns(input_data: dict[str, Any]) -> dict[str, list[Path]]:
     """
     Get the list of LFNs in the inputs from the parameters
 
@@ -14,10 +14,10 @@ def get_lfns(input_data: dict[str, Any]) -> dict[str, Path | list[Path]]:
     :return: The list of LFN paths
     """
     # Get the files from the input data
-    files: dict[str, Path | list[Path]] = {}
+    files: dict[str, list[Path]] = {}
     for input_name, input_value in input_data.items():
+        val = []
         if isinstance(input_value, list):
-            val = []
             for item in input_value:
                 if isinstance(item, File):
                     if not item.location and not item.path:
@@ -33,5 +33,6 @@ def get_lfns(input_data: dict[str, Any]) -> dict[str, Path | list[Path]]:
             if not input_value.location:
                 raise NotImplementedError("File location is not defined.")
             if input_value.location.startswith("lfn:"):
-                files[input_name] = Path(input_value.location)
+                val.append(Path(input_value.location))
+            files[input_name] = val
     return files
