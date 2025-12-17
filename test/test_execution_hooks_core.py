@@ -47,9 +47,7 @@ class TestExecutionHook:
                 command: List[str],
                 **kwargs: Any,
             ) -> List[str]:
-                command = super().pre_process(
-                    executable, arguments, job_path, command, **kwargs
-                )
+                command = super().pre_process(executable, arguments, job_path, command, **kwargs)
                 return command + ["--processed"]
 
         processor = ConcreteHook()
@@ -223,18 +221,14 @@ class TestExecutionHooksHint:
         """Test model_copy merges dict fields and updates values."""
         descriptor = ExecutionHooksHint(hook_plugin="AdminPlugin")
 
-        updated = descriptor.model_copy(
-            update={"hook_plugin": "NewClass", "new_field": "value"}
-        )
+        updated = descriptor.model_copy(update={"hook_plugin": "NewClass", "new_field": "value"})
 
         assert updated.hook_plugin == "NewClass"
         assert getattr(updated, "new_field", None) == "value"
 
     def test_default_values(self):
         """Test default values."""
-        descriptor = ExecutionHooksHint(
-            hook_plugin="QueryBasedPlugin", user_id="test123"
-        )
+        descriptor = ExecutionHooksHint(hook_plugin="QueryBasedPlugin", user_id="test123")
 
         assert descriptor.hook_plugin == "QueryBasedPlugin"
         assert getattr(descriptor, "user_id", None) == "test123"
@@ -252,9 +246,7 @@ class TestSchedulingHint:
 
     def test_creation_with_values(self):
         """Test SchedulingHint creation with values."""
-        descriptor = SchedulingHint(
-            platform="DIRAC", priority=5, sites=["LCG.CERN.ch", "LCG.IN2P3.fr"]
-        )
+        descriptor = SchedulingHint(platform="DIRAC", priority=5, sites=["LCG.CERN.ch", "LCG.IN2P3.fr"])
         assert descriptor.platform == "DIRAC"
         assert descriptor.priority == 5
         assert descriptor.sites == ["LCG.CERN.ch", "LCG.IN2P3.fr"]
@@ -279,9 +271,7 @@ class TestSchedulingHint:
 
     def test_serialization(self):
         """Test SchedulingHint serialization."""
-        descriptor = SchedulingHint(
-            platform="DIRAC", priority=7, sites=["LCG.CERN.ch", "LCG.IN2P3.fr"]
-        )
+        descriptor = SchedulingHint(platform="DIRAC", priority=7, sites=["LCG.CERN.ch", "LCG.IN2P3.fr"])
 
         # Test model serialization
         data = descriptor.model_dump()
@@ -296,9 +286,7 @@ class TestTransformationExecutionHooksHint:
 
     def test_creation(self):
         """Test TransformationExecutionHooksHint creation."""
-        descriptor = TransformationExecutionHooksHint(
-            hook_plugin="QueryBasedPlugin", group_size={"input_data": 100}
-        )
+        descriptor = TransformationExecutionHooksHint(hook_plugin="QueryBasedPlugin", group_size={"input_data": 100})
         assert descriptor.hook_plugin == "QueryBasedPlugin"
         assert descriptor.group_size == {"input_data": 100}
 
@@ -318,9 +306,7 @@ class TestTransformationExecutionHooksHint:
     def test_validation(self):
         """Test group_size validation."""
         # Valid group_size
-        descriptor = TransformationExecutionHooksHint(
-            hook_plugin="UserPlugin", group_size={"files": 10}
-        )
+        descriptor = TransformationExecutionHooksHint(hook_plugin="UserPlugin", group_size={"files": 10})
         assert descriptor.group_size == {"files": 10}
 
         # Test with no group_size

@@ -42,11 +42,7 @@ class MockDataManager(DataManager):
         for lfn in lfns:
             res = sourceSE.getFile(
                 str(
-                    Path(self.base_storage_path)
-                    / str(lfn)
-                    .removeprefix("lfn:")
-                    .removeprefix("LFN:")
-                    .removeprefix("/")
+                    Path(self.base_storage_path) / str(lfn).removeprefix("lfn:").removeprefix("LFN:").removeprefix("/")
                 ),
                 destinationDir,
             )

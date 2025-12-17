@@ -47,9 +47,7 @@ class TestSystemIntegration:
             assert instance.name() == plugin_type
 
             # Test via descriptor
-            descriptor = ExecutionHooksHint(
-                hook_plugin=plugin_type, configuration=params
-            )
+            descriptor = ExecutionHooksHint(hook_plugin=plugin_type, configuration=params)
             runtime = descriptor.to_runtime()
             assert runtime.name() == plugin_type
 
@@ -63,9 +61,7 @@ class TestSystemIntegration:
 
         # Convert to runtime
         runtime_plugin = execution_hook.to_runtime()
-        assert (
-            runtime_plugin.name() == "QueryBasedPlugin"
-        )  # Test that CWL parameters are available
+        assert runtime_plugin.name() == "QueryBasedPlugin"  # Test that CWL parameters are available
         # (Note: exact parameter extraction depends on implementation)
 
 
@@ -114,9 +110,7 @@ class TestRealWorldScenarios:
         try:
             admin_runtime = admin_descriptor.to_runtime()
         except Exception:
-            pytest.skip(
-                f"Plugin {plugin_name} cannot be instantiated with configuration"
-            )
+            pytest.skip(f"Plugin {plugin_name} cannot be instantiated with configuration")
 
         # Simulate job execution
         job_path = Path("/tmp/admin_job")
@@ -130,9 +124,7 @@ class TestRealWorldScenarios:
         # Run QueryBased-specific tests only if available
         registry = get_registry()
         if "QueryBasedPlugin" not in registry.list_plugins():
-            pytest.skip(
-                "QueryBasedPlugin not registered; skipping data analysis workflow test"
-            )
+            pytest.skip("QueryBasedPlugin not registered; skipping data analysis workflow test")
 
         analysis_descriptor = ExecutionHooksHint(
             hook_plugin="QueryBasedPlugin",
@@ -155,10 +147,7 @@ class TestRealWorldScenarios:
     def test_transformation_workflow_scenario(self):
         """Test a transformation (batch processing) workflow scenario."""
         # Create multiple task descriptions for a transformation
-        task_configs = [
-            {"platform": "DIRAC", "priority": 5, "sites": [f"site_{i}"]}
-            for i in range(5)
-        ]
+        task_configs = [{"platform": "DIRAC", "priority": 5, "sites": [f"site_{i}"]} for i in range(5)]
 
         tasks = []
         for config in task_configs:
@@ -176,9 +165,7 @@ class TestRealWorldScenarios:
         # Run parameter override tests only for ParameterTestPlugin if available
         registry = get_registry()
         if "ParameterTestPlugin" not in registry.list_plugins():
-            pytest.skip(
-                "ParameterTestPlugin not registered; skipping parameter override tests"
-            )
+            pytest.skip("ParameterTestPlugin not registered; skipping parameter override tests")
 
         base_descriptor = ExecutionHooksHint(
             hook_plugin="ParameterTestPlugin",
@@ -192,9 +179,7 @@ class TestRealWorldScenarios:
         ]
 
         for override in variants:
-            variant_descriptor = base_descriptor.model_copy(
-                update={"configuration": override}
-            )
+            variant_descriptor = base_descriptor.model_copy(update={"configuration": override})
             runtime = variant_descriptor.to_runtime()
 
             # Verify parameters are properly merged/overridden when supported by the runtime
@@ -254,6 +239,4 @@ class TestErrorHandling:
         # Test with malformed hints
         mock_cwl.hints = [{"invalid": "hint"}]
         descriptor = ExecutionHooksHint.from_cwl(mock_cwl)
-        assert (
-            descriptor.hook_plugin == "QueryBasedPlugin"
-        )  # Should ignore and use default
+        assert descriptor.hook_plugin == "QueryBasedPlugin"  # Should ignore and use default

@@ -80,9 +80,7 @@ class MockSandboxStoreClient(SandboxStoreClient):
             logger.info("Files downloaded successfully!")
             return S_OK([str(Path(destinationDir) / file) for file in files])
 
-    def downloadSandboxForJob(
-        self, jobId, sbType, destinationPath="", inMemory=False, unpack=True
-    ) -> None:
+    def downloadSandboxForJob(self, jobId, sbType, destinationPath="", inMemory=False, unpack=True) -> None:
         """
         Download sandbox contents for a specific job.
 

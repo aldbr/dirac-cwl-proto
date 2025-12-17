@@ -40,9 +40,7 @@ console = Console()
 def submit_transformation_client(
     task_path: str = typer.Argument(..., help="Path to the CWL file"),
     # Specific parameter for the purpose of the prototype
-    local: Optional[bool] = typer.Option(
-        True, help="Run the jobs locally instead of submitting them to the router"
-    ),
+    local: Optional[bool] = typer.Option(True, help="Run the jobs locally instead of submitting them to the router"),
 ):
     """
     Correspond to the dirac-cli command to submit transformations
@@ -53,41 +51,27 @@ def submit_transformation_client(
     """
     os.environ["DIRAC_PROTO_LOCAL"] = "0"
     # Validate the workflow
-    console.print(
-        "[blue]:information_source:[/blue] [bold]CLI:[/bold] Validating the transformation..."
-    )
+    console.print("[blue]:information_source:[/blue] [bold]CLI:[/bold] Validating the transformation...")
     try:
         task = load_document(pack(task_path))
     except FileNotFoundError as ex:
-        console.print(
-            f"[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to load the task:\n{ex}"
-        )
+        console.print(f"[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to load the task:\n{ex}")
         return typer.Exit(code=1)
     except ValidationException as ex:
-        console.print(
-            f"[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to validate the task:\n{ex}"
-        )
+        console.print(f"[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to validate the task:\n{ex}")
         return typer.Exit(code=1)
     console.print(f"\t[green]:heavy_check_mark:[/green] Task {task_path}")
 
     transformation = TransformationSubmissionModel(task=task)
-    console.print(
-        "[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Transformation validated."
-    )
+    console.print("[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Transformation validated.")
 
     # Submit the transformation
-    console.print(
-        "[blue]:information_source:[/blue] [bold]CLI:[/bold] Submitting the transformation..."
-    )
+    console.print("[blue]:information_source:[/blue] [bold]CLI:[/bold] Submitting the transformation...")
     print_json(transformation.model_dump_json(indent=4))
     if not submit_transformation_router(transformation):
-        console.print(
-            "[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to run transformation."
-        )
+        console.print("[red]:heavy_multiplication_x:[/red] [bold]CLI:[/bold] Failed to run transformation.")
         return typer.Exit(code=1)
-    console.print(
-        "[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Transformation done."
-    )
+    console.print("[green]:heavy_check_mark:[/green] [bold]CLI:[/bold] Transformation done.")
 
 
 # -----------------------------------------------------------------------------
@@ -118,20 +102,13 @@ def submit_transformation_router(transformation: TransformationSubmissionModel) 
     job_model_params = []
 
     try:
-        transformation_execution_hooks = TransformationExecutionHooksHint.from_cwl(
-            transformation.task
-        )
+        transformation_execution_hooks = TransformationExecutionHooksHint.from_cwl(transformation.task)
     except Exception as exc:
         raise ValueError(f"Invalid DIRAC hints:\n{exc}") from exc
 
-    if (
-        transformation_execution_hooks.configuration
-        and transformation_execution_hooks.group_size
-    ):
+    if transformation_execution_hooks.configuration and transformation_execution_hooks.group_size:
         # Get the metadata class
-        transformation_metadata = transformation_execution_hooks.to_runtime(
-            transformation
-        )
+        transformation_metadata = transformation_execution_hooks.to_runtime(transformation)
 
         # Build the input cwl for the jobs to submit
         logger.info("Getting the input data for the transformation...")
@@ -205,10 +182,7 @@ def _get_inputs(input_query: Path | list[Path], group_size: int) -> List[List[st
     num_full_groups = len_input_paths // group_size
 
     # Group the input paths into lists of size group_size
-    input_groups = [
-        input_paths[i * group_size : (i + 1) * group_size]
-        for i in range(num_full_groups)
-    ]
+    input_groups = [input_paths[i * group_size : (i + 1) * group_size] for i in range(num_full_groups)]
 
     return input_groups
 
@@ -221,15 +195,11 @@ def _generate_job_model_parameter(
 
     input_names = list(input_data_dict.keys())
     input_data_lists = [input_data_dict[input_name] for input_name in input_names]
-    grouped_input_data = [
-        dict(zip(input_names, elements)) for elements in zip(*input_data_lists)
-    ]
+    grouped_input_data = [dict(zip(input_names, elements)) for elements in zip(*input_data_lists)]
     for group in grouped_input_data:
         cwl_inputs = {}
         for input_name, input_data in group.items():
-            cwl_inputs[input_name] = [
-                File(location=str(Path("lfn:") / path)) for path in input_data
-            ]
+            cwl_inputs[input_name] = [File(location=str(Path("lfn:") / path)) for path in input_data]
 
         job_model_params.append(JobInputModel(sandbox=None, cwl=cwl_inputs))
 

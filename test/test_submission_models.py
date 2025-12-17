@@ -88,13 +88,9 @@ class TestExecutionHooksHint:
         # Test with submission context
         # Test with submission context only if QueryBasedPlugin is available
         if "QueryBasedPlugin" not in available:
-            pytest.skip(
-                "QueryBasedPlugin not registered; skipping submission-context test"
-            )
+            pytest.skip("QueryBasedPlugin not registered; skipping submission-context test")
 
-        descriptor = ExecutionHooksHint(
-            hook_plugin="QueryBasedPlugin", configuration={"campaign": "Run3"}
-        )
+        descriptor = ExecutionHooksHint(hook_plugin="QueryBasedPlugin", configuration={"campaign": "Run3"})
 
         # Mock submission model
         mock_submission = mocker.Mock()
@@ -104,9 +100,7 @@ class TestExecutionHooksHint:
         mock_input.default = "default_campaign"
         mock_task.inputs = [mock_input]
         mock_submission.task = mock_task
-        mock_submission.parameters = [
-            mocker.Mock(cwl={"campaign": "override_campaign"})
-        ]
+        mock_submission.parameters = [mocker.Mock(cwl={"campaign": "override_campaign"})]
 
         runtime = descriptor.to_runtime(mock_submission)
         assert runtime.name() == "QueryBasedPlugin"
@@ -122,9 +116,7 @@ class TestExecutionHooksHint:
             },  # Already in snake_case
         )
 
-        runtime = (
-            descriptor.to_runtime()
-        )  # Parameters should be converted to snake_case
+        runtime = descriptor.to_runtime()  # Parameters should be converted to snake_case
         assert hasattr(runtime, "query_root") or runtime.query_root == "/data"
         assert hasattr(runtime, "data_type") or runtime.data_type == "AOD"
 
@@ -132,9 +124,7 @@ class TestExecutionHooksHint:
         """Test from_cwl class method."""
         mock_cwl = mocker.Mock()
         mock_descriptor = ExecutionHooksHint(hook_plugin="QueryBasedPlugin")
-        mock_from_cwl = mocker.patch(
-            "dirac_cwl_proto.submission_models.ExecutionHooksHint.from_cwl"
-        )
+        mock_from_cwl = mocker.patch("dirac_cwl_proto.submission_models.ExecutionHooksHint.from_cwl")
         mock_from_cwl.return_value = mock_descriptor
 
         result = ExecutionHooksHint.from_cwl(mock_cwl)
@@ -156,9 +146,7 @@ class TestSubmissionModelsIntegration:
             try:
                 runtime = descriptor.to_runtime()
             except KeyError:
-                pytest.skip(
-                    f"Plugin {plugin_name} not instantiable in this environment"
-                )
+                pytest.skip(f"Plugin {plugin_name} not instantiable in this environment")
             assert runtime.name() == descriptor.hook_plugin
 
     def test_task_description_with_different_metadata_types(self):
@@ -181,9 +169,7 @@ class TestSubmissionModelsIntegration:
 
     def test_model_serialization_round_trip(self):
         """Test that models can be serialized and deserialized."""
-        original = SchedulingHint(
-            platform="DIRAC", priority=7, sites=["CERN", "GRIDKA"]
-        )
+        original = SchedulingHint(platform="DIRAC", priority=7, sites=["CERN", "GRIDKA"])
 
         # Serialize to dict
         data = original.model_dump()
@@ -200,9 +186,7 @@ class TestSubmissionModelsIntegration:
         # Create an enhanced descriptor directly
         registry = get_registry()
         if "QueryBasedPlugin" not in registry.list_plugins():
-            pytest.skip(
-                "QueryBasedPlugin not registered; skipping CWL hints integration test"
-            )
+            pytest.skip("QueryBasedPlugin not registered; skipping CWL hints integration test")
 
         descriptor = ExecutionHooksHint(
             hook_plugin="QueryBasedPlugin",

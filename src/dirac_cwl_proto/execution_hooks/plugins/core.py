@@ -29,22 +29,12 @@ class QueryBasedPlugin(ExecutionHooksBasePlugin):
     description: ClassVar[str] = "LFN-based metadata for structured data discovery"
 
     # LFN parameters
-    query_root: str = Field(
-        default="/grid/data", description="Base path for LFN structure"
-    )
-    site: Optional[str] = Field(
-        default=None, description="Site identifier for LFN path"
-    )
-    campaign: Optional[str] = Field(
-        default=None, description="Campaign name for LFN path"
-    )
-    data_type: Optional[str] = Field(
-        default=None, description="Data type classification"
-    )
+    query_root: str = Field(default="/grid/data", description="Base path for LFN structure")
+    site: Optional[str] = Field(default=None, description="Site identifier for LFN path")
+    campaign: Optional[str] = Field(default=None, description="Campaign name for LFN path")
+    data_type: Optional[str] = Field(default=None, description="Data type classification")
 
-    def get_input_query(
-        self, input_name: str, **kwargs: Any
-    ) -> Union[Path, List[Path], None]:
+    def get_input_query(self, input_name: str, **kwargs: Any) -> Union[Path, List[Path], None]:
         """Generate LFN-based input query path.
 
         Accepts and ignores extra kwargs for interface compatibility.

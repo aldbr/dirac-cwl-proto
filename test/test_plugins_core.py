@@ -31,9 +31,7 @@ class TestQueryBasedPlugin:
         assert plugin.data_type is None
 
         # Test custom parameters
-        plugin = QueryBasedPlugin(
-            query_root="/data", site="CERN", campaign="Run3", data_type="AOD"
-        )
+        plugin = QueryBasedPlugin(query_root="/data", site="CERN", campaign="Run3", data_type="AOD")
         assert plugin.query_root == "/data"
         assert plugin.site == "CERN"
         assert plugin.campaign == "Run3"
@@ -41,9 +39,7 @@ class TestQueryBasedPlugin:
 
     def test_get_input_query_with_parameters(self):
         """Test get_input_query with query parameters."""
-        plugin = QueryBasedPlugin(
-            query_root="/data", campaign="Run3", site="CERN", data_type="AOD"
-        )
+        plugin = QueryBasedPlugin(query_root="/data", campaign="Run3", site="CERN", data_type="AOD")
 
         result = plugin.get_input_query("test_input")
 
@@ -253,16 +249,10 @@ class TestPluginCommands:
 
         # The instance from the hints and registry should have the same commands
         assert len(plugin_from_hint.preprocess_commands) == 1
-        assert (
-            plugin_from_hint.preprocess_commands[0]
-            == plugin_instance.preprocess_commands[0]
-        )
+        assert plugin_from_hint.preprocess_commands[0] == plugin_instance.preprocess_commands[0]
 
         assert len(plugin_from_hint.postprocess_commands) == 1
-        assert (
-            plugin_from_hint.postprocess_commands[0]
-            == plugin_instance.postprocess_commands[0]
-        )
+        assert plugin_from_hint.postprocess_commands[0] == plugin_instance.postprocess_commands[0]
 
     def test_execute(self, job_type_testing, mocker, monkeypatch):
         """Test the execution of the preprocess and postprocess commands.

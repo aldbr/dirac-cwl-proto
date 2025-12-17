@@ -103,9 +103,7 @@ def collect_pydantic_models() -> Dict[str, Any]:
             "Transformation",
             "Production",
         )
-        plugin_count = len(
-            [k for k in models.keys() if not k.startswith(excluded_prefixes)]
-        )
+        plugin_count = len([k for k in models.keys() if not k.startswith(excluded_prefixes)])
         logger.info(f"Collected {plugin_count} metadata plugins")
     except ImportError as e:
         logger.error(f"Failed to import metadata registry: {e}")
@@ -130,19 +128,14 @@ def create_cwl_schema_shim(model_class: Any, model_name: str) -> Dict[str, Any]:
         annotation = field_info.annotation
 
         # Handle CWL Workflow type specifically
-        if (
-            hasattr(annotation, "__name__")
-            and getattr(annotation, "__name__", None) == "Workflow"
-        ):
+        if hasattr(annotation, "__name__") and getattr(annotation, "__name__", None) == "Workflow":
             properties = cast(Dict[str, Any], schema["properties"])
             properties[field_name] = {
                 "description": "CWL Workflow definition",
                 "$ref": "https://json.schemastore.org/cwl-workflow.json",
             }
         # Handle other CWL types
-        elif hasattr(annotation, "__module__") and "cwl_utils.parser" in str(
-            getattr(annotation, "__module__", "")
-        ):
+        elif hasattr(annotation, "__module__") and "cwl_utils.parser" in str(getattr(annotation, "__module__", "")):
             annotation_name = getattr(annotation, "__name__", "Unknown")
             properties = cast(Dict[str, Any], schema["properties"])
             properties[field_name] = {
@@ -150,10 +143,7 @@ def create_cwl_schema_shim(model_class: Any, model_name: str) -> Dict[str, Any]:
                 "$ref": "https://json.schemastore.org/cwlc.json",
             }
         # Handle dict types
-        elif (
-            hasattr(annotation, "__origin__")
-            and getattr(annotation, "__origin__", None) is dict
-        ):
+        elif hasattr(annotation, "__origin__") and getattr(annotation, "__origin__", None) is dict:
             # Try to get the value type for dict[str, SomeType]
             args = getattr(annotation, "__args__", [])
             if len(args) == 2:
@@ -211,11 +201,7 @@ def generate_schema(model_class: Any, model_name: str) -> Dict[str, Any]:
         return schema
     except Exception as e:
         # Handle CWL-related models specially
-        if (
-            "cwl_utils.parser" in str(e)
-            or "IsInstanceSchema" in str(e)
-            or "Workflow" in str(e)
-        ):
+        if "cwl_utils.parser" in str(e) or "IsInstanceSchema" in str(e) or "Workflow" in str(e):
             logger.info(f"Creating CWL schema reference for {model_name}")
             return create_cwl_schema_shim(model_class, model_name)
 
@@ -258,9 +244,7 @@ def generate_unified_dirac_schema(models: Dict[str, Any]) -> Dict[str, Any]:
     return schema
 
 
-def save_schema(
-    schema: Dict[str, Any], output_path: Path, format: str = "json"
-) -> None:
+def save_schema(schema: Dict[str, Any], output_path: Path, format: str = "json") -> None:
     """Save schema to file in specified format."""
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -278,9 +262,7 @@ def save_schema(
 
 def main():
     """Main entry point for schema generation."""
-    parser = argparse.ArgumentParser(
-        description="Generate JSON schemas from Pydantic metadata models"
-    )
+    parser = argparse.ArgumentParser(description="Generate JSON schemas from Pydantic metadata models")
     parser.add_argument(
         "--output-dir",
         type=Path,
@@ -344,11 +326,7 @@ def main():
             "plugins": {
                 name: {
                     "class": model_class.__name__,
-                    "hook_plugin": (
-                        model_class.name()
-                        if hasattr(model_class, "get_hook_plugin")
-                        else None
-                    ),
+                    "hook_plugin": (model_class.name() if hasattr(model_class, "get_hook_plugin") else None),
                     "description": getattr(model_class, "description", None),
                     "vo": getattr(model_class, "vo", None),
                     "module": model_class.__module__,

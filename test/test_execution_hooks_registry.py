@@ -144,9 +144,7 @@ class TestExecutionHooksPluginRegistry:
 
         registry.register_plugin(TestVOPlugin)
 
-        descriptor = ExecutionHooksHint(
-            hook_plugin="TestVOPlugin", vo="test_exp", exp_param=99
-        )
+        descriptor = ExecutionHooksHint(hook_plugin="TestVOPlugin", vo="test_exp", exp_param=99)
         instance = registry.instantiate_plugin(descriptor)
 
         assert isinstance(instance, TestVOPlugin)
@@ -168,9 +166,7 @@ class TestExecutionHooksPluginRegistry:
         # Mock entry_points to have nothing
         entrypointMock = mocker.MagicMock()
         entrypointMock.names = []
-        monkeypatch.setattr(
-            registry, "entry_points", lambda *args, **kwargs: entrypointMock
-        )
+        monkeypatch.setattr(registry, "entry_points", lambda *args, **kwargs: entrypointMock)
 
         registry = ExecutionHooksPluginRegistry()
 
@@ -185,11 +181,9 @@ class TestExecutionHooksPluginRegistry:
     def test_discover_plugins(self, mocker, monkeypatch):
         from dirac_cwl_proto.execution_hooks import registry
 
-        class FakePlugin(ExecutionHooksBasePlugin):
-            ...
+        class FakePlugin(ExecutionHooksBasePlugin): ...
 
-        class FakeWrongPlugin:
-            ...
+        class FakeWrongPlugin: ...
 
         # Prepare the mocks
         entrypointMock = mocker.MagicMock()
@@ -212,9 +206,7 @@ class TestExecutionHooksPluginRegistry:
         entrypointMock.__getitem__.side_effect = mockedEntries.__getitem__
 
         # Patch both the entry_points and the logger
-        monkeypatch.setattr(
-            registry, "entry_points", lambda *args, **kwargs: entrypointMock
-        )
+        monkeypatch.setattr(registry, "entry_points", lambda *args, **kwargs: entrypointMock)
         monkeypatch.setattr(registry, "logger", loggerMock)
 
         # Execute discover_plugins
