@@ -42,6 +42,7 @@ testing = ["pytest>=6", "pytest-mock"]
 
 [project.scripts]
 dirac-cwl = "dirac_cwl_proto:app"
+dirac-cwl-run = "dirac_cwl_proto.executor.__main__:main"
 crypto = "dirac_cwl_proto.modules.crypto:app"
 pi-simulate = "dirac_cwl_proto.modules.pi_simulate:app"
 pi-gather = "dirac_cwl_proto.modules.pi_gather:app"

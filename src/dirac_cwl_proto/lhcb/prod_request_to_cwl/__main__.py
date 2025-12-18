@@ -139,6 +139,9 @@ def generate(
 
         except Exception as e:
             console.print(f"[red]❌ Error generating {prod_name}: {e}[/red]")
+            if verbose:
+                import traceback
+                traceback.print_exc()
             skipped.append((prod_name, str(e)))
 
     # Print summary

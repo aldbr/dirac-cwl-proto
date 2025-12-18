@@ -39,6 +39,7 @@ from cwl_utils.parser.cwl_v1_2 import (
     ResourceRequirement,
     StepInputExpressionRequirement,
     InlineJavascriptRequirement,
+    SubworkflowFeatureRequirement,
     Workflow,
     WorkflowInputParameter,
     WorkflowOutputParameter,
@@ -50,8 +51,6 @@ from ruamel.yaml.scalarstring import LiteralScalarString
 
 
 # Constants
-POOL_XML = "pool-xml-catalog"
-POOL_XML_OUT = f"{POOL_XML}-out"
 EVENT_TYPE = "event-type"
 RUN_NUMBER = "run-number"
 FIRST_EVENT_NUMBER = "first-event-number"
@@ -193,6 +192,7 @@ def _buildCWLWorkflow(
         doc=LiteralScalarString("\n".join(doc_lines)),
         steps=main_workflow_steps,
         requirements=[
+            SubworkflowFeatureRequirement(),
             MultipleInputFeatureRequirement(),
             StepInputExpressionRequirement(),
             InlineJavascriptRequirement(),
@@ -279,11 +279,6 @@ def _getWorkflowInputs(production: dict[str, Any]) -> dict[str, WorkflowInputPar
             default=10,
             doc="Number of events to generate"
         )
-        workflow_inputs[POOL_XML] = WorkflowInputParameter(
-            type_="File?",
-            id=POOL_XML,
-            doc="Pool XML catalog file (optional)"
-        )
         workflow_inputs["histogram"] = WorkflowInputParameter(
             type_="boolean",
             id="histogram",
@@ -296,11 +291,6 @@ def _getWorkflowInputs(production: dict[str, Any]) -> dict[str, WorkflowInputPar
             type_="File",
             id="input-data",
             doc="Input data files from previous step"
-        )
-        workflow_inputs[POOL_XML] = WorkflowInputParameter(
-            type_="File",
-            id=POOL_XML,
-            doc="Pool XML catalog file"
         )
         workflow_inputs[NUMBER_OF_EVENTS] = WorkflowInputParameter(
             type_="int",
@@ -355,21 +345,6 @@ def _getWorkflowOutputs(steps: list[dict[str, Any]]) -> list[WorkflowOutputParam
             linkMerge="merge_flattened",
         )
     )
-
-    # Always add pool XML catalog from the last step
-    if steps:
-        last_step = steps[-1]
-        last_step_name = _sanitizeStepName(last_step.get("name", f"step_{len(steps) - 1}"))
-
-        # Pool XML catalog
-        workflow_outputs.append(
-            WorkflowOutputParameter(
-                type_="File",
-                id=POOL_XML_OUT,
-                label="Pool XML Catalog",
-                outputSource=f"{last_step_name}/{POOL_XML_OUT}",
-            )
-        )
 
     return workflow_outputs
 
@@ -518,9 +493,6 @@ def _buildCommandLineTool(
     # Step number is 1-indexed
     step_number = step_index + 1
 
-    # pool_xml_catalog filename
-    pool_xml_filename = "pool_xml_catalog.xml"
-
     # Build input parameters with command-line bindings
     input_parameters = []
     input_parameters.append(
@@ -566,16 +538,7 @@ def _buildCommandLineTool(
                         inputBinding=CommandLineBinding(prefix="--lfn-paths"),
                     )
                 )
-        elif input_id == POOL_XML:
-            # Pool XML catalog is copied via InitialWorkDirRequirement, not passed as CLI arg
-            # Only add as input parameter (no inputBinding) so it can be used in InitialWorkDirRequirement
-            input_parameters.append(
-                CommandInputParameter(
-                    id=POOL_XML,
-                    type_="File?" if step_index == 0 else "File",
-                    # No inputBinding - we copy it via InitialWorkDirRequirement instead
-                )
-            )
+        # Note: pool_xml_catalog input handling removed - managed by replica catalogs
         elif input_id == RUN_NUMBER:
             input_parameters.append(
                 CommandInputParameter(
@@ -636,6 +599,7 @@ def _buildCommandLineTool(
                     inputBinding=CommandLineBinding(prefix="--histogram"),
                 )
             )
+        # Note: pool_xml_catalog is no longer passed as input - it's handled by replica catalogs
 
     # Create readable multi-line JSON string for base configuration
     # Use a LiteralScalarString to preserve formatting in YAML output
@@ -652,16 +616,7 @@ def _buildCommandLineTool(
         )
     ]
 
-    # For all steps, copy pool_xml_catalog if provided
-    # For the first step, this input is optional (File?) - if provided, copy it; otherwise Gauss creates it
-    # For subsequent steps, this will be a required File from the previous step that should be copied
-    # We always add the copy directive - if the input is null/missing, the file won't be created
-    initial_workdir_listing.append(
-        Dirent(
-            entryname=pool_xml_filename,
-            entry=f"$(inputs['{POOL_XML}'])",
-        )
-    )
+    # Note: pool_xml_catalog is no longer copied - it's generated from replica catalogs by the wrapper
 
     # For non-first steps, create an input files manifest to avoid command-line length limits
     # This manifest will contain one file path per line
@@ -701,6 +656,10 @@ def _buildCommandLineTool(
     if step_index > 0:
         input_files_manifest = f"inputFiles_{step_number}.txt"
         arguments.extend(["--input-files", input_files_manifest])
+
+    # Add replica catalog argument for all steps
+    # The executor creates replica_catalog.json in the working directory
+    arguments.extend(["--replica-catalog", "replica_catalog.json"])
 
     return CommandLineTool(
         id=tool_id,
@@ -776,14 +735,7 @@ def _buildOutputParameters(step: dict[str, Any]) -> list[CommandOutputParameter]
         )
     )
 
-    # Pool XML catalog output
-    output_parameters.append(
-        CommandOutputParameter(
-            id=POOL_XML_OUT,
-            type_="File",
-            outputBinding=CommandOutputBinding(glob="pool_xml_catalog.xml"),
-        )
-    )
+    # Note: pool_xml_catalog is no longer an output - it's managed by replica catalogs
 
     return output_parameters
 
@@ -849,11 +801,7 @@ def _buildStepInputs(
         source = wf_input.id
         value_from = None
 
-        if input_id == POOL_XML:
-            # Link to previous step's pool XML if not first step
-            if step_index > 0:
-                prev_step_name = step_names[step_index - 1]
-                source = f"{prev_step_name}/{POOL_XML_OUT}"
+        # Note: pool_xml_catalog is no longer passed between steps - managed by replica catalogs
 
         step_inputs.append(
             WorkflowStepInput(
@@ -871,7 +819,6 @@ def _buildStepOutputs(step: dict[str, Any]) -> list[WorkflowStepOutput]:
     return [
         WorkflowStepOutput(id="output-data"),
         WorkflowStepOutput(id="others"),
-        WorkflowStepOutput(id=POOL_XML_OUT),
     ]
 
 
@@ -896,12 +843,12 @@ def _getWorkflowStaticInputs(production: dict[str, Any]) -> dict[str, Any]:
         static_inputs[RUN_NUMBER] = 1  # Default run number
         static_inputs[FIRST_EVENT_NUMBER] = 1  # Default first event
         static_inputs[NUMBER_OF_EVENTS] = 10
-        static_inputs[POOL_XML] = "pool_xml_catalog.xml"  # String for Gauss
         static_inputs["histogram"] = False
     else:
         # For non-Gauss, would need actual input files
-        static_inputs[POOL_XML] = {"class": "File", "path": "pool_xml_catalog.xml"}
         static_inputs[NUMBER_OF_EVENTS] = 10
+
+    # Note: pool_xml_catalog is no longer a static input - managed by replica catalogs
 
     return static_inputs
 
@@ -935,16 +882,34 @@ def _buildTransformationWorkflow(
     :return: A Workflow representing this transformation
     """
     steps = production.get("steps", [])
-    transform_step_indices = transform.get("steps", [])  # 1-indexed
-
-    # Convert 1-indexed step numbers to 0-indexed
-    step_indices = [idx - 1 for idx in transform_step_indices]
+    step_indices = transform.get("steps", [])  # Already 0-indexed in YAML
 
     # Get the actual steps for this transformation
     transform_steps = [steps[idx] for idx in step_indices]
 
-    # Build transformation-level inputs (same as production inputs for now)
-    transformation_inputs = production_inputs.copy()
+    # Build transformation-level inputs
+    # Only include inputs that are actually used by this transformation's steps
+    transformation_inputs = {}
+
+    # Check if any step in this transformation is Gauss (needs event-type)
+    has_gauss = False
+    for step in transform_steps:
+        if isinstance(step, dict):
+            app = step.get("application", {})
+            if isinstance(app, dict):
+                app_name = app.get("name", "")
+                if isinstance(app_name, str) and app_name.lower() == "gauss":
+                    has_gauss = True
+                    break
+
+    # Always include common inputs
+    for input_id in ["production-id", "prod-job-id", RUN_NUMBER, FIRST_EVENT_NUMBER, NUMBER_OF_EVENTS, "histogram"]:
+        if input_id in production_inputs:
+            transformation_inputs[input_id] = production_inputs[input_id]
+
+    # Only include event-type if this transformation has Gauss
+    if has_gauss and EVENT_TYPE in production_inputs:
+        transformation_inputs[EVENT_TYPE] = production_inputs[EVENT_TYPE]
 
     # Build CWL steps for this transformation
     cwl_steps = []
@@ -1085,13 +1050,7 @@ def _buildMainWorkflowStep(
             )
         )
 
-        # Link pool-xml-catalog from previous transformation
-        step_inputs.append(
-            WorkflowStepInput(
-                id=POOL_XML,
-                source=f"{prev_transform_name}/{POOL_XML_OUT}",
-            )
-        )
+        # Note: pool_xml_catalog is no longer linked between transformations - managed by replica catalogs
     else:
         # First transformation gets inputs from workflow level
         for input_id in workflow_inputs.keys():
@@ -1105,14 +1064,6 @@ def _buildMainWorkflowStep(
                 )
             elif input_id in [EVENT_TYPE, RUN_NUMBER, FIRST_EVENT_NUMBER, NUMBER_OF_EVENTS, "histogram"]:
                 # Gauss-specific inputs from workflow level
-                step_inputs.append(
-                    WorkflowStepInput(
-                        id=input_id,
-                        source=input_id,
-                    )
-                )
-            elif input_id == POOL_XML:
-                # Pool XML from workflow level (optional for first transformation)
                 step_inputs.append(
                     WorkflowStepInput(
                         id=input_id,
@@ -1133,7 +1084,6 @@ def _buildMainWorkflowStep(
     step_outputs = [
         WorkflowStepOutput(id="output-data"),
         WorkflowStepOutput(id="others"),
-        WorkflowStepOutput(id=POOL_XML_OUT),
     ]
 
     return WorkflowStep(
@@ -1186,17 +1136,7 @@ def _getTransformationOutputs(
         )
     )
 
-    # Pool XML catalog from the last step
-    if steps:
-        last_step_name = step_names[-1]
-        workflow_outputs.append(
-            WorkflowOutputParameter(
-                type_="File",
-                id=POOL_XML_OUT,
-                label="Pool XML Catalog",
-                outputSource=f"{last_step_name}/{POOL_XML_OUT}",
-            )
-        )
+    # Note: pool_xml_catalog is no longer an output - managed by replica catalogs
 
     return workflow_outputs
 
@@ -1261,16 +1201,6 @@ def _getMainWorkflowOutputs(
         )
     )
 
-    # Pool XML catalog from the last transformation
-    if transformation_names:
-        last_transform_name = transformation_names[-1]
-        workflow_outputs.append(
-            WorkflowOutputParameter(
-                type_="File",
-                id=POOL_XML_OUT,
-                label="Pool XML Catalog",
-                outputSource=f"{last_transform_name}/{POOL_XML_OUT}",
-            )
-        )
+    # Note: pool_xml_catalog is no longer an output - managed by replica catalogs
 
     return workflow_outputs
