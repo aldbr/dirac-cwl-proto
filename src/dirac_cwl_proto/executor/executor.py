@@ -6,6 +6,7 @@ import logging
 from cwltool.context import RuntimeContext
 from cwltool.process import Process
 from cwltool.executors import SingleJobExecutor
+from cwltool.workflow import Workflow
 from dirac_cwl_proto.job.replica_catalog import ReplicaCatalog
 
 logger = logging.getLogger(__name__)
@@ -25,18 +26,40 @@ class DiracExecutor(SingleJobExecutor):
         runtime_context: RuntimeContext,
         logger=logger
     ) -> Tuple[Dict[str, Any] | None, str]:
-        """Execute process with replica catalog management."""
-        
-        # Before execution: prepare replica catalog for this step
-        self._prepare_step_catalog(process, job_order_object, runtime_context)
-        
-        # Execute the process
-        result = super().__call__(process, job_order_object, runtime_context, logger)
-        
-        # After execution: update catalog with outputs if needed
-        # WARNING does not seem to handle steps in sub-workflows properly
-        self._update_catalog_with_outputs(process, result, runtime_context)
-        
+        """Execute process with replica catalog management.
+
+        This method handles both CommandLineTools and Workflows (subworkflows).
+        For Workflows, we ensure the executor is propagated to nested steps.
+        """
+
+        # Check if this is a Workflow (subworkflow) vs CommandLineTool
+        is_workflow = isinstance(process, Workflow)
+
+        if is_workflow:
+            # For subworkflows, ensure our executor is used for nested steps
+            # We don't create step catalogs at the workflow level, only for actual CommandLineTools
+            logger.debug(f"Executing subworkflow: {process.tool.get('id', 'unknown')}")
+
+            # Make sure the runtime context uses this executor for nested steps
+            # This ensures catalog management happens for each CommandLineTool inside
+            if runtime_context.default_container is None:
+                runtime_context = runtime_context.copy()
+
+            # The executor will be called recursively for each step in the subworkflow
+            result = super().__call__(process, job_order_object, runtime_context, logger)
+        else:
+            # For CommandLineTools, do catalog management
+            logger.debug(f"Executing CommandLineTool: {process.tool.get('id', 'unknown')}")
+
+            # Before execution: prepare replica catalog for this step
+            self._prepare_step_catalog(process, job_order_object, runtime_context)
+
+            # Execute the process
+            result = super().__call__(process, job_order_object, runtime_context, logger)
+
+            # After execution: update catalog with outputs
+            self._update_catalog_with_outputs(process, result, runtime_context)
+
         return result
     
     def _prepare_step_catalog(

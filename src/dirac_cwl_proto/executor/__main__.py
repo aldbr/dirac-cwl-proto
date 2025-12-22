@@ -154,9 +154,10 @@ def run(
 
         # Run cwltool with our custom executor
         # cwltool.main.main accepts an executor parameter
-        # We need to provide a logger_handler to prevent logging setup errors
+        # We need to provide a logger_handler, but use NullHandler to avoid double logging
+        # cwltool will set up its own colorized output
         import sys
-        log_handler = logging.StreamHandler(sys.stderr)
+        log_handler = logging.NullHandler()
 
         exit_code = cwltool_main(
             argsl=args_with_options,
@@ -188,9 +189,8 @@ def run(
         return exit_code
 
     except Exception as e:
+        console.print_exception()
         console.print(f"\n[bold red]❌ Error executing workflow: {e}[/bold red]")
-        if debug:
-            console.print_exception()
         return 1
 
 

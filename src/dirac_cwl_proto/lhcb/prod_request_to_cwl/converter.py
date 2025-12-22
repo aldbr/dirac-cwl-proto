@@ -200,6 +200,14 @@ def _buildCWLWorkflow(
         ],
         inputs=list(workflow_inputs.values()),
         outputs=workflow_outputs,
+        extension_fields={
+            "$namespaces": {
+                "dirac": "../../../schemas/dirac-metadata.json#/$defs/"
+            },
+            "$schemas": [
+                "../../../schemas/dirac-metadata.json"
+            ]
+        },
     )
 
     # Note: cwl_inputs and prod_metadata are now optional
@@ -503,9 +511,10 @@ def _buildCommandLineTool(
         )
     )
 
-    # For non-first steps, always add input-data parameter (receives output from previous step)
-    # We'll create a manifest file via InitialWorkDirRequirement to avoid command-line length limits
-    if step_index > 0:
+    # Add input-data parameter if this step receives input files
+    # Either from previous step within transformation (step_index > 0)
+    # Or from transformation input (step_index == 0 but transformation has input-data)
+    if step_index > 0 or "input-data" in workflow_inputs:
         input_parameters.append(
             CommandInputParameter(
                 id="input-data",
@@ -520,24 +529,9 @@ def _buildCommandLineTool(
             # Already added above
             continue
         elif input_id == "input-data":
-            if step_index > 0:
-                # For steps after Gauss, input data comes from previous step (PFN paths)
-                input_parameters.append(
-                    CommandInputParameter(
-                        id="input-data",
-                        type_="File[]",
-                        inputBinding=CommandLineBinding(prefix="--pfn-paths"),
-                    )
-                )
-            else:
-                # First step uses LFN paths
-                input_parameters.append(
-                    CommandInputParameter(
-                        id="input-data",
-                        type_="File",
-                        inputBinding=CommandLineBinding(prefix="--lfn-paths"),
-                    )
-                )
+            # Skip - input-data is already handled above (lines 516-523)
+            # It's only added for step_index > 0
+            continue
         # Note: pool_xml_catalog input handling removed - managed by replica catalogs
         elif input_id == RUN_NUMBER:
             input_parameters.append(
@@ -767,13 +761,23 @@ def _buildStepInputs(
         )
     )
 
-    # For non-first steps, always add input-data from previous step
+    # Handle input-data based on step position
     if step_index > 0:
+        # Non-first steps within transformation: get input-data from previous step's output
         prev_step_name = step_names[step_index - 1]
         step_inputs.append(
             WorkflowStepInput(
                 id="input-data",
                 source=f"{prev_step_name}/output-data",
+            )
+        )
+    elif "input-data" in workflow_inputs:
+        # First step in transformation: if transformation receives input-data,
+        # pass it through from the transformation-level input
+        step_inputs.append(
+            WorkflowStepInput(
+                id="input-data",
+                source="input-data",
             )
         )
 
@@ -782,7 +786,7 @@ def _buildStepInputs(
         if input_id in ["production-id", "prod-job-id", "output-prefix"]:
             continue
 
-        # Skip input-data as it's already handled above for non-first steps
+        # Skip input-data as it's already handled above
         if input_id == "input-data":
             continue
 
@@ -911,6 +915,14 @@ def _buildTransformationWorkflow(
     if has_gauss and EVENT_TYPE in production_inputs:
         transformation_inputs[EVENT_TYPE] = production_inputs[EVENT_TYPE]
 
+    # For non-first transformations, add input-data parameter to receive outputs from previous transformation
+    if transform_index > 0:
+        transformation_inputs["input-data"] = WorkflowInputParameter(
+            id="input-data",
+            type_="File[]",
+            doc="Input data files from previous transformation",
+        )
+
     # Build CWL steps for this transformation
     cwl_steps = []
     step_names = []
@@ -998,11 +1010,11 @@ def _buildTransformationHints(transform: dict[str, Any]) -> list[dict[str, Any]]
     if "events" in transform:
         config["events"] = transform["events"]
 
-    # Group size needs special handling - map it to input names
+    # Group size - store directly without referencing input parameters
+    # The transformation subworkflow doesn't have input-data as a parameter,
+    # so we store just the numeric value for DIRAC execution hooks to use
     if "group_size" in transform:
-        # For now, we'll use a generic input name
-        # This could be enhanced to map to actual input names
-        hint["group_size"] = {"input-data": transform["group_size"]}
+        hint["group_size"] = transform["group_size"]
 
     # Add configuration if we have any
     if config:
