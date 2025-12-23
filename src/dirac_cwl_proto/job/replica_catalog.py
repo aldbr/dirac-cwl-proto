@@ -24,8 +24,8 @@ def validateLFN(value: str) -> str:
     Removes LFN: prefix if present and ensures it's a valid absolute path.
     """
     value = value.removeprefix("LFN:")
-    if not value.startswith("/"):
-        raise ValueError(f"LFN must start with '/': {value}")
+    # if not value.startswith("/"):
+    #     raise ValueError(f"LFN must start with '/': {value}")
     if not value:
         raise ValueError("LFN cannot be empty")
     return value

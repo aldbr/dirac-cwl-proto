@@ -383,6 +383,8 @@ def main():
         )
     )
 
+    # TODO: Check the summary XML for errors
+
     # TODO: should filenames be lowercased?
     # sometimes LHCb applications don't respect lowercasing of output
     # filenames e.g. ALLSTREAMS.DST filetype ---> {prefix}.AllStreams.dst 

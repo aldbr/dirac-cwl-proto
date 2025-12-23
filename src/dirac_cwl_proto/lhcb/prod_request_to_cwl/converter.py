@@ -361,6 +361,7 @@ def _buildCWLStep(
     production: dict[str, Any],
     step: dict[str, Any],
     step_index: int,
+    global_step_index: int,
     workflow_inputs: dict[str, WorkflowInputParameter],
     step_names: list[str],
 ) -> WorkflowStep:
@@ -372,10 +373,10 @@ def _buildCWLStep(
     prod_conf = _generateProdConf(production, step, step_index)
 
     # Build command line tool
-    command_tool = _buildCommandLineTool(step, step_index, prod_conf, workflow_inputs, step_name)
+    command_tool = _buildCommandLineTool(step, step_index, global_step_index, prod_conf, workflow_inputs, step_name)
 
     # Build step inputs
-    step_inputs = _buildStepInputs(step, step_index, workflow_inputs, step_names)
+    step_inputs = _buildStepInputs(step, step_index, global_step_index, workflow_inputs, step_names)
 
     # Build step outputs
     step_outputs = _buildStepOutputs(step)
@@ -484,6 +485,7 @@ def _generateProdConf(production: dict[str, Any], step: dict[str, Any], step_ind
 def _buildCommandLineTool(
     step: dict[str, Any],
     step_index: int,
+    global_step_index: int,
     prod_conf: dict[str, Any],
     workflow_inputs: dict[str, WorkflowInputParameter],
     step_name: str,
@@ -576,7 +578,9 @@ def _buildCommandLineTool(
                     inputBinding=CommandLineBinding(prefix="--first-event-number"),
                 )
             )
-        elif input_id == NUMBER_OF_EVENTS:
+        elif input_id == NUMBER_OF_EVENTS and is_gauss:
+            # Only add number-of-events for Gauss steps (event generation)
+            # Other steps should process all events in their input files
             input_parameters.append(
                 CommandInputParameter(
                     id=NUMBER_OF_EVENTS,
@@ -600,7 +604,7 @@ def _buildCommandLineTool(
     config_json = LiteralScalarString(json.dumps(prod_conf, indent=2))
 
     # Use InitialWorkDirRequirement to write the base config with dynamic filename
-    initial_prod_conf = f"initialProdConf_{step_number}.json"
+    initial_prod_conf = f"initialProdConf_{global_step_index + 1}.json"
 
     # Build the listing for InitialWorkDirRequirement
     initial_workdir_listing = [
@@ -612,10 +616,11 @@ def _buildCommandLineTool(
 
     # Note: pool_xml_catalog is no longer copied - it's generated from replica catalogs by the wrapper
 
-    # For non-first steps, create an input files manifest to avoid command-line length limits
+    # For steps that receive input-data, create an input files manifest to avoid command-line length limits
+    # This includes non-first steps within a transformation, and first steps that receive input-data from previous transformation
     # This manifest will contain one file path per line
-    if step_index > 0:
-        input_files_manifest = f"inputFiles_{step_number}.txt"
+    if step_index > 0 or "input-data" in workflow_inputs:
+        input_files_manifest = f"inputFiles_{global_step_index + 1}.txt"
         # Use a simpler JavaScript expression that maps over the files and joins with newlines
         input_files_expr = "$(inputs['input-data'].map(function(f) { return f.path; }).join('\\n'))"
         initial_workdir_listing.append(
@@ -645,10 +650,10 @@ def _buildCommandLineTool(
     # Use step name as the tool ID for readability
     tool_id = f"{step_name}_tool"
 
-    # Build arguments - add input files manifest for non-first steps
+    # Build arguments - add input files manifest for steps that receive input-data
     arguments = [initial_prod_conf]
-    if step_index > 0:
-        input_files_manifest = f"inputFiles_{step_number}.txt"
+    if step_index > 0 or "input-data" in workflow_inputs:
+        input_files_manifest = f"inputFiles_{global_step_index + 1}.txt"
         arguments.extend(["--input-files", input_files_manifest])
 
     # Add replica catalog argument for all steps
@@ -737,6 +742,7 @@ def _buildOutputParameters(step: dict[str, Any]) -> list[CommandOutputParameter]
 def _buildStepInputs(
     step: dict[str, Any],
     step_index: int,
+    global_step_index: int,
     workflow_inputs: dict[str, WorkflowInputParameter],
     step_names: list[str],
 ) -> list[WorkflowStepInput]:
@@ -757,7 +763,7 @@ def _buildStepInputs(
         WorkflowStepInput(
             id="output-prefix",
             source=["production-id", "prod-job-id"],
-            valueFrom=f'$(self[0].toString().padStart(8, "0"))_$(self[1].toString().padStart(8, "0"))_{step_index + 1}',
+            valueFrom=f'$(self[0].toString().padStart(8, "0"))_$(self[1].toString().padStart(8, "0"))_{global_step_index + 1}',
         )
     )
 
@@ -895,7 +901,7 @@ def _buildTransformationWorkflow(
     # Only include inputs that are actually used by this transformation's steps
     transformation_inputs = {}
 
-    # Check if any step in this transformation is Gauss (needs event-type)
+    # Check if any step in this transformation is Gauss (needs event-type and number-of-events)
     has_gauss = False
     for step in transform_steps:
         if isinstance(step, dict):
@@ -907,13 +913,16 @@ def _buildTransformationWorkflow(
                     break
 
     # Always include common inputs
-    for input_id in ["production-id", "prod-job-id", RUN_NUMBER, FIRST_EVENT_NUMBER, NUMBER_OF_EVENTS, "histogram"]:
+    for input_id in ["production-id", "prod-job-id", RUN_NUMBER, FIRST_EVENT_NUMBER, "histogram"]:
         if input_id in production_inputs:
             transformation_inputs[input_id] = production_inputs[input_id]
 
-    # Only include event-type if this transformation has Gauss
-    if has_gauss and EVENT_TYPE in production_inputs:
-        transformation_inputs[EVENT_TYPE] = production_inputs[EVENT_TYPE]
+    # Only include Gauss-specific inputs if this transformation has Gauss
+    if has_gauss:
+        if EVENT_TYPE in production_inputs:
+            transformation_inputs[EVENT_TYPE] = production_inputs[EVENT_TYPE]
+        if NUMBER_OF_EVENTS in production_inputs:
+            transformation_inputs[NUMBER_OF_EVENTS] = production_inputs[NUMBER_OF_EVENTS]
 
     # For non-first transformations, add input-data parameter to receive outputs from previous transformation
     if transform_index > 0:
@@ -933,7 +942,7 @@ def _buildTransformationWorkflow(
 
         # Build the step with local indexing within the transformation
         cwl_step = _buildCWLStep(
-            production, step, local_step_index, transformation_inputs, step_names
+            production, step, local_step_index, global_step_index, transformation_inputs, step_names
         )
         cwl_steps.append(cwl_step)
 
@@ -1063,34 +1072,40 @@ def _buildMainWorkflowStep(
         )
 
         # Note: pool_xml_catalog is no longer linked between transformations - managed by replica catalogs
-    else:
-        # First transformation gets inputs from workflow level
-        for input_id in workflow_inputs.keys():
-            if input_id in ["production-id", "prod-job-id"]:
-                # These are always from workflow level
-                step_inputs.append(
-                    WorkflowStepInput(
-                        id=input_id,
-                        source=input_id,
-                    )
-                )
-            elif input_id in [EVENT_TYPE, RUN_NUMBER, FIRST_EVENT_NUMBER, NUMBER_OF_EVENTS, "histogram"]:
-                # Gauss-specific inputs from workflow level
-                step_inputs.append(
-                    WorkflowStepInput(
-                        id=input_id,
-                        source=input_id,
-                    )
-                )
 
-    # Number of events is always passed through
-    if NUMBER_OF_EVENTS not in [si.id for si in step_inputs]:
-        step_inputs.append(
-            WorkflowStepInput(
-                id=NUMBER_OF_EVENTS,
-                source=NUMBER_OF_EVENTS,
+    # Always pass through common workflow inputs to all transformations
+    for input_id in workflow_inputs.keys():
+        # Skip if already added (e.g., input-data for non-first transformations)
+        if input_id in [si.id for si in step_inputs]:
+            continue
+
+        if input_id in ["production-id", "prod-job-id", RUN_NUMBER]:
+            # Always pass these to all transformations
+            step_inputs.append(
+                WorkflowStepInput(
+                    id=input_id,
+                    source=input_id,
+                )
             )
-        )
+        elif input_id == NUMBER_OF_EVENTS:
+            # number-of-events: Only pass if transformation workflow accepts it
+            # (i.e., if the transformation's inputs include number-of-events)
+            if any(inp.id == NUMBER_OF_EVENTS for inp in transform_workflow.inputs):
+                step_inputs.append(
+                    WorkflowStepInput(
+                        id=input_id,
+                        source=input_id,
+                    )
+                )
+        elif input_id in [EVENT_TYPE, FIRST_EVENT_NUMBER, "histogram"]:
+            # Gauss-specific inputs - only for first transformation
+            if transform_index == 0:
+                step_inputs.append(
+                    WorkflowStepInput(
+                        id=input_id,
+                        source=input_id,
+                    )
+                )
 
     # Build step outputs
     step_outputs = [
