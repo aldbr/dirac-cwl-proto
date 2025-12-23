@@ -8,10 +8,10 @@
 # granted to it by virtue of its status as an Intergovernmental Organization  #
 # or submit itself to any jurisdiction.                                       #
 ###############################################################################
-"""Converter to transform LHCb Production Request YAML files into CWL workflows.
+"""Converter for LHCb Simulation Production requests to CWL workflows.
 
-This converter takes production request YAML files (e.g., simulation.yaml) and converts them
-directly into CWL format, generating the necessary prodConf JSON files for each step.
+This converter takes simulation production request YAML files and converts them
+into CWL format, generating the necessary prodConf JSON files for each step.
 
 The converter:
 - Parses SimulationProduction YAML files
@@ -49,12 +49,15 @@ from cwl_utils.parser.cwl_v1_2 import (
 )
 from ruamel.yaml.scalarstring import LiteralScalarString
 
-
-# Constants
-EVENT_TYPE = "event-type"
-RUN_NUMBER = "run-number"
-FIRST_EVENT_NUMBER = "first-event-number"
-NUMBER_OF_EVENTS = "number-of-events"
+from .common import (
+    EVENT_TYPE,
+    RUN_NUMBER,
+    FIRST_EVENT_NUMBER,
+    NUMBER_OF_EVENTS,
+    sanitize_step_name,
+    make_case_insensitive_glob,
+    build_transformation_hints,
+)
 
 
 def fromProductionRequestYAMLToCWL(
@@ -676,15 +679,7 @@ def _make_case_insensitive_glob(extension: str) -> str:
 
     For example: "allstreams.dst" -> "*.[aA][lL][lL][sS][tT][rR][eE][aA][mM][sS].[dD][sS][tT]"
     """
-    result = "*."
-    for char in extension:
-        if char == '.':
-            result += '.'
-        elif char.isalpha():
-            result += f"[{char.lower()}{char.upper()}]"
-        else:
-            result += char
-    return result
+    return "*" + make_case_insensitive_glob(extension)
 
 
 def _buildOutputParameters(step: dict[str, Any]) -> list[CommandOutputParameter]:
@@ -865,14 +860,7 @@ def _getWorkflowStaticInputs(production: dict[str, Any]) -> dict[str, Any]:
 
 def _sanitizeStepName(name: str) -> str:
     """Sanitize step name to be CWL-compatible (no spaces, special chars)."""
-    # Replace spaces and special characters with underscores
-    import re
-
-    sanitized = re.sub(r"[^a-zA-Z0-9_-]", "_", name)
-    # Ensure it starts with a letter or underscore
-    if sanitized and not sanitized[0].isalpha() and sanitized[0] != "_":
-        sanitized = "_" + sanitized
-    return sanitized or "step"
+    return sanitize_step_name(name) or "step"
 
 
 def _buildTransformationWorkflow(
@@ -981,61 +969,8 @@ def _buildTransformationWorkflow(
 
 
 def _buildTransformationHints(transform: dict[str, Any]) -> list[dict[str, Any]]:
-    """Build CWL hints for a transformation from submission_info.
-
-    This includes TransformationExecutionHooksHint with parameters like:
-    - group_size
-    - cpu
-    - priority
-    - output_mode
-    - etc.
-
-    :param transform: The transformation definition from submission_info
-    :return: List of hint dictionaries
-    """
-    hints = []
-
-    # Build TransformationExecutionHooksHint from submission_info
-    hint = {"class": "dirac:TransformationExecutionHooks"}
-
-    # Map submission_info fields to hint configuration
-    config = {}
-
-    # Direct mappings
-    if "cpu" in transform:
-        config["cpu"] = transform["cpu"]
-    if "priority" in transform:
-        config["priority"] = transform["priority"]
-    if "output_mode" in transform:
-        config["output_mode"] = transform["output_mode"]
-    if "output_se" in transform:
-        config["output_se"] = transform["output_se"]
-    if "input_data_policy" in transform:
-        config["input_data_policy"] = transform["input_data_policy"]
-    if "input_plugin" in transform:
-        config["input_plugin"] = transform["input_plugin"]
-    if "remove_inputs_flags" in transform:
-        config["remove_inputs_flags"] = transform["remove_inputs_flags"]
-    if "events" in transform:
-        config["events"] = transform["events"]
-
-    # Group size - store directly without referencing input parameters
-    # The transformation subworkflow doesn't have input-data as a parameter,
-    # so we store just the numeric value for DIRAC execution hooks to use
-    if "group_size" in transform:
-        hint["group_size"] = transform["group_size"]
-
-    # Add configuration if we have any
-    if config:
-        hint["configuration"] = config
-
-    # Add transformation type
-    if "type" in transform:
-        hint["hook_plugin"] = transform["type"]
-
-    hints.append(hint)
-
-    return hints
+    """Build CWL hints for a transformation from submission_info."""
+    return build_transformation_hints(transform)
 
 
 def _buildMainWorkflowStep(

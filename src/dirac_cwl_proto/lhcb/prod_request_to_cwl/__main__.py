@@ -5,7 +5,7 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from .converter import fromProductionRequestYAMLToCWL
+from . import fromProductionRequestYAMLToCWL
 
 app = typer.Typer(help="Convert LHCb Production Request YAML files to CWL workflows")
 console = Console()
@@ -88,17 +88,20 @@ def generate(
         prod_name = production.get("name", "unknown_production")
         production_type = production.get("type")
 
-        # Only process Simulation type productions
-        if production_type != "Simulation":
-            msg = f"type={production_type} (only Simulation supported)"
+        # Check for required fields based on production type
+        if production_type == "Simulation":
+            event_types = production.get("event_types", [])
+            if not event_types:
+                msg = "no event_types found"
+                console.print(f"[yellow]⚠️  {prod_name}: {msg}[/yellow]")
+                skipped.append((prod_name, msg))
+                continue
+        elif production_type == "AnalysisProduction":
+            # Analysis productions don't have event_types
+            pass
+        else:
+            msg = f"type={production_type} (unsupported production type)"
             console.print(f"[yellow]⚠️  Skipping {prod_name}: {msg}[/yellow]")
-            skipped.append((prod_name, msg))
-            continue
-
-        event_types = production.get("event_types", [])
-        if not event_types:
-            msg = "no event_types found"
-            console.print(f"[yellow]⚠️  {prod_name}: {msg}[/yellow]")
             skipped.append((prod_name, msg))
             continue
 
@@ -128,13 +131,19 @@ def generate(
             with open(output_path, 'w') as f:
                 yaml_dumper.dump(workflow_dict, f)
 
-            generated_files.append((prod_name, filename, len(workflow.steps), event_types))
+            # Store metadata for summary table
+            if production_type == "Simulation":
+                generated_files.append((prod_name, filename, len(workflow.steps), production_type, event_types))
+            else:
+                generated_files.append((prod_name, filename, len(workflow.steps), production_type, None))
 
             console.print(f"[green]✅ Generated:[/green] {filename}")
             if verbose:
                 console.print(f"   [dim]Production: {prod_name}[/dim]")
-                event_type_ids = [str(et.get('id', et)) for et in event_types]
-                console.print(f"   [dim]Event Types: {', '.join(event_type_ids)}[/dim]")
+                console.print(f"   [dim]Type: {production_type}[/dim]")
+                if production_type == "Simulation" and event_types:
+                    event_type_ids = [str(et.get('id', et)) for et in event_types]
+                    console.print(f"   [dim]Event Types: {', '.join(event_type_ids)}[/dim]")
                 console.print(f"   [dim]Steps: {len(workflow.steps)}[/dim]\n")
 
         except Exception as e:
@@ -153,15 +162,23 @@ def generate(
         table = Table(show_header=True, header_style="bold magenta")
         table.add_column("Production", style="cyan")
         table.add_column("File", style="green")
+        table.add_column("Type", style="magenta")
         table.add_column("Steps", justify="right", style="yellow")
-        table.add_column("Event Types", justify="right", style="blue")
+        table.add_column("Info", justify="left", style="blue")
 
-        for prod_name, filename, num_steps, event_types in generated_files:
+        for prod_name, filename, num_steps, prod_type, event_types in generated_files:
+            # Build info column based on production type
+            if prod_type == "Simulation" and event_types:
+                info = ", ".join(str(et['id']) for et in event_types)
+            else:
+                info = "-"
+
             table.add_row(
                 prod_name,
                 filename,
+                prod_type,
                 str(num_steps),
-                str(", ".join(str(et['id']) for et in event_types)),
+                info,
             )
 
         console.print(f"\n[green]Generated {len(generated_files)} CWL file(s) in {output_dir}[/green]")
@@ -225,3 +242,7 @@ def list_productions(
 def main():
     """Entry point for the command-line utility."""
     app()
+
+
+if __name__ == "__main__":
+    main()
