@@ -480,7 +480,9 @@ def _generateProdConf(
     for output in step.get("output", []):
         output_type = output.get("type")
         if output_type:
-            output_types.append(output_type)
+            output_types.append(
+                output_type.lower()
+            )  # TODO: check it's okay to lower here
     prod_conf["output"]["types"] = output_types
 
     # Input configuration (number of events, etc.)

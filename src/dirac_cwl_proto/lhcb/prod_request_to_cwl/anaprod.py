@@ -47,6 +47,10 @@ from cwl_utils.parser.cwl_v1_2 import (
 )
 from ruamel.yaml.scalarstring import LiteralScalarString
 
+from dirac_cwl_proto.lhcb.prod_request_to_cwl.simulation import (
+    _make_case_insensitive_glob,
+)
+
 from .common import (
     build_transformation_hints,
     sanitize_step_name,
@@ -583,7 +587,9 @@ def _generateProdConf(
     for output in step.get("output", []):
         output_type = output.get("type")
         if output_type:
-            output_types.append(output_type)
+            output_types.append(
+                output_type.lower()
+            )  # TODO: check it's okay to lower here
     if output_types:
         prod_conf["output"]["types"] = output_types
 
@@ -652,40 +658,47 @@ def _buildInputParameters(
 def _buildOutputParameters(step: dict[str, Any]) -> list[CommandOutputParameter]:
     """Build output parameters for an analysis production step."""
 
-    outputs = step.get("output", [])
     output_parameters = []
 
-    # Output data files
-    if outputs:
-        # Get output file type from first output
-        output_type = outputs[0].get("type", "ROOT")
-        # Create glob pattern for output files
-        glob_pattern = "*." + output_type.split(".")[-1].lower()
+    # Get output types from step
+    output_types = step.get("output", [])
 
+    # Main output data
+    output_globs = []
+    for output in output_types:
+        output_type = output.get("type")
+        if output_type:
+            # Use case-insensitive glob pattern to handle any case variation
+            output_globs.append(_make_case_insensitive_glob(output_type.lower()))
+
+    if output_globs:
         output_parameters.append(
             CommandOutputParameter(
                 id="output-data",
                 type_="File[]",
-                outputBinding=CommandOutputBinding(
-                    glob=glob_pattern,
-                ),
+                outputBinding=CommandOutputBinding(glob=output_globs),
             )
         )
 
-    # Others output for any additional files
+    # Other outputs (logs, summaries, prodConf files)
+    application = step.get("application", {})
+    if isinstance(application, str):
+        app_name = application.split("/")[0]
+    else:
+        app_name = application.get("name", "app")
+
     output_parameters.append(
         CommandOutputParameter(
             id="others",
-            type_="File[]?",
+            type_="File[]",
             outputBinding=CommandOutputBinding(
-                glob="*",
-                outputEval=LiteralScalarString(
-                    "$(self.filter(function(f) { "
-                    "return !f.basename.endsWith('.root') && "
-                    "!f.basename.startsWith('prodConf') && "
-                    "!f.basename.startsWith('inputFiles') && "
-                    "!f.basename.endsWith('.json'); }))"
-                ),
+                glob=[
+                    "prodConf*.json",
+                    "prodConf*.py",
+                    "summary*.xml",
+                    "prmon*",
+                    f"{app_name.replace('/', '').replace(' ', '')}*.log",
+                ]
             ),
         )
     )

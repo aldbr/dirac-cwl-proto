@@ -3,10 +3,92 @@
 import argparse
 import asyncio
 import json
+import logging
 import subprocess
 import sys
+import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
+
+# Configure logger to use UTC time
+logger = logging.getLogger(__name__)
+logging.Formatter.converter = time.gmtime  # Use UTC for all log timestamps
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s UTC - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+
+
+def analyse_xml_summary(xml_path: Path) -> bool:
+    """Analyse XML summary file for errors.
+
+    Checks that:
+    - success is True
+    - step is finalize
+    - all input files have status="full"
+    - all output files are present
+
+    :param xml_path: Path to the XML summary file
+    :return: True if analysis passes, False otherwise
+    """
+    try:
+        tree = ET.parse(xml_path)
+        root = tree.getroot()
+
+        # Check success flag
+        success = root.find("success")
+        if success is None or success.text != "True":
+            logger.error(f"Success flag is not True: {success.text if success is not None else 'missing'}")
+            return False
+
+        # Check step
+        step = root.find("step")
+        if step is None or step.text != "finalize":
+            logger.error(f"Step is not 'finalize': {step.text if step is not None else 'missing'}")
+            return False
+
+        # Check input files - all should have status="full"
+        input_section = root.find("input")
+        if input_section is not None:
+            input_files = input_section.findall("file")
+            for inp_file in input_files:
+                status = inp_file.get("status", "unknown")
+                name = inp_file.get("name", "unknown")
+                if status != "full":
+                    logger.error(f"Input file '{name}' has status '{status}' (expected 'full')")
+                    return False
+
+        # Check output files
+        output_section = root.find("output")
+        if output_section is not None:
+            output_files = output_section.findall("file")
+
+            # Log big warning if no output files
+            if len(output_files) == 0:
+
+                logger.warning("No output files found in XML summary. This may indicate:")
+                logger.warning("  - Input files had no events matching the selection criteria")
+                logger.warning("  - Configuration issue preventing output file creation")
+                logger.warning("  - Application error that was not caught")
+                logger.warning("  - NTuples written but not reported in XML summary")
+
+            # Check all output files have status="full"
+            for out_file in output_files or []:
+                status = out_file.get("status", "unknown")
+                name = out_file.get("name", "unknown")
+                if status != "full":
+                    logger.error(f"Output file '{name}' has status '{status}' (expected 'full')")
+                    return False
+
+        return True
+
+    except ET.ParseError as e:
+        logger.error(f"Failed to parse XML summary: {e}")
+        return False
+    except Exception as e:
+        logger.error(f"Error analyzing XML summary: {e}")
+        return False
 
 
 def generate_pool_xml_catalog_from_replica_catalog(
@@ -77,7 +159,7 @@ def generate_pool_xml_catalog_from_replica_catalog(
         f.write(b'<!DOCTYPE POOLFILECATALOG SYSTEM "InMemory">\n')
         tree.write(f, encoding="UTF-8", xml_declaration=False)
 
-    print(f"Generated pool_xml_catalog.xml with {len(catalog.root)} entries")
+    logger.info(f"Generated pool_xml_catalog.xml with {len(catalog.root)} entries")
 
 
 def _guess_filetype(lfn: str) -> str:
@@ -187,15 +269,69 @@ def add_output_files_to_replica_catalog(
 
             catalog.root[lfn] = entry
             new_count += 1
-            print(f"  Added to catalog: {lfn} -> {local_file.name} ({file_size} bytes)")
+            logger.info(f"  Added to catalog: {lfn} -> {local_file.name} ({file_size} bytes)")
 
     # Write updated catalog
     replica_catalog_path.write_text(catalog.model_dump_json(indent=2))
 
     if new_count > 0:
-        print(f"Added {new_count} output file(s) to replica catalog")
+        logger.info(f"Added {new_count} output file(s) to replica catalog")
     else:
-        print("No output files found to add to replica catalog")
+        logger.info("No output files found to add to replica catalog")
+
+
+def update_pool_xml_to_absolute_paths(pool_xml_path: Path) -> int:
+    """Update all relative PFN paths in pool XML catalog to absolute paths.
+
+    :param pool_xml_path: Path to the pool XML catalog file
+    :return: Number of PFNs updated
+    """
+    if not pool_xml_path.exists():
+        logger.warning(f"Pool XML Catalog {pool_xml_path} does not exist.")
+        return 0
+
+    # Parse the XML
+    tree = ET.parse(pool_xml_path)
+    root = tree.getroot()
+
+    updated_count = 0
+    # Find all pfn elements
+    for pfn_elem in root.findall(".//pfn"):
+        pfn_name = pfn_elem.get("name")
+        if pfn_name:
+            pfn_path = Path(pfn_name)
+            # Only update if it's not already an absolute path
+            if not pfn_path.is_absolute():
+                # Check if file exists in current directory
+                if pfn_path.exists():
+                    absolute_path = pfn_path.resolve().as_posix()
+                    pfn_elem.set("name", absolute_path)
+                    logger.info(f"  Updated: {pfn_name} -> {absolute_path}")
+                    updated_count += 1
+                else:
+                    logger.warning(f"File {pfn_name} not found in current directory")
+
+    # Write back the updated XML
+    # Preserve the XML declaration and DOCTYPE
+    tree.write(pool_xml_path, encoding="UTF-8", xml_declaration=True)
+
+    # Fix the DOCTYPE manually since ElementTree doesn't preserve it well
+    with open(pool_xml_path, "r") as f:
+        content = f.read()
+
+    # Add the POOLFILECATALOG comment and DOCTYPE after the XML declaration
+    if "<!DOCTYPE POOLFILECATALOG" not in content:
+        content = content.replace(
+            "<?xml version='1.0' encoding='UTF-8'?>",
+            '<?xml version="1.0" encoding="UTF-8" standalone="no" ?>\n'
+            "<!-- Edited By POOL -->\n"
+            '<!DOCTYPE POOLFILECATALOG SYSTEM "InMemory">',
+        )
+        with open(pool_xml_path, "w") as f:
+            f.write(content)
+
+    logger.info(f"Pool XML Catalog updated. {updated_count} PFN(s) converted to absolute paths.")
+    return updated_count
 
 
 def update_replica_catalog_from_pool_xml(
@@ -306,10 +442,10 @@ def update_replica_catalog_from_pool_xml(
     # Write updated catalog back to file
     replica_catalog_path.write_text(catalog.model_dump_json(indent=2))
 
-    print(
+    logger.info(
         f"Replica catalog updated: {new_count} new entries, {updated_count} updated entries"
     )
-    print(f"Total entries in catalog: {len(catalog.root)}")
+    logger.info(f"Total entries in catalog: {len(catalog.root)}")
 
 
 def main():
@@ -344,18 +480,18 @@ def main():
     if args.replica_catalog:
         replica_catalog_path = Path(args.replica_catalog)
         if replica_catalog_path.exists():
-            print(f"Generating pool_xml_catalog.xml from {replica_catalog_path}...")
+            logger.info(f"Generating pool_xml_catalog.xml from {replica_catalog_path}...")
             try:
                 generate_pool_xml_catalog_from_replica_catalog(
                     replica_catalog_path, Path(args.pool_xml_catalog)
                 )
             except Exception as e:
-                print(
-                    f"⚠️  Warning: Failed to generate pool XML from replica catalog: {e}"
+                logger.warning(
+                    f"Failed to generate pool XML from replica catalog: {e}"
                 )
-                print("   Will proceed without pool XML catalog")
+                logger.warning("   Will proceed without pool XML catalog")
         else:
-            print(f"⚠️  Warning: Replica catalog {replica_catalog_path} not found")
+            logger.warning(f"Replica catalog {replica_catalog_path} not found")
 
     # Load base configuration
     config = json.loads(Path(args.config_file).read_text())
@@ -384,7 +520,7 @@ def main():
 
     if args.input_files:
         paths = Path(args.input_files).read_text().splitlines()
-        config["input"]["files"] = [f"PFN:{path.strip()}" for path in paths]
+        config["input"]["files"] = [path.strip() for path in paths]
 
     # check the options files for @{eventType} if application is Gauss
     if config["application"]["name"].lower() == "gauss":
@@ -403,7 +539,12 @@ def main():
 
     app_name = config["application"]["name"]
     cleaned_appname = app_name.replace("/", "").replace(" ", "")
+    
+    # Set XML summary file name
+    xml_summary_filename = f"summary{cleaned_appname}_{args.output_prefix}.xml"
+    config["input"]["xml_summary_file"] = xml_summary_filename
 
+    # Write merged configuration to profConf file
     config_filename = f"prodConf_{cleaned_appname}_{args.output_prefix}.json"
     output_config = Path(config_filename)
     output_config.write_text(json.dumps(config, indent=2))
@@ -416,75 +557,46 @@ def main():
         )
     )
 
-    # TODO: Check the summary XML for errors
+    # Check the summary XML for errors
+    xml_summary_path = Path(xml_summary_filename)
+    if xml_summary_path.exists():
+        logger.info(f"Analyzing XML summary: {xml_summary_filename}")
+        is_ok = analyse_xml_summary(xml_summary_path)
 
-    # TODO: should filenames be lowercased?
-    # sometimes LHCb applications don't respect lowercasing of output
-    # filenames e.g. ALLSTREAMS.DST filetype ---> {prefix}.AllStreams.dst
-    # (when it should be {prefix}.allstreams.dst)
+        if not is_ok:
+            logger.error(f"XML Summary analysis failed for {xml_summary_filename}")
+            logger.error("The application reported errors during execution.")
+            sys.exit(1)
+        else:
+            logger.info(f"✅ XML Summary analysis passed for {xml_summary_filename}")
+    else:
+        logger.warning(f"XML summary file not found: {xml_summary_filename}")
+
+    # Check if any output exists for each filetype
+    # {output_prefix}.{filetype}
+    for filetype_expected in config["output"].get("types", []):
+        expected_filename = f"{args.output_prefix}.{filetype_expected.lower()}"
+        if not Path(expected_filename).exists():
+            logger.error(
+                f"Expected output file not found: {expected_filename} (filetype: {filetype_expected})"
+            )
+        else:
+            logger.info(f"✅ Output file found: {expected_filename}")
 
     # Update all relative PFN paths in the pool XML catalog to absolute paths
-    print("Updating Pool XML Catalog...")
+    logger.info("Updating Pool XML Catalog...")
     catalog_path = Path(args.pool_xml_catalog)
+    update_pool_xml_to_absolute_paths(catalog_path)
 
-    if catalog_path.exists():
-        # Parse the XML
-        tree = ET.parse(catalog_path)
-        root = tree.getroot()
-
-        updated_count = 0
-        # Find all pfn elements
-        for pfn_elem in root.findall(".//pfn"):
-            pfn_name = pfn_elem.get("name")
-            if pfn_name:
-                pfn_path = Path(pfn_name)
-                # Only update if it's not already an absolute path
-                if not pfn_path.is_absolute():
-                    # Check if file exists in current directory
-                    if pfn_path.exists():
-                        absolute_path = pfn_path.resolve().as_posix()
-                        pfn_elem.set("name", absolute_path)
-                        print(f"  Updated: {pfn_name} -> {absolute_path}")
-                        updated_count += 1
-                    else:
-                        print(
-                            f"⚠️  Warning: File {pfn_name} not found in current directory"
-                        )
-
-        # Write back the updated XML
-        # Preserve the XML declaration and DOCTYPE
-        tree.write(catalog_path, encoding="UTF-8", xml_declaration=True)
-
-        # Fix the DOCTYPE manually since ElementTree doesn't preserve it well
-        with open(catalog_path, "r") as f:
-            content = f.read()
-
-        # Add the POOLFILECATALOG comment and DOCTYPE after the XML declaration
-        if "<!DOCTYPE POOLFILECATALOG" not in content:
-            content = content.replace(
-                "<?xml version='1.0' encoding='UTF-8'?>",
-                '<?xml version="1.0" encoding="UTF-8" standalone="no" ?>\n'
-                "<!-- Edited By POOL -->\n"
-                '<!DOCTYPE POOLFILECATALOG SYSTEM "InMemory">',
+    # Update replica catalog if it was provided
+    if args.replica_catalog and catalog_path.exists():
+        logger.info("Updating replica catalog from pool XML...")
+        try:
+            update_replica_catalog_from_pool_xml(
+                catalog_path, Path(args.replica_catalog)
             )
-            with open(catalog_path, "w") as f:
-                f.write(content)
-
-        print(
-            f"Pool XML Catalog updated. {updated_count} PFN(s) converted to absolute paths."
-        )
-
-        # Update replica catalog if it was provided
-        if args.replica_catalog:
-            print("Updating replica catalog from pool XML...")
-            try:
-                update_replica_catalog_from_pool_xml(
-                    catalog_path, Path(args.replica_catalog)
-                )
-            except Exception as e:
-                print(f"⚠️  Warning: Failed to update replica catalog: {e}")
-    else:
-        print(f"⚠️  Warning: Pool XML Catalog {catalog_path} does not exist.")
+        except Exception as e:
+            logger.warning(f"Failed to update replica catalog: {e}")
 
     sys.exit(returncode)
 
@@ -546,7 +658,7 @@ async def handle_output(stream: asyncio.StreamReader, fh):
     async for line in readlines(stream):
         if "INFO Evt" in line or "Reading Event record" in line or "lb-run" in line:
             # These ones will appear in the std.out log too
-            print(line.rstrip())
+            logger.info(line.rstrip())
         if fh:
             fh.write(line + "\n")
 

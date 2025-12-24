@@ -1,0 +1,106 @@
+- wg: IFT
+  name: AnaProd#pi0_OO#pi0_OO_2025
+  type: AnalysisProduction
+  steps:
+  - name: AnaProd#v1r4598#pi0_OO_2025
+    input: []
+    ready: true
+    output:
+    - type: PI0_OO_25.ROOT
+      visible: false
+    options:
+      entrypoint: pi0_OO.pi0_oo:main
+      extra_options:
+        data_type: Upgrade
+        input_type: ROOT
+        simulation: 'False'
+        input_stream: ionraw
+        input_process: TurboPass
+        geometry_version: run3/2025-v00.01
+        input_raw_format: '0.5'
+        conditions_version: master
+    visible: true
+    obsolete: true
+    data_pkgs:
+    - name: AnalysisProductions
+      version: v1r4598
+    application:
+      name: DaVinci
+      version: v66r6
+    processing_pass: AnaProd-v1r4598-pi0_OO_2025
+  - name: AnaProd#MergeV2#pi0_OO#merge0
+    input:
+    - type: PI0_OO_25.ROOT
+      visible: false
+      step_idx: 0
+    ready: true
+    output:
+    - type: PI0_OO_25.ROOT
+      visible: true
+    options:
+      entrypoint: LbExec:skim_and_merge
+      extra_args: []
+      extra_options:
+        compression:
+          level: 6
+          algorithm: ZSTD
+          optimise_baskets: true
+    visible: false
+    obsolete: true
+    application:
+      name: lb-conda/default
+      version: '2025-07-31'
+    processing_pass: merged
+  author: null
+  inform:
+  - baudurie
+  - cabarber
+  comment: ''
+  priority: 1b
+  input_dataset:
+    event_type: '90800000'
+    conditions_dict:
+      inTCKs: ALL
+      inProPass: Real Data/SprucingOO25c1
+      configName: LHCb
+      inFileType: IONRAW.DST
+      configVersion: Oxygen25
+      inProductionID: ALL
+      inDataQualityFlag: OK,UNCHECKED
+    launch_parameters:
+      end_run: null
+      start_run: null
+      run_numbers: null
+    conditions_description: Beam5360GeV-VeloClosed-MagUp
+  submission_info:
+    transforms:
+    - cpu: '1000000'
+      type: WGProduction
+      steps:
+      - 0
+      events: -1
+      priority: 2
+      multicore: false
+      output_se: CERN-BUFFER
+      group_size: 2
+      output_mode: Local
+      input_plugin: APProcessing
+      ancestor_depth: 0
+      output_file_mask: ''
+      input_data_policy: protocol
+      remove_inputs_flags: false
+    - cpu: '1000000'
+      type: APMerge
+      steps:
+      - 1
+      events: -1
+      priority: 2
+      multicore: false
+      output_se: CERN-ANAPROD
+      group_size: 10
+      output_mode: Local
+      input_plugin: APProcessingByFileTypeSize
+      ancestor_depth: 0
+      output_file_mask: ''
+      input_data_policy: protocol
+      remove_inputs_flags: true

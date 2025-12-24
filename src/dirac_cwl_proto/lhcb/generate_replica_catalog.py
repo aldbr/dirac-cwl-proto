@@ -117,7 +117,7 @@ class InputDataset(BaseModel):
                 bk_query_dict["DataQualityFlag"] = [str(f) for f in dq_flag]
             else:
                 # Single value: convert to list with one element
-                bk_query_dict["DataQualityFlag"] = [str(dq_flag)]
+                bk_query_dict["DataQualityFlag"] = str(dq_flag).split(",")
 
         # Optional: Extended DQ OK flags
         if self.conditions_dict.inExtendedDQOK:
@@ -184,13 +184,15 @@ class InputDataset(BaseModel):
 def do_bkquery(
     input_dataset: InputDataset,
     inputFiles: list[str] | None = None,
-    numTestLFNs: int = 1,
+    numTestLFNs: int | None = None,
+    pick_smallest: bool = False,
 ):
     """Query the Bookkeeping for LFNs matching the input dataset criteria.
 
     :param input_dataset: InputDataset model with BK query parameters
     :param inputFiles: Optional pre-selected list of LFNs (if provided, skip BK query)
-    :param numTestLFNs: Number of LFNs to retrieve
+    :param numTestLFNs: Number of LFNs to retrieve. If None, retrieves all available LFNs.
+    :param pick_smallest: If True, pick the smallest file(s) for faster testing
     :return: List of LFNs with available replicas
     """
     from DIRAC.Core.Utilities.ReturnValues import returnValueOrRaise
@@ -220,23 +222,41 @@ def do_bkquery(
 
         logger.info(f"Found {result['TotalRecords']} files in Bookkeeping")
 
-        # Remove the smallest 50% of files to avoid unusually small files
-        sizeIndex = result["ParameterNames"].index("FileSize")
-        records = sorted(result["Records"], key=lambda x: x[sizeIndex])
-        if len(records) // 2 >= numTestLFNs:
-            records = records[len(records) // 2 :]
-            logger.debug(
-                f"Filtered out smallest 50% of files, {len(records)} remaining"
-            )
-
-        # Shuffle the LFNs so we pick a random one
-        random.shuffle(records)
-
-        # Only run tests with files which have available replicas
+        # Get all LFNs first
         filenameIndex = result["ParameterNames"].index("FileName")
+        sizeIndex = result["ParameterNames"].index("FileSize")
+        records = result["Records"]
+
+        # If sampling (numTestLFNs specified), filter and shuffle
+        if numTestLFNs is not None:
+            # Sort by size
+            records = sorted(records, key=lambda x: x[sizeIndex])
+
+            if pick_smallest:
+                # Pick smallest files for fast testing
+                logger.info(f"Picking {numTestLFNs} smallest file(s) for fast testing...")
+                records = records[:numTestLFNs]
+            else:
+                # Remove the smallest 50% of files to avoid unusually small files
+                if len(records) // 2 >= numTestLFNs:
+                    records = records[len(records) // 2 :]
+                    logger.debug(
+                        f"Filtered out smallest 50% of files, {len(records)} remaining"
+                    )
+                # Shuffle the LFNs so we pick random ones
+                random.shuffle(records)
+
+            logger.info(f"Checking for replicas on disk (need {numTestLFNs} files)...")
+        else:
+            # Getting all LFNs - just extract them without filtering/shuffling
+            logger.info("Retrieving all files from Bookkeeping...")
+            inputFiles = [record[filenameIndex] for record in records]
+            logger.info(f"Retrieved {len(inputFiles)} LFN(s) from Bookkeeping")
+            return inputFiles
+
+        # Only run tests with files which have available replicas (sampling mode)
         inputFiles = []
         skipped_files = []
-        logger.info(f"Checking for replicas on disk (need {numTestLFNs} files)...")
         for record in records:
             lfn = record[filenameIndex]
             replica_result = returnValueOrRaise(
@@ -303,11 +323,16 @@ def main(
         dir_okay=False,
         readable=True,
     ),
-    n_lfns: int = typer.Option(
-        1,
+    n_lfns: int | None = typer.Option(
+        None,
         "--n-lfns",
         "-n",
-        help="Number of LFNs to retrieve from Bookkeeping",
+        help="Number of LFNs to retrieve from Bookkeeping (default: all available LFNs)",
+    ),
+    pick_smallest: bool = typer.Option(
+        False,
+        "--pick-smallest-lfn",
+        help="Pick the smallest file(s) for faster testing (requires --n-lfns)",
     ),
     output_yaml: Path = typer.Option(
         None,
@@ -338,6 +363,13 @@ def main(
     """
     if verbose:
         logger.setLevel(logging.DEBUG)
+
+    # Validate flags
+    if pick_smallest and n_lfns is None:
+        console.print(
+            "[red]Error:[/red] --pick-smallest-lfn requires --n-lfns to be specified"
+        )
+        raise typer.Exit(1)
 
     # initialise dirac first
     import DIRAC
@@ -386,7 +418,9 @@ def main(
 
     # Query Bookkeeping for LFNs
     try:
-        lfns_list = do_bkquery(input_dataset, numTestLFNs=n_lfns)
+        lfns_list = do_bkquery(
+            input_dataset, numTestLFNs=n_lfns, pick_smallest=pick_smallest
+        )
     except Exception as e:
         console.print(f"[red]Error:[/red] Bookkeeping query failed: {e}")
         raise typer.Exit(1)
