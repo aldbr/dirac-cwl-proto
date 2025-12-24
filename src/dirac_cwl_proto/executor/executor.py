@@ -1,23 +1,25 @@
 # src/dirac_cwl_proto/cwltool_extensions/executor.py
 
-from pathlib import Path
-from typing import Any, Dict, List, cast, Callable
-import logging
 import functools
-from cwltool.context import RuntimeContext
-from cwltool.process import Process
-from cwltool.executors import SingleJobExecutor
-from cwltool.workflow import Workflow
-from cwltool.errors import WorkflowException
-from cwltool.job import CommandLineJob
-from cwltool.workflow_job import WorkflowJob
-from cwltool.stdfsaccess import StdFsAccess
-from cwltool.pathmapper import PathMapper
-from cwltool.utils import CWLObjectType
+import logging
+from pathlib import Path
+from typing import Any, Dict, List, cast
+
 from cwltool.command_line_tool import CommandLineTool
-from dirac_cwl_proto.job.replica_catalog import ReplicaCatalog
+from cwltool.context import RuntimeContext
+from cwltool.errors import WorkflowException
+from cwltool.executors import SingleJobExecutor
+from cwltool.job import CommandLineJob
+from cwltool.pathmapper import PathMapper
+from cwltool.process import Process
+from cwltool.stdfsaccess import StdFsAccess
+from cwltool.utils import CWLObjectType
+from cwltool.workflow import Workflow
+from cwltool.workflow_job import WorkflowJob
+
 from dirac_cwl_proto.executor.fs_access import DiracCatalogFsAccess
 from dirac_cwl_proto.executor.pathmapper import DiracPathMapper
+from dirac_cwl_proto.job.replica_catalog import ReplicaCatalog
 
 logger = logging.getLogger("dirac-cwl-run")
 
@@ -37,16 +39,24 @@ def _custom_make_path_mapper(
     This allows us to inject our custom DiracPathMapper into the workflow execution.
     """
     # Check if runtime_context has a custom path_mapper (like Toil does)
-    if hasattr(runtimeContext, 'path_mapper') and runtimeContext.path_mapper != PathMapper:
+    if (
+        hasattr(runtimeContext, "path_mapper")
+        and runtimeContext.path_mapper != PathMapper
+    ):
         # Use the custom path_mapper from runtime context
-        return runtimeContext.path_mapper(reffiles, runtimeContext.basedir, stagedir, separateDirs)
+        return runtimeContext.path_mapper(
+            reffiles, runtimeContext.basedir, stagedir, separateDirs
+        )
     else:
         # Fall back to original implementation
-        return _original_make_path_mapper(reffiles, stagedir, runtimeContext, separateDirs)
+        return _original_make_path_mapper(
+            reffiles, stagedir, runtimeContext, separateDirs
+        )
 
 
 # Apply the monkey-patch
 CommandLineTool.make_path_mapper = staticmethod(_custom_make_path_mapper)
+
 
 class DiracExecutor(SingleJobExecutor):
     """Custom executor that handles replica catalog management between steps.
@@ -80,7 +90,9 @@ class DiracExecutor(SingleJobExecutor):
                 self.master_catalog = ReplicaCatalog.model_validate_json(
                     self.master_catalog_path.read_text()
                 )
-                logger.info(f"Loaded catalog with {len(self.master_catalog.root)} file(s)")
+                logger.info(
+                    f"Loaded catalog with {len(self.master_catalog.root)} file(s)"
+                )
             else:
                 self.master_catalog = ReplicaCatalog(root={})
                 logger.debug("Initialized empty catalog")
@@ -90,7 +102,9 @@ class DiracExecutor(SingleJobExecutor):
         # fs access class
         runtime_context.make_fs_access = cast(
             type[StdFsAccess],
-            functools.partial(DiracCatalogFsAccess, replica_catalog=self.master_catalog),
+            functools.partial(
+                DiracCatalogFsAccess, replica_catalog=self.master_catalog
+            ),
         )
 
         # Set up custom path mapper that can resolve LFN: URIs using the replica catalog
@@ -101,14 +115,19 @@ class DiracExecutor(SingleJobExecutor):
         )
 
         # Set up provenance for non-workflow processes (from SingleJobExecutor)
-        if not isinstance(process, Workflow) and runtime_context.research_obj is not None:
-            process.provenance_object = runtime_context.research_obj.initialize_provenance(
-                full_name=runtime_context.cwl_full_name,
-                host_provenance=runtime_context.prov_host,
-                user_provenance=runtime_context.prov_user,
-                orcid=runtime_context.orcid,
-                run_uuid=runtime_context.research_obj.ro_uuid,
-                fsaccess=runtime_context.make_fs_access(""),
+        if (
+            not isinstance(process, Workflow)
+            and runtime_context.research_obj is not None
+        ):
+            process.provenance_object = (
+                runtime_context.research_obj.initialize_provenance(
+                    full_name=runtime_context.cwl_full_name,
+                    host_provenance=runtime_context.prov_host,
+                    user_provenance=runtime_context.prov_user,
+                    orcid=runtime_context.orcid,
+                    run_uuid=runtime_context.research_obj.ro_uuid,
+                    fsaccess=runtime_context.make_fs_access(""),
+                )
             )
             process.parent_wf = process.provenance_object
 
@@ -134,7 +153,12 @@ class DiracExecutor(SingleJobExecutor):
                         if prov_obj:
                             runtime_context.prov_obj = prov_obj
                             prov_obj.fsaccess = runtime_context.make_fs_access("")
-                            prov_obj.evaluate(process, job, job_order_object, runtime_context.research_obj)
+                            prov_obj.evaluate(
+                                process,
+                                job,
+                                job_order_object,
+                                runtime_context.research_obj,
+                            )
                             process_run_id = prov_obj.record_process_start(process, job)
                             runtime_context = runtime_context.copy()
                         runtime_context.process_run_id = process_run_id
@@ -171,7 +195,9 @@ class DiracExecutor(SingleJobExecutor):
             logger.exception("Got workflow error")
             raise WorkflowException(str(err)) from err
 
-    def _prepare_job_catalog(self, job: CommandLineJob, runtime_context: RuntimeContext):
+    def _prepare_job_catalog(
+        self, job: CommandLineJob, runtime_context: RuntimeContext
+    ):
         """Prepare replica catalog for a specific CommandLineJob.
 
         Args:
@@ -182,7 +208,7 @@ class DiracExecutor(SingleJobExecutor):
 
         # Extract LFNs from job inputs
         # job.builder.job contains the actual input dictionary
-        job_inputs = job.builder.job if hasattr(job, 'builder') else {}
+        job_inputs = job.builder.job if hasattr(job, "builder") else {}
         step_lfns = self._extract_lfns_from_inputs(job_inputs)
 
         # Filter master catalog for this step's inputs
@@ -198,10 +224,14 @@ class DiracExecutor(SingleJobExecutor):
             if found > 0:
                 logger.info(f"{job_name}: Found {found} input files in catalog")
             else:
-                logger.warning(f"{job_name}: Expected input files not found in catalog: {step_lfns}")
+                logger.warning(
+                    f"{job_name}: Expected input files not found in catalog: {step_lfns}"
+                )
                 step_catalog = ReplicaCatalog(root={})
         elif step_lfns:
-            logger.warning(f"{job_name}: Input files requested but no catalog available: {step_lfns}")
+            logger.warning(
+                f"{job_name}: Input files requested but no catalog available: {step_lfns}"
+            )
             step_catalog = ReplicaCatalog(root={})
         else:
             # Create empty catalog for steps with no LFN inputs (e.g., simulation)
@@ -212,9 +242,13 @@ class DiracExecutor(SingleJobExecutor):
             step_catalog_path = Path(job.outdir) / "replica_catalog.json"
             step_catalog_path.write_text(step_catalog.model_dump_json(indent=2))
         else:
-            logger.warning(f"{job_name}: Job has no output directory, cannot write catalog")
+            logger.warning(
+                f"{job_name}: Job has no output directory, cannot write catalog"
+            )
 
-    def _update_catalog_from_job(self, job: CommandLineJob, runtime_context: RuntimeContext):
+    def _update_catalog_from_job(
+        self, job: CommandLineJob, runtime_context: RuntimeContext
+    ):
         """Update catalog from job outputs.
 
         After a job completes, the lbprodrun wrapper may have added new LFNs
@@ -227,7 +261,9 @@ class DiracExecutor(SingleJobExecutor):
         job_name = getattr(job, "name", "unknown")
 
         if not job.outdir:
-            logger.warning(f"{job_name}: Job has no output directory, cannot update catalog")
+            logger.warning(
+                f"{job_name}: Job has no output directory, cannot update catalog"
+            )
             return
 
         step_catalog_path = Path(job.outdir) / "replica_catalog.json"
@@ -236,7 +272,9 @@ class DiracExecutor(SingleJobExecutor):
             return
 
         try:
-            step_catalog = ReplicaCatalog.model_validate_json(step_catalog_path.read_text())
+            step_catalog = ReplicaCatalog.model_validate_json(
+                step_catalog_path.read_text()
+            )
 
             if self.master_catalog is None:
                 self.master_catalog = ReplicaCatalog(root={})
@@ -261,9 +299,13 @@ class DiracExecutor(SingleJobExecutor):
                     new_entries.append(lfn)
 
             if new_entries:
-                logger.info(f"{job_name}: Registered {len(new_entries)} new output file(s) (catalog total: {len(self.master_catalog.root)})")
+                logger.info(
+                    f"{job_name}: Registered {len(new_entries)} new output file(s) (catalog total: {len(self.master_catalog.root)})"
+                )
             if updated_entries:
-                logger.info(f"{job_name}: Updated {len(updated_entries)} existing catalog entries")
+                logger.info(
+                    f"{job_name}: Updated {len(updated_entries)} existing catalog entries"
+                )
         except Exception as e:
             logger.error(f"{job_name}: Failed to update catalog - {e}", exc_info=True)
 
@@ -314,7 +356,9 @@ def dirac_executor_factory(master_catalog_path: Path | None = None):
     Returns:
         Executor function compatible with cwltool
     """
+
     def executor(process, job_order, runtime_context, logger_arg):
         dirac_exec = DiracExecutor(master_catalog_path)
         return dirac_exec(process, job_order, runtime_context, logger_arg)
+
     return executor

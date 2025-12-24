@@ -10,16 +10,18 @@ the production type specified in the YAML file.
 
 from pathlib import Path
 from typing import Any
+
 import yaml
 
-from .simulation import fromProductionRequestYAMLToCWL as fromSimulationToCWL
 from .anaprod import fromProductionRequestYAMLToCWL as fromAnalysisToCWL
+from .simulation import fromProductionRequestYAMLToCWL as fromSimulationToCWL
 
 
 def main():
     """Entry point for the command-line utility."""
     # Import here to avoid circular dependency
     from .__main__ import main as _main
+
     return _main()
 
 

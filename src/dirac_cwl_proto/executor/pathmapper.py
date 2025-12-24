@@ -1,10 +1,11 @@
 """Custom PathMapper for handling DIRAC LFNs in CWL workflows."""
 
-import os
 import logging
-from typing import Any, Dict, List, Optional, Tuple, cast
-from cwltool.pathmapper import PathMapper, MapperEnt
+from typing import List, Optional, cast
+
+from cwltool.pathmapper import MapperEnt, PathMapper
 from cwltool.utils import CWLObjectType
+
 from dirac_cwl_proto.job.replica_catalog import ReplicaCatalog
 
 logger = logging.getLogger("dirac-cwl-run")
@@ -79,7 +80,7 @@ class DiracPathMapper(PathMapper):
                     # Set both resolved and target to the PFN so CWL uses it directly
                     self._pathmap[tgt] = MapperEnt(
                         resolved=pfn,  # The physical URL/path
-                        target=pfn,    # Use the PFN directly (not a staging path)
+                        target=pfn,  # Use the PFN directly (not a staging path)
                         type="File",
                         staged=False,  # We're not staging/copying this file
                     )
@@ -107,10 +108,14 @@ class DiracPathMapper(PathMapper):
                     return
 
                 else:
-                    logger.warning(f"DiracPathMapper: LFN {lfn} in catalog but has no replicas")
+                    logger.warning(
+                        f"DiracPathMapper: LFN {lfn} in catalog but has no replicas"
+                    )
             else:
                 # LFN not in catalog - this will likely fail later
-                logger.error(f"DiracPathMapper: LFN {lfn} NOT in catalog! Available LFNs: {list(self.replica_catalog.root.keys())[:5]}")
+                logger.error(
+                    f"DiracPathMapper: LFN {lfn} NOT in catalog! Available LFNs: {list(self.replica_catalog.root.keys())[:5]}"
+                )
 
         # For non-LFN files or when LFN resolution failed, delegate to parent class
         super().visit(obj, stagedir, basedir, copy, staged)

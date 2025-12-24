@@ -1,4 +1,3 @@
-
 import json
 import logging
 import random
@@ -16,7 +15,7 @@ from rich.logging import RichHandler
 logging.basicConfig(
     level=logging.INFO,
     format="%(message)s",
-    handlers=[RichHandler(rich_tracebacks=True, show_path=False)]
+    handlers=[RichHandler(rich_tracebacks=True, show_path=False)],
 )
 logger = logging.getLogger(__name__)
 console = Console()
@@ -29,10 +28,12 @@ def _format_bkquery_param(runs):
         return [str(r) for r in runs]
     return None
 
+
 class DataQualityFlag(StrEnum):
     OK = "OK"
     BAD = "BAD"
     UNCHECKED = "UNCHECKED"
+
 
 class InputDataset(BaseModel):
     """CWL hint for input dataset description."""
@@ -57,19 +58,28 @@ class InputDataset(BaseModel):
         """Extra info which is currently needed when making transformations from a request"""
 
         run_numbers: list[str] | None = None
-        sample_max_md5: Annotated[str, StringConstraints(pattern=r"[A-Z0-9]{32}")] | None = None
-        sample_seed_md5: Annotated[str, StringConstraints(pattern=r"[A-Z0-9]{32}")] | None = None
+        sample_max_md5: Annotated[
+            str, StringConstraints(pattern=r"[A-Z0-9]{32}")
+        ] | None = None
+        sample_seed_md5: Annotated[
+            str, StringConstraints(pattern=r"[A-Z0-9]{32}")
+        ] | None = None
         start_run: int | None = None
         end_run: int | None = None
 
         @model_validator(mode="after")
         def validate_run_numbers(self) -> Self:
-            if self.run_numbers and (self.start_run is not None or self.end_run is not None):
-                raise ValueError("Cannot specify both run_numbers and start_run/end_run")
+            if self.run_numbers and (
+                self.start_run is not None or self.end_run is not None
+            ):
+                raise ValueError(
+                    "Cannot specify both run_numbers and start_run/end_run"
+                )
             return self
 
-    launch_parameters: Annotated[LaunchParameters, Field(default_factory=LaunchParameters)]
-
+    launch_parameters: Annotated[
+        LaunchParameters, Field(default_factory=LaunchParameters)
+    ]
 
     class_: Literal["dirac:inputDataset"] = Field(alias="class")
 
@@ -114,7 +124,10 @@ class InputDataset(BaseModel):
             bk_query_dict["ExtendedDQOK"] = self.conditions_dict.inExtendedDQOK
 
         # Optional: Production ID filter
-        if self.conditions_dict.inProductionID and self.conditions_dict.inProductionID != "ALL":
+        if (
+            self.conditions_dict.inProductionID
+            and self.conditions_dict.inProductionID != "ALL"
+        ):
             bk_query_dict["ProductionID"] = self.conditions_dict.inProductionID
 
         # Optional: TCKs filter
@@ -126,14 +139,18 @@ class InputDataset(BaseModel):
             bk_query_dict["SMOG2"] = self.conditions_dict.inSMOG2State
 
         # Launch parameters: sample selection
-        if self.launch_parameters.sample_max_md5 and self.launch_parameters.sample_seed_md5:
+        if (
+            self.launch_parameters.sample_max_md5
+            and self.launch_parameters.sample_seed_md5
+        ):
             bk_query_dict["SampleMax"] = self.launch_parameters.sample_max_md5
             bk_query_dict["SampleSeedMD5"] = self.launch_parameters.sample_seed_md5
 
         # Launch parameters: run number selection
         # Validate that we don't mix run_numbers with start_run/end_run
         if self.launch_parameters.run_numbers and (
-            self.launch_parameters.start_run is not None or self.launch_parameters.end_run is not None
+            self.launch_parameters.start_run is not None
+            or self.launch_parameters.end_run is not None
         ):
             raise ValueError("Cannot specify both run_numbers and start_run/end_run")
 
@@ -157,15 +174,18 @@ class InputDataset(BaseModel):
         if self.launch_parameters.run_numbers:
             # Convert to list of strings if needed
             bk_query_dict["RunNumbers"] = [
-                str(r) if not isinstance(r, str) else r for r in self.launch_parameters.run_numbers
+                str(r) if not isinstance(r, str) else r
+                for r in self.launch_parameters.run_numbers
             ]
 
         return bk_query_dict
 
 
-
-
-def do_bkquery(input_dataset: InputDataset, inputFiles: list[str] | None = None, numTestLFNs: int = 1):
+def do_bkquery(
+    input_dataset: InputDataset,
+    inputFiles: list[str] | None = None,
+    numTestLFNs: int = 1,
+):
     """Query the Bookkeeping for LFNs matching the input dataset criteria.
 
     :param input_dataset: InputDataset model with BK query parameters
@@ -182,7 +202,9 @@ def do_bkquery(input_dataset: InputDataset, inputFiles: list[str] | None = None,
     if not inputFiles:
         logger.info("Querying Bookkeeping for LFNs...")
         result = returnValueOrRaise(
-            BookkeepingClient().getFilesWithMetadata(bkQueryDict | {"OnlyParameters": ["FileName", "FileSize"]})
+            BookkeepingClient().getFilesWithMetadata(
+                bkQueryDict | {"OnlyParameters": ["FileName", "FileSize"]}
+            )
         )
         if result["TotalRecords"] == 0:
             query_str = json.dumps(bkQueryDict, indent=4)
@@ -203,7 +225,9 @@ def do_bkquery(input_dataset: InputDataset, inputFiles: list[str] | None = None,
         records = sorted(result["Records"], key=lambda x: x[sizeIndex])
         if len(records) // 2 >= numTestLFNs:
             records = records[len(records) // 2 :]
-            logger.debug(f"Filtered out smallest 50% of files, {len(records)} remaining")
+            logger.debug(
+                f"Filtered out smallest 50% of files, {len(records)} remaining"
+            )
 
         # Shuffle the LFNs so we pick a random one
         random.shuffle(records)
@@ -215,13 +239,17 @@ def do_bkquery(input_dataset: InputDataset, inputFiles: list[str] | None = None,
         logger.info(f"Checking for replicas on disk (need {numTestLFNs} files)...")
         for record in records:
             lfn = record[filenameIndex]
-            replica_result = returnValueOrRaise(DataManager().getReplicasForJobs([lfn], diskOnly=True))
+            replica_result = returnValueOrRaise(
+                DataManager().getReplicasForJobs([lfn], diskOnly=True)
+            )
             inputFiles.extend(replica_result["Successful"])
             if len(inputFiles) == numTestLFNs:
                 break
             if replica_result["Failed"]:
                 skipped_files.extend(replica_result["Failed"])
-                logger.warning(f"Skipping LFN (no disk replicas): {replica_result['Failed']}")
+                logger.warning(
+                    f"Skipping LFN (no disk replicas): {replica_result['Failed']}"
+                )
         else:
             error_msg = (
                 f"Insufficient input files with available (disk) replicas for jobs found.\n\n"
@@ -235,7 +263,9 @@ def do_bkquery(input_dataset: InputDataset, inputFiles: list[str] | None = None,
                 f"Contact: lhcb-datamanagement@cern.ch"
             )
             if skipped_files:
-                error_msg += f"\n\nExample skipped files:\n  " + "\n  ".join(skipped_files[:3])
+                error_msg += "\n\nExample skipped files:\n  " + "\n  ".join(
+                    skipped_files[:3]
+                )
                 if len(skipped_files) > 3:
                     error_msg += f"\n  ... and {len(skipped_files) - 3} more"
             raise ValueError(error_msg)
@@ -311,6 +341,7 @@ def main(
 
     # initialise dirac first
     import DIRAC
+
     DIRAC.initialize()
 
     # Set default output paths if not provided
@@ -334,7 +365,9 @@ def main(
 
     if not input_dataset_dict:
         console.print("[red]Error:[/red] No inputDataset hint found in CWL file")
-        console.print("Expected a hint with class='dirac:inputDataset' in the 'hints' section")
+        console.print(
+            "Expected a hint with class='dirac:inputDataset' in the 'hints' section"
+        )
         raise typer.Exit(1)
 
     # Parse into InputDataset model
@@ -344,9 +377,11 @@ def main(
         console.print(f"[red]Error:[/red] Failed to parse inputDataset hint: {e}")
         raise typer.Exit(1)
 
-    logger.info(f"Found inputDataset hint:")
+    logger.info("Found inputDataset hint:")
     logger.info(f"  Event Type: {input_dataset.event_type}")
-    logger.info(f"  Config: {input_dataset.conditions_dict.configName}/{input_dataset.conditions_dict.configVersion}")
+    logger.info(
+        f"  Config: {input_dataset.conditions_dict.configName}/{input_dataset.conditions_dict.configVersion}"
+    )
     logger.info(f"  Processing Pass: {input_dataset.conditions_dict.inProPass}")
 
     # Query Bookkeeping for LFNs
@@ -388,7 +423,7 @@ def main(
         # Convert Pydantic model to dict for JSON serialization
         f.write(replica_catalog.model_dump_json(indent=2))
 
-    console.print(f"\n[green]✓[/green] Successfully generated:")
+    console.print("\n[green]✓[/green] Successfully generated:")
     console.print(f"  • Input YAML: {output_yaml}")
     console.print(f"  • Replica catalog: {output_catalog}")
     console.print(f"\nRetrieved {len(lfns_list)} LFN(s)")

@@ -13,7 +13,6 @@
 import re
 from typing import Any
 
-
 # Constants
 EVENT_TYPE = "event-type"
 RUN_NUMBER = "run-number"
@@ -30,11 +29,11 @@ def sanitize_step_name(name: str) -> str:
     :return: Sanitized step name
     """
     # Replace invalid characters with underscores
-    sanitized = re.sub(r'[^a-zA-Z0-9_-]', '_', name)
+    sanitized = re.sub(r"[^a-zA-Z0-9_-]", "_", name)
 
     # Ensure it starts with a letter or underscore
-    if sanitized and not sanitized[0].isalpha() and sanitized[0] != '_':
-        sanitized = '_' + sanitized
+    if sanitized and not sanitized[0].isalpha() and sanitized[0] != "_":
+        sanitized = "_" + sanitized
 
     return sanitized
 
@@ -47,13 +46,13 @@ def make_case_insensitive_glob(extension: str) -> str:
     :param extension: File extension (e.g., '.sim', '.digi')
     :return: Case-insensitive glob pattern
     """
-    if not extension.startswith('.'):
-        extension = '.' + extension
+    if not extension.startswith("."):
+        extension = "." + extension
 
-    pattern = ''
+    pattern = ""
     for char in extension:
         if char.isalpha():
-            pattern += f'[{char.lower()}{char.upper()}]'
+            pattern += f"[{char.lower()}{char.upper()}]"
         else:
             pattern += char
 

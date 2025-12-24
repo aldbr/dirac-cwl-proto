@@ -4,8 +4,8 @@ This command-line tool runs CWL workflows using the DiracExecutor, which handles
 replica catalog management for input and output files.
 """
 
-import sys
 import argparse
+import sys
 from pathlib import Path
 
 
@@ -13,22 +13,32 @@ def main():
     """Entry point for the command-line tool."""
     parser = argparse.ArgumentParser(
         description="Run CWL workflows with DIRAC executor and replica catalog management",
-        prog="dirac-cwl-run"
+        prog="dirac-cwl-run",
     )
 
     # Required arguments
     parser.add_argument("workflow", type=Path, help="Path to CWL workflow file")
-    parser.add_argument("inputs", type=Path, nargs="?", help="Path to inputs YAML file (optional)")
+    parser.add_argument(
+        "inputs", type=Path, nargs="?", help="Path to inputs YAML file (optional)"
+    )
 
     # Optional arguments
-    parser.add_argument("--outdir", type=Path, help="Output directory (default: current directory)")
+    parser.add_argument(
+        "--outdir", type=Path, help="Output directory (default: current directory)"
+    )
     parser.add_argument("--tmpdir-prefix", type=Path, help="Temporary directory prefix")
-    parser.add_argument("--leave-tmpdir", action="store_true", help="Keep temporary directories")
-    parser.add_argument("--replica-catalog", type=Path, help="Path to master replica catalog JSON file")
+    parser.add_argument(
+        "--leave-tmpdir", action="store_true", help="Keep temporary directories"
+    )
+    parser.add_argument(
+        "--replica-catalog", type=Path, help="Path to master replica catalog JSON file"
+    )
     parser.add_argument("--debug", action="store_true", help="Enable debug logging")
     parser.add_argument("--verbose", action="store_true", help="Enable verbose logging")
     parser.add_argument("--parallel", action="store_true", help="Run jobs in parallel")
-    parser.add_argument("--version", action="store_true", help="Show version information")
+    parser.add_argument(
+        "--version", action="store_true", help="Show version information"
+    )
 
     args = parser.parse_args()
 
@@ -40,7 +50,8 @@ def main():
 
     # Build cwltool arguments
     cwltool_args = [
-        "--outdir", str(args.outdir) if args.outdir else ".",
+        "--outdir",
+        str(args.outdir) if args.outdir else ".",
         "--disable-color",  # Disable ANSI color codes in logs
     ]
 
@@ -65,8 +76,9 @@ def main():
 
     try:
         # Create our custom DIRAC executor with replica catalog support
-        from dirac_cwl_proto.executor import DiracExecutor
         from cwltool.main import main as cwltool_main
+
+        from dirac_cwl_proto.executor import DiracExecutor
 
         dirac_executor = DiracExecutor(master_catalog_path=args.replica_catalog)
 
@@ -89,6 +101,7 @@ def main():
         # We pass a NullHandler to suppress cwltool's default logging
         # and let it set up its own handler that does nothing
         import logging
+
         null_handler = logging.NullHandler()
 
         exit_code = cwltool_main(
@@ -106,7 +119,10 @@ def main():
                 print(f"   Replica catalog: {args.replica_catalog}")
                 try:
                     from dirac_cwl_proto.job.replica_catalog import ReplicaCatalog
-                    catalog = ReplicaCatalog.model_validate_json(args.replica_catalog.read_text())
+
+                    catalog = ReplicaCatalog.model_validate_json(
+                        args.replica_catalog.read_text()
+                    )
                     print(f"   Catalog entries: {len(catalog.root)}")
                 except Exception:
                     pass
@@ -117,6 +133,7 @@ def main():
 
     except Exception as e:
         import traceback
+
         traceback.print_exc()
         print(f"\n❌ Error executing workflow: {e}")
         return 1

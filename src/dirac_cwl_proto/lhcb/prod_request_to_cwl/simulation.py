@@ -34,11 +34,11 @@ from cwl_utils.parser.cwl_v1_2 import (
     CommandOutputParameter,
     Dirent,
     InitialWorkDirRequirement,
+    InlineJavascriptRequirement,
     InputEnumSchema,
     MultipleInputFeatureRequirement,
     ResourceRequirement,
     StepInputExpressionRequirement,
-    InlineJavascriptRequirement,
     SubworkflowFeatureRequirement,
     Workflow,
     WorkflowInputParameter,
@@ -51,12 +51,12 @@ from ruamel.yaml.scalarstring import LiteralScalarString
 
 from .common import (
     EVENT_TYPE,
-    RUN_NUMBER,
     FIRST_EVENT_NUMBER,
     NUMBER_OF_EVENTS,
-    sanitize_step_name,
-    make_case_insensitive_glob,
+    RUN_NUMBER,
     build_transformation_hints,
+    make_case_insensitive_glob,
+    sanitize_step_name,
 )
 
 
@@ -95,7 +95,9 @@ def fromProductionRequestYAMLToCWL(
 
     # Validate it's a simulation production
     if production_dict.get("type") not in ["Simulation"]:
-        raise ValueError(f"Only Simulation productions are currently supported, got {production_dict.get('type')}")
+        raise ValueError(
+            f"Only Simulation productions are currently supported, got {production_dict.get('type')}"
+        )
 
     # Handle event type selection
     event_types = production_dict.get("event_types", [])
@@ -126,10 +128,12 @@ def _buildCWLWorkflow(
 
     # If no transforms defined, fall back to single transformation containing all steps
     if not transforms:
-        transforms = [{
-            "steps": list(range(1, len(steps) + 1)),  # 1-indexed
-            "type": "Processing",
-        }]
+        transforms = [
+            {
+                "steps": list(range(1, len(steps) + 1)),  # 1-indexed
+                "type": "Processing",
+            }
+        ]
 
     # Build transformation sub-workflows
     transformation_workflows = []
@@ -150,8 +154,12 @@ def _buildCWLWorkflow(
         zip(transformation_names, transformation_workflows, transforms)
     ):
         main_step = _buildMainWorkflowStep(
-            transform_name, transform_workflow, transform, transform_index,
-            workflow_inputs, transformation_names
+            transform_name,
+            transform_workflow,
+            transform,
+            transform_index,
+            workflow_inputs,
+            transformation_names,
         )
         main_workflow_steps.append(main_step)
 
@@ -204,12 +212,8 @@ def _buildCWLWorkflow(
         inputs=list(workflow_inputs.values()),
         outputs=workflow_outputs,
         extension_fields={
-            "$namespaces": {
-                "dirac": "../../../schemas/dirac-metadata.json#/$defs/"
-            },
-            "$schemas": [
-                "../../../schemas/dirac-metadata.json"
-            ]
+            "$namespaces": {"dirac": "../../../schemas/dirac-metadata.json#/$defs/"},
+            "$schemas": ["../../../schemas/dirac-metadata.json"],
         },
     )
 
@@ -230,21 +234,19 @@ def _getWorkflowInputs(production: dict[str, Any]) -> dict[str, WorkflowInputPar
     is_gauss = False
     if steps:
         first_app = steps[0].get("application", {})
-        app_name = first_app.get("name", "") if isinstance(first_app, dict) else first_app.split("/")[0]
+        app_name = (
+            first_app.get("name", "")
+            if isinstance(first_app, dict)
+            else first_app.split("/")[0]
+        )
         is_gauss = app_name.lower() == "gauss"
 
     # Production identification inputs
     workflow_inputs["production-id"] = WorkflowInputParameter(
-        type_="int",
-        id="production-id",
-        default=12345,
-        doc="Production ID"
+        type_="int", id="production-id", default=12345, doc="Production ID"
     )
     workflow_inputs["prod-job-id"] = WorkflowInputParameter(
-        type_="int",
-        id="prod-job-id",
-        default=6789,
-        doc="Production Job ID"
+        type_="int", id="prod-job-id", default=6789, doc="Production Job ID"
     )
 
     if is_gauss:
@@ -261,53 +263,44 @@ def _getWorkflowInputs(production: dict[str, Any]) -> dict[str, WorkflowInputPar
                 name="EventTypeEnum",
             )
             workflow_inputs[EVENT_TYPE] = WorkflowInputParameter(
-                type_=event_type_enum,
-                id=EVENT_TYPE,
-                doc="Event type to be generated"
+                type_=event_type_enum, id=EVENT_TYPE, doc="Event type to be generated"
             )
         else:
             # Fallback to int if no event types are specified
             workflow_inputs[EVENT_TYPE] = WorkflowInputParameter(
-                type_="int",
-                id=EVENT_TYPE,
-                doc="Event type to be generated"
+                type_="int", id=EVENT_TYPE, doc="Event type to be generated"
             )
         workflow_inputs[RUN_NUMBER] = WorkflowInputParameter(
-            type_="int",
-            id=RUN_NUMBER,
-            default=1,
-            doc="Run number for simulation"
+            type_="int", id=RUN_NUMBER, default=1, doc="Run number for simulation"
         )
         workflow_inputs[FIRST_EVENT_NUMBER] = WorkflowInputParameter(
             type_="int",
             id=FIRST_EVENT_NUMBER,
             default=1,
-            doc="First event number in the run"
+            doc="First event number in the run",
         )
         workflow_inputs[NUMBER_OF_EVENTS] = WorkflowInputParameter(
             type_="int",
             id=NUMBER_OF_EVENTS,
             default=10,
-            doc="Number of events to generate"
+            doc="Number of events to generate",
         )
         workflow_inputs["histogram"] = WorkflowInputParameter(
             type_="boolean",
             id="histogram",
             default=False,
-            doc="Enable histogram output"
+            doc="Enable histogram output",
         )
     else:
         # For non-Gauss starts, we need input data
         workflow_inputs["input-data"] = WorkflowInputParameter(
-            type_="File",
-            id="input-data",
-            doc="Input data files from previous step"
+            type_="File", id="input-data", doc="Input data files from previous step"
         )
         workflow_inputs[NUMBER_OF_EVENTS] = WorkflowInputParameter(
             type_="int",
             id=NUMBER_OF_EVENTS,
             default=10,
-            doc="Number of events to process"
+            doc="Number of events to process",
         )
 
     return workflow_inputs
@@ -322,7 +315,9 @@ def _getWorkflowOutputs(steps: list[dict[str, Any]]) -> list[WorkflowOutputParam
     # Collect outputs from steps that have visible output files
     for step_index, step in enumerate(steps):
         # Check if any output file in this step is marked as visible
-        visible_outputs = [out for out in step.get("output", []) if out.get("visible", False)]
+        visible_outputs = [
+            out for out in step.get("output", []) if out.get("visible", False)
+        ]
 
         if visible_outputs:
             step_name = _sanitizeStepName(step.get("name", f"step_{step_index}"))
@@ -332,7 +327,6 @@ def _getWorkflowOutputs(steps: list[dict[str, Any]]) -> list[WorkflowOutputParam
     for step_index, step in enumerate(steps):
         step_name = _sanitizeStepName(step.get("name", f"step_{step_index}"))
         otherOutputSources.append(f"{step_name}/others")
-
 
     # Output data files for this visible step
     workflow_outputs.append(
@@ -376,10 +370,14 @@ def _buildCWLStep(
     prod_conf = _generateProdConf(production, step, step_index)
 
     # Build command line tool
-    command_tool = _buildCommandLineTool(step, step_index, global_step_index, prod_conf, workflow_inputs, step_name)
+    command_tool = _buildCommandLineTool(
+        step, step_index, global_step_index, prod_conf, workflow_inputs, step_name
+    )
 
     # Build step inputs
-    step_inputs = _buildStepInputs(step, step_index, global_step_index, workflow_inputs, step_names)
+    step_inputs = _buildStepInputs(
+        step, step_index, global_step_index, workflow_inputs, step_names
+    )
 
     # Build step outputs
     step_outputs = _buildStepOutputs(step)
@@ -392,7 +390,9 @@ def _buildCWLStep(
     )
 
 
-def _generateProdConf(production: dict[str, Any], step: dict[str, Any], step_index: int) -> dict[str, Any]:
+def _generateProdConf(
+    production: dict[str, Any], step: dict[str, Any], step_index: int
+) -> dict[str, Any]:
     """Generate the prodConf JSON configuration for a step (similar to RunApplication.py)."""
 
     # Parse application info
@@ -452,8 +452,13 @@ def _generateProdConf(production: dict[str, Any], step: dict[str, Any], step_ind
     elif isinstance(options, list):
         # Ensure @{eventType} placeholder is present
         # lb-prod-run will substitute it at runtime
-        if not [opt for opt in options if "@{eventType}" in opt] and app_name.lower() == "gauss":
-            raise ValueError("For Gauss, at least one option file path must contain the '@{eventType}' placeholder.")
+        if (
+            not [opt for opt in options if "@{eventType}" in opt]
+            and app_name.lower() == "gauss"
+        ):
+            raise ValueError(
+                "For Gauss, at least one option file path must contain the '@{eventType}' placeholder."
+            )
         prod_conf["options"]["files"] = options
         if processing_pass:
             prod_conf["options"]["processing_pass"] = processing_pass
@@ -625,7 +630,9 @@ def _buildCommandLineTool(
     if step_index > 0 or "input-data" in workflow_inputs:
         input_files_manifest = f"inputFiles_{global_step_index + 1}.txt"
         # Use a simpler JavaScript expression that maps over the files and joins with newlines
-        input_files_expr = "$(inputs['input-data'].map(function(f) { return f.path; }).join('\\n'))"
+        input_files_expr = (
+            "$(inputs['input-data'].map(function(f) { return f.path; }).join('\\n'))"
+        )
         initial_workdir_listing.append(
             Dirent(
                 entryname=input_files_manifest,
@@ -840,7 +847,11 @@ def _getWorkflowStaticInputs(production: dict[str, Any]) -> dict[str, Any]:
     is_gauss = False
     if steps:
         first_app = steps[0].get("application", {})
-        app_name = first_app.get("name", "") if isinstance(first_app, dict) else first_app.split("/")[0]
+        app_name = (
+            first_app.get("name", "")
+            if isinstance(first_app, dict)
+            else first_app.split("/")[0]
+        )
         is_gauss = app_name.lower() == "gauss"
 
     if is_gauss:
@@ -901,7 +912,13 @@ def _buildTransformationWorkflow(
                     break
 
     # Always include common inputs
-    for input_id in ["production-id", "prod-job-id", RUN_NUMBER, FIRST_EVENT_NUMBER, "histogram"]:
+    for input_id in [
+        "production-id",
+        "prod-job-id",
+        RUN_NUMBER,
+        FIRST_EVENT_NUMBER,
+        "histogram",
+    ]:
         if input_id in production_inputs:
             transformation_inputs[input_id] = production_inputs[input_id]
 
@@ -910,7 +927,9 @@ def _buildTransformationWorkflow(
         if EVENT_TYPE in production_inputs:
             transformation_inputs[EVENT_TYPE] = production_inputs[EVENT_TYPE]
         if NUMBER_OF_EVENTS in production_inputs:
-            transformation_inputs[NUMBER_OF_EVENTS] = production_inputs[NUMBER_OF_EVENTS]
+            transformation_inputs[NUMBER_OF_EVENTS] = production_inputs[
+                NUMBER_OF_EVENTS
+            ]
 
     # For non-first transformations, add input-data parameter to receive outputs from previous transformation
     if transform_index > 0:
@@ -930,7 +949,12 @@ def _buildTransformationWorkflow(
 
         # Build the step with local indexing within the transformation
         cwl_step = _buildCWLStep(
-            production, step, local_step_index, global_step_index, transformation_inputs, step_names
+            production,
+            step,
+            local_step_index,
+            global_step_index,
+            transformation_inputs,
+            step_names,
         )
         cwl_steps.append(cwl_step)
 
@@ -1129,7 +1153,9 @@ def _getMainWorkflowOutputs(
         has_visible_outputs = False
         for step_idx_1based in transform_step_indices:
             step = steps[step_idx_1based - 1]  # Convert to 0-indexed
-            visible_outputs = [out for out in step.get("output", []) if out.get("visible", False)]
+            visible_outputs = [
+                out for out in step.get("output", []) if out.get("visible", False)
+            ]
             if visible_outputs:
                 has_visible_outputs = True
                 break

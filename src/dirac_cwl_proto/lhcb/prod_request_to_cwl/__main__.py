@@ -1,7 +1,7 @@
-import yaml
 from pathlib import Path
 
 import typer
+import yaml
 from rich.console import Console
 from rich.table import Table
 
@@ -13,7 +13,7 @@ console = Console()
 
 def _sanitize_filename(name: str) -> str:
     """Sanitize a name to be filesystem-safe."""
-    return name.replace("/", "_").replace(" ", "_").replace(":", "_").replace('#', '_')
+    return name.replace("/", "_").replace(" ", "_").replace(":", "_").replace("#", "_")
 
 
 @app.command()
@@ -27,22 +27,26 @@ def generate(
     ),
     output_dir: Path = typer.Option(
         Path("generated"),
-        "--output-dir", "-o",
+        "--output-dir",
+        "-o",
         help="Directory where CWL files will be written",
     ),
     production_name: str = typer.Option(
         None,
-        "--production", "-p",
+        "--production",
+        "-p",
         help="Specific production name to convert (default: convert all)",
     ),
     yaml_width: int = typer.Option(
         120,
-        "--yaml-width", "-w",
+        "--yaml-width",
+        "-w",
         help="Maximum line width for generated YAML files",
     ),
     verbose: bool = typer.Option(
         False,
-        "--verbose", "-v",
+        "--verbose",
+        "-v",
         help="Enable verbose output",
     ),
 ):
@@ -75,9 +79,13 @@ def generate(
 
     # Filter by production name if specified
     if production_name:
-        productions_data = [p for p in productions_data if p.get("name") == production_name]
+        productions_data = [
+            p for p in productions_data if p.get("name") == production_name
+        ]
         if not productions_data:
-            console.print(f"[red]❌ Production '{production_name}' not found in {yaml_file}[/red]")
+            console.print(
+                f"[red]❌ Production '{production_name}' not found in {yaml_file}[/red]"
+            )
             raise typer.Exit(1)
 
     generated_files = []
@@ -128,28 +136,41 @@ def generate(
             yaml_dumper.default_flow_style = False
             yaml_dumper.width = yaml_width
 
-            with open(output_path, 'w') as f:
+            with open(output_path, "w") as f:
                 yaml_dumper.dump(workflow_dict, f)
 
             # Store metadata for summary table
             if production_type == "Simulation":
-                generated_files.append((prod_name, filename, len(workflow.steps), production_type, event_types))
+                generated_files.append(
+                    (
+                        prod_name,
+                        filename,
+                        len(workflow.steps),
+                        production_type,
+                        event_types,
+                    )
+                )
             else:
-                generated_files.append((prod_name, filename, len(workflow.steps), production_type, None))
+                generated_files.append(
+                    (prod_name, filename, len(workflow.steps), production_type, None)
+                )
 
             console.print(f"[green]✅ Generated:[/green] {filename}")
             if verbose:
                 console.print(f"   [dim]Production: {prod_name}[/dim]")
                 console.print(f"   [dim]Type: {production_type}[/dim]")
                 if production_type == "Simulation" and event_types:
-                    event_type_ids = [str(et.get('id', et)) for et in event_types]
-                    console.print(f"   [dim]Event Types: {', '.join(event_type_ids)}[/dim]")
+                    event_type_ids = [str(et.get("id", et)) for et in event_types]
+                    console.print(
+                        f"   [dim]Event Types: {', '.join(event_type_ids)}[/dim]"
+                    )
                 console.print(f"   [dim]Steps: {len(workflow.steps)}[/dim]\n")
 
         except Exception as e:
             console.print(f"[red]❌ Error generating {prod_name}: {e}[/red]")
             if verbose:
                 import traceback
+
                 traceback.print_exc()
             skipped.append((prod_name, str(e)))
 
@@ -169,7 +190,7 @@ def generate(
         for prod_name, filename, num_steps, prod_type, event_types in generated_files:
             # Build info column based on production type
             if prod_type == "Simulation" and event_types:
-                info = ", ".join(str(et['id']) for et in event_types)
+                info = ", ".join(str(et["id"]) for et in event_types)
             else:
                 info = "-"
 
@@ -181,7 +202,9 @@ def generate(
                 info,
             )
 
-        console.print(f"\n[green]Generated {len(generated_files)} CWL file(s) in {output_dir}[/green]")
+        console.print(
+            f"\n[green]Generated {len(generated_files)} CWL file(s) in {output_dir}[/green]"
+        )
         console.print(table)
     else:
         console.print("[yellow]No CWL files were generated[/yellow]")
@@ -231,8 +254,8 @@ def list_productions(
         table.add_row(
             name,
             prod_type,
-            str(", ".join(str(et['id']) for et in event_types)),
-            str(len(steps))
+            str(", ".join(str(et["id"]) for et in event_types)),
+            str(len(steps)),
         )
 
     console.print(table)

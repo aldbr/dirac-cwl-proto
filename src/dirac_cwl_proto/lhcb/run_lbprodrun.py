@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """Wrapper for lb-prod-run that handles CWL inputs and configuration merging."""
-import asyncio
 import argparse
+import asyncio
 import json
 import subprocess
 import sys
-from pathlib import Path
 import xml.etree.ElementTree as ET
+from pathlib import Path
+
 
 def generate_pool_xml_catalog_from_replica_catalog(
-    replica_catalog_path: Path,
-    output_path: Path
+    replica_catalog_path: Path, output_path: Path
 ) -> None:
     """Generate a pool_xml_catalog.xml from a replica_catalog.json.
 
@@ -71,11 +71,11 @@ def generate_pool_xml_catalog_from_replica_catalog(
     ET.indent(tree, space="  ")  # Pretty print with 2-space indentation
 
     # Write XML with declaration
-    with open(output_path, 'wb') as f:
+    with open(output_path, "wb") as f:
         f.write(b'<?xml version="1.0" encoding="UTF-8" standalone="no" ?>\n')
-        f.write(b'<!-- Edited By POOL -->\n')
+        f.write(b"<!-- Edited By POOL -->\n")
         f.write(b'<!DOCTYPE POOLFILECATALOG SYSTEM "InMemory">\n')
-        tree.write(f, encoding='UTF-8', xml_declaration=False)
+        tree.write(f, encoding="UTF-8", xml_declaration=False)
 
     print(f"Generated pool_xml_catalog.xml with {len(catalog.root)} entries")
 
@@ -89,19 +89,19 @@ def _guess_filetype(lfn: str) -> str:
     lfn_lower = lfn.lower()
 
     # Extract extension
-    if '.' in lfn_lower:
-        ext = lfn_lower.split('.')[-1]
+    if "." in lfn_lower:
+        ext = lfn_lower.split(".")[-1]
 
         # Map extensions to file types
         type_map = {
-            'sim': 'SIM',
-            'digi': 'DIGI',
-            'dst': 'DST',
-            'mdst': 'MDST',
-            'rdst': 'RDST',
-            'raw': 'RAW',
-            'xdst': 'XDST',
-            'ldst': 'LDST',
+            "sim": "SIM",
+            "digi": "DIGI",
+            "dst": "DST",
+            "mdst": "MDST",
+            "rdst": "RDST",
+            "raw": "RAW",
+            "xdst": "XDST",
+            "ldst": "LDST",
         }
 
         return type_map.get(ext, ext.upper())
@@ -113,7 +113,7 @@ def add_output_files_to_replica_catalog(
     replica_catalog_path: Path,
     output_prefix: str,
     output_types: list[str],
-    working_dir: Path = Path(".")
+    working_dir: Path = Path("."),
 ) -> None:
     """Add output files produced by lb-prod-run to the replica catalog.
 
@@ -126,8 +126,9 @@ def add_output_files_to_replica_catalog(
     :param output_types: List of output file types (e.g., ["SIM", "DIGI"])
     :param working_dir: Directory to search for output files
     """
-    from dirac_cwl_proto.job.replica_catalog import ReplicaCatalog
     import uuid
+
+    from dirac_cwl_proto.job.replica_catalog import ReplicaCatalog
 
     # Load existing replica catalog
     if replica_catalog_path.exists():
@@ -148,8 +149,14 @@ def add_output_files_to_replica_catalog(
 
         # Also try case-insensitive patterns
         if not matching_files:
-            for ext_variant in [output_type.lower(), output_type.upper(), output_type.title()]:
-                matching_files = list(working_dir.glob(f"{output_prefix}.{ext_variant}"))
+            for ext_variant in [
+                output_type.lower(),
+                output_type.upper(),
+                output_type.title(),
+            ]:
+                matching_files = list(
+                    working_dir.glob(f"{output_prefix}.{ext_variant}")
+                )
                 if matching_files:
                     break
 
@@ -169,13 +176,13 @@ def add_output_files_to_replica_catalog(
 
             # Create replica entry
             pfn_url = f"file://{local_file.resolve()}"
-            replica = ReplicaCatalog.CatalogEntry.Replica(url=pfn_url, se="DIRAC.Site.Local")
+            replica = ReplicaCatalog.CatalogEntry.Replica(
+                url=pfn_url, se="DIRAC.Site.Local"
+            )
             checksum = ReplicaCatalog.CatalogEntry.Checksum(guid=file_guid)
 
             entry = ReplicaCatalog.CatalogEntry(
-                replicas=[replica],
-                checksum=checksum,
-                size_bytes=file_size
+                replicas=[replica], checksum=checksum, size_bytes=file_size
             )
 
             catalog.root[lfn] = entry
@@ -192,8 +199,7 @@ def add_output_files_to_replica_catalog(
 
 
 def update_replica_catalog_from_pool_xml(
-    pool_xml_path: Path,
-    replica_catalog_path: Path
+    pool_xml_path: Path, replica_catalog_path: Path
 ) -> None:
     """Update replica catalog with changes from pool_xml_catalog.xml.
 
@@ -220,29 +226,39 @@ def update_replica_catalog_from_pool_xml(
     new_count = 0
 
     # Process each File element in the XML
-    for file_elem in root.findall('.//File'):
-        guid = file_elem.get('ID', '')
+    for file_elem in root.findall(".//File"):
+        guid = file_elem.get("ID", "")
 
         # Extract LFN from logical section
-        lfn_elem = file_elem.find('.//logical/lfn')
-        lfn = lfn_elem.get('name', '') if lfn_elem is not None else None
+        lfn_elem = file_elem.find(".//logical/lfn")
+        lfn = lfn_elem.get("name", "") if lfn_elem is not None else None
 
         # Extract PFNs from physical section
-        pfn_elems = file_elem.findall('.//physical/pfn')
+        pfn_elems = file_elem.findall(".//physical/pfn")
         replicas = []
         for pfn_elem in pfn_elems:
-            pfn_url = pfn_elem.get('name', '')
+            pfn_url = pfn_elem.get("name", "")
             if pfn_url:
                 # Convert file:// paths or absolute paths to proper URLs
-                if not pfn_url.startswith(('file://', 'http://', 'https://', 'root://', 'xroot://')):
+                if not pfn_url.startswith(
+                    ("file://", "http://", "https://", "root://", "xroot://")
+                ):
                     # Assume it's a local absolute path
-                    pfn_url = f"file://{pfn_url}" if pfn_url.startswith('/') else f"file://{Path(pfn_url).resolve()}"
-                    
+                    pfn_url = (
+                        f"file://{pfn_url}"
+                        if pfn_url.startswith("/")
+                        else f"file://{Path(pfn_url).resolve()}"
+                    )
+
                     if not lfn:
                         # If LFN is missing, generate one from filename
                         lfn = f"{Path(pfn_url).name}"
 
-                replicas.append(ReplicaCatalog.CatalogEntry.Replica(url=pfn_url, se="DIRAC.Site.Local"))
+                replicas.append(
+                    ReplicaCatalog.CatalogEntry.Replica(
+                        url=pfn_url, se="DIRAC.Site.Local"
+                    )
+                )
 
         if not replicas:
             continue
@@ -250,8 +266,8 @@ def update_replica_catalog_from_pool_xml(
         # Get file size if the file exists locally
         file_size = None
         for replica in replicas:
-            if str(replica.url).startswith('file://'):
-                local_path = Path(str(replica.url).replace('file://', ''))
+            if str(replica.url).startswith("file://"):
+                local_path = Path(str(replica.url).replace("file://", ""))
                 if local_path.exists():
                     file_size = local_path.stat().st_size
                     break
@@ -282,9 +298,7 @@ def update_replica_catalog_from_pool_xml(
             # Create new entry
             checksum = ReplicaCatalog.CatalogEntry.Checksum(guid=guid) if guid else None
             entry = ReplicaCatalog.CatalogEntry(
-                replicas=replicas,
-                checksum=checksum,
-                size_bytes=file_size
+                replicas=replicas, checksum=checksum, size_bytes=file_size
             )
             catalog.root[lfn] = entry
             new_count += 1
@@ -292,23 +306,37 @@ def update_replica_catalog_from_pool_xml(
     # Write updated catalog back to file
     replica_catalog_path.write_text(catalog.model_dump_json(indent=2))
 
-    print(f"Replica catalog updated: {new_count} new entries, {updated_count} updated entries")
+    print(
+        f"Replica catalog updated: {new_count} new entries, {updated_count} updated entries"
+    )
     print(f"Total entries in catalog: {len(catalog.root)}")
 
 
 def main():
     parser = argparse.ArgumentParser(description="LbProdRun Wrapper for DIRAC CWL")
     parser.add_argument("config_file", help="Base configuration JSON file")
-    parser.add_argument("--input-files", help="Input paths that are resolved from direct local file paths (txt file)")
-    parser.add_argument("--pool-xml-catalog", default="pool_xml_catalog.xml", help="Pool XML catalog file")
-    parser.add_argument("--replica-catalog", help="Replica catalog JSON file (generates pool XML if provided)")
+    parser.add_argument(
+        "--input-files",
+        help="Input paths that are resolved from direct local file paths (txt file)",
+    )
+    parser.add_argument(
+        "--pool-xml-catalog",
+        default="pool_xml_catalog.xml",
+        help="Pool XML catalog file",
+    )
+    parser.add_argument(
+        "--replica-catalog",
+        help="Replica catalog JSON file (generates pool XML if provided)",
+    )
     parser.add_argument("--run-number", type=int, help="Run number")
     parser.add_argument("--first-event-number", type=int, help="First event number")
     parser.add_argument("--number-of-events", type=int, help="Number of events")
     parser.add_argument("--number-of-processors", type=int, help="Number of processors")
     parser.add_argument("--output-prefix", help="Output file prefix")
     parser.add_argument("--event-type", help="Event type ID for Gauss")
-    parser.add_argument("--histogram", action="store_true", help="Enable histogram output")
+    parser.add_argument(
+        "--histogram", action="store_true", help="Enable histogram output"
+    )
 
     args = parser.parse_args()
 
@@ -319,12 +347,13 @@ def main():
             print(f"Generating pool_xml_catalog.xml from {replica_catalog_path}...")
             try:
                 generate_pool_xml_catalog_from_replica_catalog(
-                    replica_catalog_path,
-                    Path(args.pool_xml_catalog)
+                    replica_catalog_path, Path(args.pool_xml_catalog)
                 )
             except Exception as e:
-                print(f"⚠️  Warning: Failed to generate pool XML from replica catalog: {e}")
-                print(f"   Will proceed without pool XML catalog")
+                print(
+                    f"⚠️  Warning: Failed to generate pool XML from replica catalog: {e}"
+                )
+                print("   Will proceed without pool XML catalog")
         else:
             print(f"⚠️  Warning: Replica catalog {replica_catalog_path} not found")
 
@@ -356,18 +385,22 @@ def main():
     if args.input_files:
         paths = Path(args.input_files).read_text().splitlines()
         config["input"]["files"] = [f"PFN:{path.strip()}" for path in paths]
-    
+
     # check the options files for @{eventType} if application is Gauss
     if config["application"]["name"].lower() == "gauss":
         options = config["options"].get("files", [])
         if isinstance(options, list):
             if not [opt for opt in options if "@{eventType}" in opt]:
-                raise ValueError("For Gauss, at least one option file path must contain the '@{eventType}' placeholder.")
+                raise ValueError(
+                    "For Gauss, at least one option file path must contain the '@{eventType}' placeholder."
+                )
         if args.event_type is None:
             raise ValueError("Event type ID must be provided for Gauss application.")
         # substitute event type in options
-        config["options"]["files"] = [opt.replace("@{eventType}", args.event_type) for opt in options]
-        
+        config["options"]["files"] = [
+            opt.replace("@{eventType}", args.event_type) for opt in options
+        ]
+
     app_name = config["application"]["name"]
     cleaned_appname = app_name.replace("/", "").replace(" ", "")
 
@@ -387,7 +420,7 @@ def main():
 
     # TODO: should filenames be lowercased?
     # sometimes LHCb applications don't respect lowercasing of output
-    # filenames e.g. ALLSTREAMS.DST filetype ---> {prefix}.AllStreams.dst 
+    # filenames e.g. ALLSTREAMS.DST filetype ---> {prefix}.AllStreams.dst
     # (when it should be {prefix}.allstreams.dst)
 
     # Update all relative PFN paths in the pool XML catalog to absolute paths
@@ -401,8 +434,8 @@ def main():
 
         updated_count = 0
         # Find all pfn elements
-        for pfn_elem in root.findall('.//pfn'):
-            pfn_name = pfn_elem.get('name')
+        for pfn_elem in root.findall(".//pfn"):
+            pfn_name = pfn_elem.get("name")
             if pfn_name:
                 pfn_path = Path(pfn_name)
                 # Only update if it's not already an absolute path
@@ -410,40 +443,43 @@ def main():
                     # Check if file exists in current directory
                     if pfn_path.exists():
                         absolute_path = pfn_path.resolve().as_posix()
-                        pfn_elem.set('name', absolute_path)
+                        pfn_elem.set("name", absolute_path)
                         print(f"  Updated: {pfn_name} -> {absolute_path}")
                         updated_count += 1
                     else:
-                        print(f"⚠️  Warning: File {pfn_name} not found in current directory")
+                        print(
+                            f"⚠️  Warning: File {pfn_name} not found in current directory"
+                        )
 
         # Write back the updated XML
         # Preserve the XML declaration and DOCTYPE
-        tree.write(catalog_path, encoding='UTF-8', xml_declaration=True)
+        tree.write(catalog_path, encoding="UTF-8", xml_declaration=True)
 
         # Fix the DOCTYPE manually since ElementTree doesn't preserve it well
-        with open(catalog_path, 'r') as f:
+        with open(catalog_path, "r") as f:
             content = f.read()
 
         # Add the POOLFILECATALOG comment and DOCTYPE after the XML declaration
-        if '<!DOCTYPE POOLFILECATALOG' not in content:
+        if "<!DOCTYPE POOLFILECATALOG" not in content:
             content = content.replace(
-                '<?xml version=\'1.0\' encoding=\'UTF-8\'?>',
+                "<?xml version='1.0' encoding='UTF-8'?>",
                 '<?xml version="1.0" encoding="UTF-8" standalone="no" ?>\n'
-                '<!-- Edited By POOL -->\n'
-                '<!DOCTYPE POOLFILECATALOG SYSTEM "InMemory">'
+                "<!-- Edited By POOL -->\n"
+                '<!DOCTYPE POOLFILECATALOG SYSTEM "InMemory">',
             )
-            with open(catalog_path, 'w') as f:
+            with open(catalog_path, "w") as f:
                 f.write(content)
 
-        print(f"Pool XML Catalog updated. {updated_count} PFN(s) converted to absolute paths.")
+        print(
+            f"Pool XML Catalog updated. {updated_count} PFN(s) converted to absolute paths."
+        )
 
         # Update replica catalog if it was provided
         if args.replica_catalog:
             print("Updating replica catalog from pool XML...")
             try:
                 update_replica_catalog_from_pool_xml(
-                    catalog_path,
-                    Path(args.replica_catalog)
+                    catalog_path, Path(args.replica_catalog)
                 )
             except Exception as e:
                 print(f"⚠️  Warning: Failed to update replica catalog: {e}")
@@ -486,7 +522,11 @@ async def run_lbprodrun(
     return (returncode, stdout, stderr)
 
 
-async def readlines(stream: asyncio.StreamReader, chunk_size: int = 4096, errors: str = "backslashreplace"):
+async def readlines(
+    stream: asyncio.StreamReader,
+    chunk_size: int = 4096,
+    errors: str = "backslashreplace",
+):
     """Read lines from a stream"""
     buffer = b""
     while not stream.at_eof():

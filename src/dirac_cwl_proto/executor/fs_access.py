@@ -1,9 +1,10 @@
 """Custom filesystem access for DIRAC LFNs using replica catalog."""
 
 import os
-from pathlib import Path
 from typing import Any
+
 from cwltool.stdfsaccess import StdFsAccess
+
 from dirac_cwl_proto.job.replica_catalog import ReplicaCatalog
 
 
