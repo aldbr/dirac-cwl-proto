@@ -13,7 +13,7 @@ console = Console()
 
 def _sanitize_filename(name: str) -> str:
     """Sanitize a name to be filesystem-safe."""
-    return name.replace("/", "_").replace(" ", "_").replace(":", "_")
+    return name.replace("/", "_").replace(" ", "_").replace(":", "_").replace('#', '_')
 
 
 @app.command()

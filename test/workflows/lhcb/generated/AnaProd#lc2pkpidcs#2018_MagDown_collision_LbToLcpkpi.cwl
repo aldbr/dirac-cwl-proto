@@ -2,6 +2,22 @@ $namespaces:
   dirac: ../../../schemas/dirac-metadata.json#/$defs/
 $schemas:
   - ../../../schemas/dirac-metadata.json
+hints:
+- class: dirac:inputDataset
+  event_type: '90000000'
+  conditions_dict:
+    inTCKs: ALL
+    inProPass: Real Data/Reco17/Stripping29r2p2
+    configName: LHCb
+    inFileType: CHARM.MDST
+    configVersion: Collision17
+    inProductionID: ALL
+    inDataQualityFlag: OK
+  launch_parameters:
+    end_run:
+    start_run:
+    run_numbers:
+  conditions_description: Beam6500GeV-VeloClosed-MagUp
 
 id: AnaProd_lc2pkpidcs_2018_MagDown_collision_LbToLcpkpi
 class: Workflow

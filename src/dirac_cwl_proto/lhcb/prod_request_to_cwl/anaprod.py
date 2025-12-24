@@ -189,7 +189,7 @@ def _buildCWLWorkflow(
 
     workflow_doc = "\n".join(doc_lines)
 
-    # Create main workflow with extension fields for namespaces and input dataset
+    # Create main workflow with extension fields for namespaces
     extension_fields = {
         "$namespaces": {
             "dirac": "../../../schemas/dirac-metadata.json#/$defs/"
@@ -199,14 +199,24 @@ def _buildCWLWorkflow(
         ]
     }
 
+    # Build hints for the main workflow
+    hints = []
+
     # Add input dataset as a machine-readable hint for BK query
     if input_dataset:
-        extension_fields["dirac:inputDataset"] = {
-            "eventType": input_dataset.get("event_type"),
-            "conditionsDict": conditions_dict,
-            "launchParameters": input_dataset.get("launch_parameters", {}),
-            "conditionsDescription": input_dataset.get("conditions_description"),
+        input_dataset_hint = {
+            "class": "dirac:inputDataset",
+            "event_type": input_dataset.get("event_type"),
+            "conditions_dict": conditions_dict,
+            "conditions_description": input_dataset.get("conditions_description"),
         }
+
+        # Add launch_parameters if present
+        launch_params = input_dataset.get("launch_parameters", {})
+        if launch_params:
+            input_dataset_hint["launch_parameters"] = launch_params
+
+        hints.append(input_dataset_hint)
 
     workflow = Workflow(
         id=sanitize_step_name(production_name) or "analysis_production",
@@ -223,6 +233,7 @@ def _buildCWLWorkflow(
             MultipleInputFeatureRequirement(),
             resource_requirement,
         ],
+        hints=hints,
         extension_fields=extension_fields,
     )
 
@@ -322,13 +333,17 @@ def _buildTransformationWorkflow(
         step_names.append(step_name)
 
         # Build the CommandLineTool for this step
+        # Determine if this step receives input data:
+        # - If not first step in transformation (local_step_index > 0): receives from previous step
+        # - If first step (local_step_index == 0): receives from transformation input-data parameter
+        has_input_data = local_step_index > 0 or "input-data" in transformation_inputs
         tool = _buildCommandLineTool(
-            production, step, global_step_index, transform_index, len(step_indices)
+            production, step, global_step_index, transform_index, len(step_indices), has_input_data
         )
 
         # Build workflow step inputs
         step_inputs = _buildStepInputs(
-            step, local_step_index, global_step_index, transformation_inputs, step_names
+            step, local_step_index, global_step_index, transformation_inputs, step_names, step_indices
         )
 
         # Build workflow step outputs
@@ -377,6 +392,7 @@ def _buildCommandLineTool(
     step_index: int,
     transform_index: int,
     total_steps_in_transform: int,
+    has_input_data: bool,
 ) -> CommandLineTool:
     """Build a CommandLineTool for an analysis production step.
 
@@ -385,6 +401,7 @@ def _buildCommandLineTool(
     :param step_index: Global step index (0-based)
     :param transform_index: Index of the transformation this step belongs to
     :param total_steps_in_transform: Total number of steps in this transformation
+    :param has_input_data: Whether this step receives input data
     :return: A CommandLineTool for this step
     """
     # Generate prodConf for this step
@@ -406,29 +423,49 @@ def _buildCommandLineTool(
     is_merge = step.get("options", {}).get("entrypoint") == "LbExec:skim_and_merge"
 
     # Build input parameters
-    input_parameters = _buildInputParameters(step, step_index, is_merge)
+    input_parameters = _buildInputParameters(step, step_index, is_merge, has_input_data)
 
     # Build output parameters
     output_parameters = _buildOutputParameters(step)
 
-    # Build InitialWorkDirRequirement with prodConf
+    # Build InitialWorkDirRequirement with prodConf and input files manifest
     prodconf_filename = f"prodConf_{step_index + 1}.json"
-    init_workdir_requirement = InitialWorkDirRequirement(
-        listing=[
-            Dirent(
-                entryname=prodconf_filename,
-                entry=LiteralScalarString(json.dumps(prodconf, indent=2)),
-            )
-        ]
-    )
+    initial_workdir_listing = [
+        Dirent(
+            entryname=prodconf_filename,
+            entry=LiteralScalarString(json.dumps(prodconf, indent=2)),
+        )
+    ]
 
-    # Build command
-    baseCommand = ["lb-prod-run"]
+    # Add input files manifest if this step has input-data
+    # This manifest will contain one file path per line
+    if "input-data" in [p.id for p in input_parameters]:
+        input_files_manifest = f"inputFiles_{step_index + 1}.txt"
+        # Use a simpler JavaScript expression that maps over the files and joins with newlines
+        input_files_expr = "$(inputs['input-data'].map(function(f) { return f.path; }).join('\\n'))"
+        initial_workdir_listing.append(
+            Dirent(
+                entryname=input_files_manifest,
+                entry=input_files_expr,
+            )
+        )
+
+    init_workdir_requirement = InitialWorkDirRequirement(listing=initial_workdir_listing)
+
+    # Build command - use the wrapper that handles prodConf conversion
+    baseCommand = ["dirac-run-lbprodrun-app"]
 
     # Build arguments
-    arguments = [
-        f"--prodConf={prodconf_filename}",
-    ]
+    arguments = [prodconf_filename]
+
+    # Add input files manifest argument if this step has input-data
+    if "input-data" in [p.id for p in input_parameters]:
+        input_files_manifest = f"inputFiles_{step_index + 1}.txt"
+        arguments.extend(["--input-files", input_files_manifest])
+
+    # Add replica catalog argument
+    # The executor creates replica_catalog.json in the working directory
+    arguments.extend(["--replica-catalog", "replica_catalog.json"])
 
     # Create the CommandLineTool
     requirements = [
@@ -449,61 +486,107 @@ def _buildCommandLineTool(
 
 
 def _generateProdConf(production: dict[str, Any], step: dict[str, Any], step_index: int) -> dict[str, Any]:
-    """Generate prodConf JSON for an analysis production step."""
+    """Generate prodConf JSON for an analysis production step (similar to simulation.py)."""
 
+    # Parse application info
     application = step.get("application", {})
-    if isinstance(application, dict):
-        app_name = application.get("name", "unknown")
-        app_version = application.get("version", "")
-    else:
+    if isinstance(application, str):
+        # Format: "AppName/version"
         parts = application.split("/")
-        app_name = parts[0] if parts else "unknown"
-        app_version = parts[1] if len(parts) > 1 else ""
+        app_name = parts[0]
+        app_version = parts[1] if len(parts) > 1 else "unknown"
+        binary_tag = None
+        nightly = None
+    else:
+        app_name = application.get("name", "unknown")
+        app_version = application.get("version", "unknown")
+        binary_tag = application.get("binary_tag")
+        nightly = application.get("nightly")
 
-    options = step.get("options", {})
+    # Parse data packages
+    data_pkgs = []
+    for pkg in step.get("data_pkgs", []):
+        if isinstance(pkg, str):
+            data_pkgs.append(pkg)
+        else:
+            data_pkgs.append(f"{pkg.get('name')}.{pkg.get('version')}")
 
-    prodconf: dict[str, Any] = {
+    # Build prodConf structure
+    prod_conf = {
+        "spec_version": 1,
         "application": {
             "name": app_name,
             "version": app_version,
+            "data_pkgs": data_pkgs,
         },
-        "step_id": step_index + 1,
-        "step_name": step.get("name", f"step_{step_index}"),
+        "options": {},
+        "db_tags": {},
+        "input": {},
+        "output": {},
     }
 
-    # Add data packages
-    data_pkgs = step.get("data_pkgs", [])
-    if data_pkgs:
-        prodconf["data_packages"] = data_pkgs
+    # Add binary tag if specified
+    if binary_tag:
+        prod_conf["application"]["binary_tag"] = binary_tag
 
-    # Handle different option formats
-    if "entrypoint" in options:
-        # This is a merge step
-        prodconf["options"] = {
-            "entrypoint": options["entrypoint"],
-            "extra_args": options.get("extra_args", []),
-            "extra_options": options.get("extra_options", {}),
-        }
-    elif "files" in options:
-        # This is a WGProd step
-        prodconf["options"] = {
-            "files": options["files"],
-            "format": options.get("format", "WGProd"),
-        }
-    else:
-        prodconf["options"] = options
+    # Add nightly if specified
+    if nightly:
+        prod_conf["application"]["nightly"] = nightly
 
-    # Add processing pass
-    if "processing_pass" in step:
-        prodconf["processing_pass"] = step["processing_pass"]
+    # Build options configuration
+    options = step.get("options", {})
+    options_format = step.get("options_format")
+    processing_pass = step.get("processing_pass")
 
-    return prodconf
+    if isinstance(options, dict):
+        # LbExec or other structured format (like merge steps with entrypoint)
+        prod_conf["options"] = options
+    elif isinstance(options, list):
+        # List of option files
+        prod_conf["options"]["files"] = options
+        if processing_pass:
+            prod_conf["options"]["processing_pass"] = processing_pass
+        if options_format:
+            prod_conf["options"]["format"] = options_format
+
+    # DB Tags
+    dbtags = step.get("dbtags", {})
+    if dbtags:
+        if dbtags.get("DDDB"):
+            prod_conf["db_tags"]["dddb_tag"] = dbtags["DDDB"]
+        if dbtags.get("CondDB"):
+            prod_conf["db_tags"]["conddb_tag"] = dbtags["CondDB"]
+        if dbtags.get("DQTag"):
+            prod_conf["db_tags"]["dq_tag"] = dbtags["DQTag"]
+
+    # Output types
+    output_types = []
+    for output in step.get("output", []):
+        output_type = output.get("type")
+        if output_type:
+            output_types.append(output_type)
+    if output_types:
+        prod_conf["output"]["types"] = output_types
+
+    # Input configuration
+    # For analysis productions, all input files will be processed fully
+    prod_conf["input"]["first_event_number"] = 0
+    prod_conf["input"]["n_of_events"] = -1
+
+    return prod_conf
 
 
 def _buildInputParameters(
-    step: dict[str, Any], step_index: int, is_merge: bool
+    step: dict[str, Any], step_index: int, is_merge: bool, has_input_data: bool
 ) -> list[CommandInputParameter]:
-    """Build input parameters for an analysis production step."""
+    """Build input parameters for an analysis production step.
+
+    Args:
+        step: Step definition
+        step_index: Global step index
+        is_merge: Whether this is a merge step
+        has_input_data: Whether this step receives input data (from previous step or transformation input)
+    """
 
     input_parameters = []
 
@@ -512,7 +595,7 @@ def _buildInputParameters(
         CommandInputParameter(
             id="production-id",
             type_="int",
-            inputBinding=CommandLineBinding(prefix="--production-id"),
+            # inputBinding=CommandLineBinding(prefix="--production-id"),
         )
     )
 
@@ -520,7 +603,7 @@ def _buildInputParameters(
         CommandInputParameter(
             id="prod-job-id",
             type_="int",
-            inputBinding=CommandLineBinding(prefix="--prod-job-id"),
+            # inputBinding=CommandLineBinding(prefix="--prod-job-id"),
         )
     )
 
@@ -533,14 +616,14 @@ def _buildInputParameters(
         )
     )
 
-    # Input files (if this is not the first step, or if it has dependencies)
-    step_inputs = step.get("input", [])
-    if step_inputs:
+    # Input data files - all analysis production steps process input files
+    # Either from previous step or from transformation input
+    if has_input_data:
         input_parameters.append(
             CommandInputParameter(
-                id="input-files",
-                type_="string",
-                inputBinding=CommandLineBinding(prefix="--input-files"),
+                id="input-data",
+                type_="File[]",
+                # No inputBinding here - we'll handle it via InitialWorkDirRequirement
             )
         )
 
@@ -597,8 +680,17 @@ def _buildStepInputs(
     global_step_index: int,
     workflow_inputs: dict[str, WorkflowInputParameter],
     step_names: list[str],
+    step_indices: list[int],
 ) -> list[WorkflowStepInput]:
-    """Build workflow step inputs for an analysis production step."""
+    """Build workflow step inputs for an analysis production step.
+
+    :param step: The step definition
+    :param step_index: Local index of this step within the transformation (0-based)
+    :param global_step_index: Global index of this step in the production (0-based)
+    :param workflow_inputs: Transformation-level input parameters
+    :param step_names: Names of all steps in this transformation (parallel to step_indices)
+    :param step_indices: Global indices of all steps in this transformation
+    """
 
     step_inputs = []
 
@@ -627,26 +719,37 @@ def _buildStepInputs(
     )
 
     # Handle input files
+    # In analysis productions, steps either get input from a previous step or from transformation input
     step_input_refs = step.get("input", [])
-    if step_input_refs:
-        # This step has inputs from a previous step
-        # Find the source step
-        source_step_idx = step_input_refs[0].get("step_idx")
-        if source_step_idx is not None and source_step_idx < len(step_names):
-            source_step_name = step_names[source_step_idx]
 
-            # Create inputFiles manifest
-            input_files_manifest = f"inputFiles_{global_step_index + 1}.txt"
-
+    if step_index > 0:
+        # Not the first step - get input from previous step in this transformation
+        prev_step_name = step_names[step_index - 1]
+        step_inputs.append(
+            WorkflowStepInput(
+                id="input-data",
+                source=f"{prev_step_name}/output-data",
+            )
+        )
+    elif "input-data" in workflow_inputs:
+        # First step in a transformation that has input-data
+        # Check if this step has explicit dependencies to a step in a different transformation
+        if step_input_refs:
+            source_step_idx = step_input_refs[0].get("step_idx")
+            if source_step_idx not in step_indices:
+                # Source is from a different transformation - use transformation input
+                step_inputs.append(
+                    WorkflowStepInput(
+                        id="input-data",
+                        source="input-data",
+                    )
+                )
+        else:
+            # No explicit dependencies - use transformation input-data
             step_inputs.append(
                 WorkflowStepInput(
-                    id="input-files",
-                    source=f"{source_step_name}/output-data",
-                    valueFrom=LiteralScalarString(
-                        f"${{{{ var files = self.map(f => f.path).join('\\n'); "
-                        f"return {{{{ class: 'File', basename: '{input_files_manifest}', "
-                        f"contents: files }}}}; }}}}"
-                    ),
+                    id="input-data",
+                    source="input-data",
                 )
             )
 
@@ -736,15 +839,16 @@ def _buildMainWorkflowStep(
 def _getTransformationOutputs(
     steps: list[dict[str, Any]], transform: dict[str, Any], step_names: list[str]
 ) -> list[WorkflowOutputParameter]:
-    """Build outputs for a transformation sub-workflow."""
+    """Build outputs for a transformation sub-workflow.
 
-    step_indices = transform.get("steps", [])
+    :param steps: All steps in the production
+    :param transform: The transformation definition
+    :param step_names: Names of steps in THIS transformation (indexed 0, 1, 2, ...)
+    """
 
-    # Collect all output sources from all steps
-    output_sources = []
-    for step_index in step_indices:
-        step_name = step_names[step_index] if step_index < len(step_names) else f"step_{step_index}"
-        output_sources.append(f"{step_name}/output-data")
+    # step_names is indexed by local step index (0, 1, 2, ...)
+    # We should use all step names in this transformation
+    output_sources = [f"{step_name}/output-data" for step_name in step_names]
 
     # Output data files from all steps in this transformation
     outputs = [
@@ -757,7 +861,7 @@ def _getTransformationOutputs(
         WorkflowOutputParameter(
             id="others",
             type_={"type": "array", "items": ["File", "null"]},
-            outputSource=[f"{step_names[idx]}/others" for idx in step_indices if idx < len(step_names)],
+            outputSource=[f"{step_name}/others" for step_name in step_names],
             linkMerge="merge_flattened",
         ),
     ]

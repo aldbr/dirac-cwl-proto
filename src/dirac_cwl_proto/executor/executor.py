@@ -1,8 +1,9 @@
 # src/dirac_cwl_proto/cwltool_extensions/executor.py
 
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, List, cast, Callable
 import logging
+import functools
 from cwltool.context import RuntimeContext
 from cwltool.process import Process
 from cwltool.executors import SingleJobExecutor
@@ -10,9 +11,42 @@ from cwltool.workflow import Workflow
 from cwltool.errors import WorkflowException
 from cwltool.job import CommandLineJob
 from cwltool.workflow_job import WorkflowJob
+from cwltool.stdfsaccess import StdFsAccess
+from cwltool.pathmapper import PathMapper
+from cwltool.utils import CWLObjectType
+from cwltool.command_line_tool import CommandLineTool
 from dirac_cwl_proto.job.replica_catalog import ReplicaCatalog
+from dirac_cwl_proto.executor.fs_access import DiracCatalogFsAccess
+from dirac_cwl_proto.executor.pathmapper import DiracPathMapper
 
 logger = logging.getLogger("dirac-cwl-run")
+
+
+# Monkey-patch CommandLineTool.make_path_mapper to respect runtime_context.path_mapper
+_original_make_path_mapper = CommandLineTool.make_path_mapper
+
+
+def _custom_make_path_mapper(
+    reffiles: List[CWLObjectType],
+    stagedir: str,
+    runtimeContext: RuntimeContext,
+    separateDirs: bool,
+) -> PathMapper:
+    """Custom make_path_mapper that uses runtime_context.path_mapper if available.
+
+    This allows us to inject our custom DiracPathMapper into the workflow execution.
+    """
+    # Check if runtime_context has a custom path_mapper (like Toil does)
+    if hasattr(runtimeContext, 'path_mapper') and runtimeContext.path_mapper != PathMapper:
+        # Use the custom path_mapper from runtime context
+        return runtimeContext.path_mapper(reffiles, runtimeContext.basedir, stagedir, separateDirs)
+    else:
+        # Fall back to original implementation
+        return _original_make_path_mapper(reffiles, stagedir, runtimeContext, separateDirs)
+
+
+# Apply the monkey-patch
+CommandLineTool.make_path_mapper = staticmethod(_custom_make_path_mapper)
 
 class DiracExecutor(SingleJobExecutor):
     """Custom executor that handles replica catalog management between steps.
@@ -50,6 +84,21 @@ class DiracExecutor(SingleJobExecutor):
             else:
                 self.master_catalog = ReplicaCatalog(root={})
                 logger.debug("Initialized empty catalog")
+
+        # Set up custom filesystem access that can resolve LFNs via replica catalog
+        # we create a partial function that binds the replica catalog to our custom
+        # fs access class
+        runtime_context.make_fs_access = cast(
+            type[StdFsAccess],
+            functools.partial(DiracCatalogFsAccess, replica_catalog=self.master_catalog),
+        )
+
+        # Set up custom path mapper that can resolve LFN: URIs using the replica catalog
+        # This intercepts file objects BEFORE the default PathMapper strips the LFN: prefix
+        runtime_context.path_mapper = functools.partial(  # type: ignore[assignment]
+            DiracPathMapper,
+            replica_catalog=self.master_catalog,
+        )
 
         # Set up provenance for non-workflow processes (from SingleJobExecutor)
         if not isinstance(process, Workflow) and runtime_context.research_obj is not None:
@@ -192,19 +241,29 @@ class DiracExecutor(SingleJobExecutor):
             if self.master_catalog is None:
                 self.master_catalog = ReplicaCatalog(root={})
 
+            # Only register files that are NOT already in the master catalog
+            # This filters out input files that were copied to the step catalog
             new_entries = []
+            updated_entries = []
             for lfn, entry in step_catalog.root.items():
-                if lfn not in self.master_catalog.root:
+                if lfn in self.master_catalog.root:
+                    # File already exists - check if it was updated
+                    existing_entry = self.master_catalog.root[lfn]
+                    # If the entry has changed (e.g., new replicas added), update it
+                    if existing_entry != entry:
+                        self.master_catalog.root[lfn] = entry
+                        updated_entries.append(lfn)
+                        logger.debug(f"{job_name}: Updated catalog entry for {lfn}")
+                    # Otherwise skip - this is an input file that hasn't changed
+                else:
+                    # This is a new file (output from this job)
+                    self.master_catalog.root[lfn] = entry
                     new_entries.append(lfn)
 
-                if lfn in self.master_catalog.root:
-                    # Throw error if duplicate LFN found
-                    logger.fatal(f"{job_name}: Duplicate file in catalog: {lfn}")
-                    raise ValueError(f"Attempted to register file that already exists in catalog: {lfn}")
-                self.master_catalog.root[lfn] = entry
-
             if new_entries:
-                logger.info(f"{job_name}: Registered {len(new_entries)} output file(s) (catalog total: {len(self.master_catalog.root)})")
+                logger.info(f"{job_name}: Registered {len(new_entries)} new output file(s) (catalog total: {len(self.master_catalog.root)})")
+            if updated_entries:
+                logger.info(f"{job_name}: Updated {len(updated_entries)} existing catalog entries")
         except Exception as e:
             logger.error(f"{job_name}: Failed to update catalog - {e}", exc_info=True)
 
@@ -218,7 +277,7 @@ class DiracExecutor(SingleJobExecutor):
             job_order: Job input dictionary
 
         Returns:
-            List of LFN paths found in the inputs
+            List of LFN paths found in the inputs (with LFN: prefix stripped)
         """
         lfns = []
 
@@ -226,9 +285,15 @@ class DiracExecutor(SingleJobExecutor):
             if isinstance(obj, dict):
                 # Check if this looks like a File with an LFN path
                 if "class" in obj and obj["class"] == "File":
-                    path = obj.get("path", "")
-                    if path.startswith("LFN:"):
-                        lfns.append(path)
+                    # Check both "path" and "location" fields
+                    for field in ["path", "location"]:
+                        value = obj.get(field, "")
+                        if value.startswith("LFN:"):
+                            # Strip LFN: prefix for catalog lookup
+                            lfn = value[4:]
+                            if lfn not in lfns:
+                                lfns.append(lfn)
+                            break
                 else:
                     for value in obj.values():
                         extract_recursive(value)
