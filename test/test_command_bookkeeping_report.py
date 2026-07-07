@@ -79,10 +79,6 @@ class TestReportBookkeeping:
         wf_commons["steps"][0]["start_time"] = time.time() - 1000
 
         # Input data should be None as we use Gauss (MCSimulation)
-        wf_commons["steps"][0]["outputs"] = [
-            {"outputDataName": "00209455_00001537_1.sim", "outputDataType": "sim"},
-        ]
-        Path(job_path).joinpath(wf_commons["steps"][0]["outputs"][0]["outputDataName"]).touch()
 
         # Mock the XMLSummary object
         xml_content = dedent("""\
@@ -122,7 +118,22 @@ class TestReportBookkeeping:
 
         wf_commons["steps"][0]["xml_summary_path"] = xml_summary_file
 
-        WorkflowCommons(**wf_commons).save(job_path)
+        wfc = WorkflowCommons(**wf_commons)
+        wfc.set_outputs(
+            {
+                "step_1_whatever": [
+                    {
+                        "location": "/lhcb/LHCb/Collision16/SIM/00209455/0000/00209455_00001537_1.sim",
+                        "basename": "00209455_00001537_1.sim",
+                        "size": 0,
+                        "checksum": "md5$1581785719236745214124",
+                        "class": "File",
+                    }
+                ]
+            }
+        )
+        wfc.save(job_path)
+        Path(job_path).joinpath(wfc.steps[0].outputs[0]["outputDataName"]).touch()
 
         report_bk.execute(job_path)
 
@@ -192,8 +203,8 @@ class TestReportBookkeeping:
     ):
         """Test successful execution of ReportBookkeeping module.
 
-        * No input files because wf_commons["stepInputData is empty
-        * No output files because wf_commons["stepOutputData is empty
+        * No input files because wf_commons["stepInputData"] is empty
+        * No output files because wf_commons["stepOutputData"] is empty
         * No pool xml catalog
         * Simulation conditions because the application used is Gauss
         """
@@ -323,12 +334,8 @@ class TestReportBookkeeping:
         wf_commons["steps"][0]["start_time"] = time.time() - 1000
 
         wf_commons["steps"][0]["inputs"] = ["/lhcb/MC/2018/SIM/00212581/0000/00212581_00001446_1.sim"]
-        wf_commons["steps"][0]["outputs"] = [
-            {"outputDataName": "00209455_00001537_1", "outputDataType": "digi"},
-        ]
         wf_commons["steps"][0]["application_log"] = "application.log"
         Path(job_path).joinpath(wf_commons["steps"][0]["application_log"]).touch()
-        Path(job_path).joinpath(wf_commons["steps"][0]["outputs"][0]["outputDataName"]).touch()
 
         # Mock the XMLSummary object
         xml_content = dedent("""\
@@ -357,7 +364,23 @@ class TestReportBookkeeping:
 
         wf_commons["steps"][0]["xml_summary_path"] = xml_summary_file
 
-        WorkflowCommons(**wf_commons).save(job_path)
+        wfc = WorkflowCommons(**wf_commons)
+        wfc.set_outputs(
+            {
+                "step_1_whatever": [
+                    {
+                        "location": "/lhcb/LHCb/Collision16/SIM/00209455/0000/00209455_00001537_1",
+                        "basename": "00209455_00001537_1",
+                        "size": 0,
+                        "checksum": "md5$1581785719236745214124",
+                        "class": "File",
+                        "type": "digi",
+                    }
+                ]
+            }
+        )
+        wfc.save(job_path)
+        Path(job_path).joinpath(wfc.steps[0].outputs[0]["outputDataName"]).touch()
 
         report_bk.execute(job_path)
 

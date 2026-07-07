@@ -198,7 +198,7 @@ class WorkflowCommons(BaseModel):
     def load(cls, job_path: os.PathLike[str]) -> WorkflowCommons:
         """Return a WorkflowCommons containing the values of a workflow_commons.json file.
 
-        :raises: ValidationError
+        :raises ValidationError: If workflow_commons.json is not properly formatted
         """
         wf_path = Path(job_path).joinpath("workflow_commons.json")
 
@@ -206,3 +206,78 @@ class WorkflowCommons(BaseModel):
             wf_dict = json.load(f)
 
         return cls(**wf_dict)
+
+    def __get_step_by_id(self, step_id: str) -> Step | None:
+        for step in self.steps:
+            if step.id == step_id:
+                return step
+        return None
+
+    def set_outputs(self, cwl_output_json: dict[str, Any]) -> None:
+        """Fill workflow and step output dicts.
+
+        :param cwl_output_json: Python dictionary obtained from the json meta output of the cwl workflow
+        :raises KeyError: If the output_src does not match the expected format
+        :raises ValueError: If it's a step output and the step id is not found
+        """
+        for output_src, output_list in cwl_output_json.items():
+            # Output of the Workflow
+            if output_src.startswith("wf_"):
+                self.__process_workflow_outputs(output_src, output_list)
+
+            # Output of a Step
+            elif output_src.startswith("step_"):
+                self.__process_step_outputs(output_src, output_list)
+
+            # Unknown output
+            else:
+                raise KeyError(f"Output source '{output_src}' not recognized")
+
+    def __process_workflow_outputs(self, output_src, output_list):
+        # output_src = wf_{output_name}
+        for output in output_list:
+            if output["class"] != "File":
+                continue
+
+            if "type" in output:
+                output_type = output["type"]
+            else:
+                output_type = output["basename"].split(".")[-1]
+
+            self.outputs.append(
+                {
+                    "outputDataName": output["basename"],
+                    "outputDataType": output_type,
+                    "outputBKType": output_type.upper(),
+                }
+            )
+
+    def __process_step_outputs(self, output_src, output_list):
+        # output_src = step-{id}_{output_name}
+        step_id = output_src[len("step_") :].split("_", maxsplit=1)[0]
+        step = self.__get_step_by_id(step_id)
+
+        if not step:
+            raise ValueError(f"StepId '{step_id}' not found in step list")
+
+        for output in output_list:
+            if output["class"] != "File":
+                continue
+
+            if "checksum" in output and output["checksum"].startswith("md5$"):
+                step.md5[output["basename"]] = output["checksum"][len("md5$") :]
+
+            if "size" in output:
+                step.size[output["basename"]] = str(output["size"])
+
+            if "type" in output:
+                output_type = output["type"]
+            else:
+                output_type = output["basename"].split(".")[-1]
+
+            step.outputs.append(
+                {
+                    "outputDataName": output["basename"],
+                    "outputDataType": output_type,
+                }
+            )

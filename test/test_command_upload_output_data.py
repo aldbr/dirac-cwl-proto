@@ -96,15 +96,26 @@ class TestUploadOutputDataFile:
 
         mocker.patch.object(upload_output.failover_transfer, "transferAndRegisterFileFailover")
 
-        wf_commons["outputs"] = [
-            {"outputDataName": sim_file, "outputDataType": "sim", "outputBKType": "SIM", "stepName": "Gauss_1"}
-        ]
         wf_commons["output_SEs"] = {
             "SIM": ["Tier1-Buffer"],
         }
         wf_commons["output_data_step"] = self.OUTPUT_DATA_STEP
 
-        WorkflowCommons(**wf_commons).save(job_path)
+        wfc = WorkflowCommons(**wf_commons)
+        wfc.set_outputs(
+            {
+                "wf_whatever": [
+                    {
+                        "location": sim_file,
+                        "basename": Path(sim_file).name,
+                        "size": 115421,
+                        "checksum": "md5$1581785719236745214124",
+                        "class": "File",
+                    }
+                ]
+            }
+        )
+        wfc.save(job_path)
 
         upload_output.execute(job_path)
 
@@ -151,15 +162,26 @@ class TestUploadOutputDataFile:
             ),
         )
 
-        wf_commons["outputs"] = [
-            {"outputDataName": sim_file, "outputDataType": "sim", "outputBKType": "SIM", "stepName": "Gauss_1"}
-        ]
         wf_commons["output_SEs"] = {
             "SIM": ["Tier1-Buffer"],
         }
         wf_commons["output_data_step"] = self.OUTPUT_DATA_STEP
 
-        WorkflowCommons(**wf_commons).save(job_path)
+        wfc = WorkflowCommons(**wf_commons)
+        wfc.set_outputs(
+            {
+                "wf_whatever": [
+                    {
+                        "location": sim_file,
+                        "basename": Path(sim_file).name,
+                        "size": 115421,
+                        "checksum": "md5$1581785719236745214124",
+                        "class": "File",
+                    }
+                ]
+            }
+        )
+        wfc.save(job_path)
 
         upload_output.execute(job_path)
 
@@ -209,15 +231,26 @@ class TestUploadOutputDataFile:
         o1.addFile(file1)
         upload_output.request.addOperation(o1)
 
-        wf_commons["outputs"] = [
-            {"outputDataName": sim_file, "outputDataType": "sim", "outputBKType": "SIM", "stepName": "Gauss_1"}
-        ]
         wf_commons["output_SEs"] = {
             "SIM": ["Tier1-Buffer"],
         }
         wf_commons["output_data_step"] = self.OUTPUT_DATA_STEP
 
-        WorkflowCommons(**wf_commons).save(job_path)
+        wfc = WorkflowCommons(**wf_commons)
+        wfc.set_outputs(
+            {
+                "wf_whatever": [
+                    {
+                        "location": sim_file,
+                        "basename": Path(sim_file).name,
+                        "size": 115421,
+                        "checksum": "md5$1581785719236745214124",
+                        "class": "File",
+                    }
+                ]
+            }
+        )
+        wfc.save(job_path)
 
         # Execute module
         upload_output.execute(job_path)
@@ -267,9 +300,6 @@ class TestUploadOutputDataFile:
             return_value=lambda x: S_ERROR("Error registering file"),
         )
 
-        wf_commons["outputs"] = [
-            {"outputDataName": sim_file, "outputDataType": "sim", "outputBKType": "SIM", "stepName": "Gauss_1"}
-        ]
         wf_commons["output_SEs"] = {
             "SIM": ["Tier1-Buffer"],
         }
@@ -281,7 +311,21 @@ class TestUploadOutputDataFile:
             return_value=lambda x: S_ERROR("Error registering file"),
         )
 
-        WorkflowCommons(**wf_commons).save(job_path)
+        wfc = WorkflowCommons(**wf_commons)
+        wfc.set_outputs(
+            {
+                "wf_whatever": [
+                    {
+                        "location": sim_file,
+                        "basename": Path(sim_file).name,
+                        "size": 115421,
+                        "checksum": "md5$1581785719236745214124",
+                        "class": "File",
+                    }
+                ]
+            }
+        )
+        wfc.save(job_path)
 
         with pytest.raises(WorkflowProcessingException, match="Could Not Perform BK Registration"):
             upload_output.execute(job_path)
@@ -321,15 +365,26 @@ class TestUploadOutputDataFile:
             return_value=S_OK(),
         )
 
-        wf_commons["outputs"] = [
-            {"outputDataName": sim_file, "outputDataType": "sim", "outputBKType": "SIM", "stepName": "Gauss_1"}
-        ]
         wf_commons["output_SEs"] = {
             "SIM": ["Tier1-Buffer"],
         }
         wf_commons["output_data_step"] = self.OUTPUT_DATA_STEP
 
-        WorkflowCommons(**wf_commons).save(job_path)
+        wfc = WorkflowCommons(**wf_commons)
+        wfc.set_outputs(
+            {
+                "wf_whatever": [
+                    {
+                        "location": sim_file,
+                        "basename": Path(sim_file).name,
+                        "size": 115421,
+                        "checksum": "md5$1581785719236745214124",
+                        "class": "File",
+                    }
+                ]
+            }
+        )
+        wfc.save(job_path)
 
         upload_output.execute(job_path)
 
@@ -389,15 +444,26 @@ class TestUploadOutputDataFile:
         upload_output.request.addOperation(o1)
         upload_output.request.addOperation(o2)
 
-        wf_commons["outputs"] = [
-            {"outputDataName": sim_file, "outputDataType": "sim", "outputBKType": "SIM", "stepName": "Gauss_1"}
-        ]
         wf_commons["output_SEs"] = {
             "SIM": ["Tier1-Buffer"],
         }
         wf_commons["output_data_step"] = self.OUTPUT_DATA_STEP
 
-        WorkflowCommons(**wf_commons).save(job_path)
+        wfc = WorkflowCommons(**wf_commons)
+        wfc.set_outputs(
+            {
+                "wf_whatever": [
+                    {
+                        "location": sim_file,
+                        "basename": Path(sim_file).name,
+                        "size": 115421,
+                        "checksum": "md5$1581785719236745214124",
+                        "class": "File",
+                    }
+                ]
+            }
+        )
+        wfc.save(job_path)
 
         # Execute module
         with pytest.raises(WorkflowProcessingException, match="Failed to upload output data"):
@@ -454,15 +520,26 @@ class TestUploadOutputDataFile:
             return_value={"OK": False, "rpcStub": "Error", "Message": "Error sending BK report"},
         )
 
-        wf_commons["outputs"] = [
-            {"outputDataName": sim_file, "outputDataType": "sim", "outputBKType": "SIM", "stepName": "Gauss_1"}
-        ]
         wf_commons["output_SEs"] = {
             "SIM": ["Tier1-Buffer"],
         }
         wf_commons["output_data_step"] = self.OUTPUT_DATA_STEP
 
-        WorkflowCommons(**wf_commons).save(job_path)
+        wfc = WorkflowCommons(**wf_commons)
+        wfc.set_outputs(
+            {
+                "wf_whatever": [
+                    {
+                        "location": sim_file,
+                        "basename": Path(sim_file).name,
+                        "size": 115421,
+                        "checksum": "md5$1581785719236745214124",
+                        "class": "File",
+                    }
+                ]
+            }
+        )
+        wfc.save(job_path)
 
         upload_output.execute(job_path)
 
@@ -507,16 +584,27 @@ class TestUploadOutputDataFile:
 
         mocker.patch.object(upload_output.bk_client, "sendXMLBookkeepingReport")
 
-        wf_commons["outputs"] = [
-            {"outputDataName": sim_file, "outputDataType": "sim", "outputBKType": "SIM", "stepName": "Gauss_1"}
-        ]
         wf_commons["output_SEs"] = {
             "SIM": ["Tier1-Buffer"],
         }
         wf_commons["inputs"] = ["AnyInputFile1"]
         wf_commons["output_data_step"] = self.OUTPUT_DATA_STEP
 
-        WorkflowCommons(**wf_commons).save(job_path)
+        wfc = WorkflowCommons(**wf_commons)
+        wfc.set_outputs(
+            {
+                "wf_whatever": [
+                    {
+                        "location": sim_file,
+                        "basename": Path(sim_file).name,
+                        "size": 115421,
+                        "checksum": "md5$1581785719236745214124",
+                        "class": "File",
+                    }
+                ]
+            }
+        )
+        wfc.save(job_path)
 
         with pytest.raises(WorkflowProcessingException):
             upload_output.execute(job_path)
@@ -546,9 +634,6 @@ class TestUploadOutputDataFile:
 
         mocker.patch.object(upload_output.bk_client, "sendXMLBookkeepingReport")
 
-        wf_commons["outputs"] = [
-            {"outputDataName": sim_file, "outputDataType": "sim", "outputBKType": "SIM", "stepName": "Gauss_1"}
-        ]
         wf_commons["output_SEs"] = {
             "SIM": ["Tier1-Buffer"],
         }
@@ -557,7 +642,21 @@ class TestUploadOutputDataFile:
         # Remove the output
         Path(job_path).joinpath(sim_file).unlink(missing_ok=True)
 
-        WorkflowCommons(**wf_commons).save(job_path)
+        wfc = WorkflowCommons(**wf_commons)
+        wfc.set_outputs(
+            {
+                "wf_whatever": [
+                    {
+                        "location": sim_file,
+                        "basename": Path(sim_file).name,
+                        "size": 115421,
+                        "checksum": "md5$1581785719236745214124",
+                        "class": "File",
+                    }
+                ]
+            }
+        )
+        wfc.save(job_path)
 
         # Execute module
         with pytest.raises(WorkflowProcessingException, match="Output data not found"):
@@ -585,9 +684,6 @@ class TestUploadOutputDataFile:
 
         mocker.patch.object(upload_output.bk_client, "sendXMLBookkeepingReport")
 
-        wf_commons["outputs"] = [
-            {"outputDataName": sim_file, "outputDataType": "sim", "outputBKType": "SIM", "stepName": "Gauss_1"}
-        ]
         wf_commons["output_SEs"] = {
             "SIM": ["Tier1-Buffer"],
         }
@@ -597,7 +693,21 @@ class TestUploadOutputDataFile:
 
         Path(sim_file).unlink(missing_ok=True)
 
-        WorkflowCommons(**wf_commons).save(job_path)
+        wfc = WorkflowCommons(**wf_commons)
+        wfc.set_outputs(
+            {
+                "wf_whatever": [
+                    {
+                        "location": sim_file,
+                        "basename": Path(sim_file).name,
+                        "size": 115421,
+                        "checksum": "md5$1581785719236745214124",
+                        "class": "File",
+                    }
+                ]
+            }
+        )
+        wfc.save(job_path)
 
         upload_output.execute(job_path)
 
