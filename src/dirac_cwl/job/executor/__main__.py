@@ -26,6 +26,11 @@ def _get_package_version(package: str) -> str:
         return "unknown"
 
 
+def _strip_prefix(x: str) -> str:
+    """Utilitarian function to strip .# prefix from a string."""
+    return x.replace(".#", "")
+
+
 # Create Typer app with context settings to allow extra arguments
 app = typer.Typer(context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
 
@@ -52,12 +57,16 @@ def version_callback(value: bool):
 
 def print_workflow_visualization(workflow_path: Path):
     """Print a nice visualization of the workflow structure with graph representation."""
-    import yaml
+    from cwl_utils.pack import pack
+    from cwl_utils.parser import load_document
 
     try:
-        with open(workflow_path, "r") as f:
-            cwl = yaml.safe_load(f)
+        cwl = load_document(pack(str(workflow_path)), baseuri=".")
+    except Exception as e:
+        console.print(f"[red]⚠ Could not load workflow:[/red] {e}\n")
+        raise typer.Exit(1) from e
 
+    try:
         console.print()
         console.print(
             Panel.fit(
@@ -67,146 +76,97 @@ def print_workflow_visualization(workflow_path: Path):
         )
 
         # Show basic info
-        cwl_version = cwl.get("cwlVersion", "Unknown")
-        doc = cwl.get("doc", cwl.get("label", ""))
+        cwl_version = getattr(cwl, "cwlVersion", "Unknown")
+        description = getattr(cwl, "doc", getattr(cwl, "label", ""))
 
-        info_table = Table(show_header=False, box=None, padding=(0, 2))
-        info_table.add_column("Key", style="bold cyan")
-        info_table.add_column("Value")
+        console.print("[bold cyan]CWL Version:[/bold cyan]", cwl_version)
+        console.print("[bold cyan]Description:[/bold cyan]", description)
 
-        info_table.add_row("CWL Version:", cwl_version)
-        if doc:
-            info_table.add_row("Description:", doc)
-
-        console.print(info_table)
-        console.print()
-
-        # Show inputs (handle both dict and list formats)
-        inputs = cwl.get("inputs", {})
+        # Show inputs
+        inputs = getattr(cwl, "inputs", [])
         if inputs:
             console.print("[bold green]📥 INPUTS:[/bold green]")
-            if isinstance(inputs, dict):
-                for name, spec in inputs.items():
-                    input_type = spec.get("type", "unknown") if isinstance(spec, dict) else spec
-                    label = spec.get("label", "") if isinstance(spec, dict) else ""
-                    label_str = f" [dim]({label})[/dim]" if label else ""
-                    console.print(f"  • [cyan]{name}[/cyan]: {input_type}{label_str}")
-            elif isinstance(inputs, list):
-                for inp in inputs:
-                    if isinstance(inp, dict):
-                        name = inp.get("id", "unknown")
-                        input_type = inp.get("type", "unknown")
-                        label = inp.get("label", inp.get("doc", ""))
-                        label_str = f" [dim]({label})[/dim]" if label else ""
-                        console.print(f"  • [cyan]{name}[/cyan]: {input_type}{label_str}")
+            for inp_item in inputs:
+                inp_name = _strip_prefix(getattr(inp_item, "id", "unknown"))
+                inp_type = getattr(inp_item, "type_", "unknown")
+                inp_label = getattr(inp_item, "label", getattr(inp_item, "doc", ""))
+                label_str = f" [dim]({inp_label})[/dim]" if inp_label else ""
+                console.print(f"  • [cyan]{inp_name}[/cyan]: {inp_type}{label_str}")
             console.print()
 
-        # Build and show graph representation (handle both dict and list formats)
-        steps = cwl.get("steps", {})
-        outputs = cwl.get("outputs", {})
+        # Build and show graph representation
+        steps = getattr(cwl, "steps", [])
+        num_steps = len(steps)
+        outputs = getattr(cwl, "outputs", [])
 
         if steps:
             console.print("[bold yellow]🔀 WORKFLOW GRAPH:[/bold yellow]")
-            console.print()
-
-            # Build dependency graph (handle both dict and list formats)
-            if isinstance(steps, dict):
-                step_list = list(steps.items())
-            elif isinstance(steps, list):
-                # Convert list format to (name, spec) tuples
-                step_list = [(s.get("id", f"step_{i}"), s) for i, s in enumerate(steps)]
-            else:
-                step_list = []
 
             # Print graph representation
-            for i, (step_name, step_spec) in enumerate(step_list):
-                if isinstance(step_spec, dict):
-                    is_last = i == len(step_list) - 1
+            for i, step_spec in enumerate(steps):
+                is_last = i + 1 == num_steps
 
-                    # Print step box
-                    step_prefix = "└──" if is_last else "├──"
-                    step_label = step_spec.get("label", step_name)
-                    console.print(f"{step_prefix} [bold cyan]{step_name}[/bold cyan] [dim]({step_label})[/dim]")
+                # Print step box
+                step_prefix = "└──" if is_last else "├──"
+                step_name = _strip_prefix(getattr(step_spec, "id", "unknown"))
+                step_label = getattr(step_spec, "label", step_name)
+                step_label = step_label if step_label else step_name
+                console.print(f"{step_prefix} [bold cyan]{step_name}[/bold cyan] [dim]({step_label})[/dim]")
 
-                    # Indentation for details
-                    detail_prefix = "    " if is_last else "│   "
+                # Indentation for details
+                detail_prefix = "    " if is_last else "│   "
 
-                    # Show inputs with arrows (handle both dict and list formats)
-                    step_in = step_spec.get("in", {})
-                    if step_in:
-                        if isinstance(step_in, dict):
-                            for in_name, in_source in step_in.items():
-                                source = (
-                                    in_source
-                                    if isinstance(in_source, str)
-                                    else (in_source.get("source", "?") if isinstance(in_source, dict) else "?")
-                                )
-                                console.print(f"{detail_prefix}  [green]⬅[/green] {in_name} [dim]←[/dim] {source}")
-                        elif isinstance(step_in, list):
-                            for inp in step_in:
-                                if isinstance(inp, dict):
-                                    in_name = inp.get("id", "?")
-                                    source = inp.get("source", "?")
-                                    console.print(f"{detail_prefix}  [green]⬅[/green] {in_name} [dim]←[/dim] {source}")
+                # Show inputs with arrows
+                # note that there is no `in` attribute in this object, but there is an `in_`
+                for step_in in getattr(step_spec, "in_", []):
+                    in_name = _strip_prefix(getattr(step_in, "id", "unknown")).replace(step_name + "/", "")
+                    in_source = _strip_prefix(getattr(step_in, "source", "?"))
+                    console.print(f"{detail_prefix}  [green]⬅[/green] {in_name} [dim]←[/dim] {in_source}")
 
-                    # Show outputs with arrows (handle both dict and list formats)
-                    step_out = step_spec.get("out", [])
-                    if step_out:
-                        if isinstance(step_out, list):
-                            for out in step_out:
-                                out_name = out.get("id", out) if isinstance(out, dict) else out
-                                console.print(f"{detail_prefix}  [yellow]➡[/yellow] {out_name}")
+                # Show outputs with arrows
+                for step_out in getattr(step_spec, "out", []):
+                    step_out_name = _strip_prefix(step_out).replace(step_name + "/", "")
+                    console.print(f"{detail_prefix}  [yellow]➡[/yellow] {step_out_name}")
 
-                    if not is_last:
-                        console.print("│")
+                if not is_last:
+                    console.print("│")
 
             console.print()
 
         # Show final outputs (handle both dict and list formats)
         if outputs:
             console.print("[bold magenta]📤 FINAL OUTPUTS:[/bold magenta]")
-            if isinstance(outputs, dict):
-                for name, spec in outputs.items():
-                    output_type = spec.get("type", "unknown") if isinstance(spec, dict) else spec
-                    source = spec.get("outputSource", "") if isinstance(spec, dict) else ""
-                    source_str = f" [dim]← {source}[/dim]" if source else ""
-                    console.print(f"  • [cyan]{name}[/cyan]: {output_type}{source_str}")
-            elif isinstance(outputs, list):
-                for out in outputs:
-                    if isinstance(out, dict):
-                        name = out.get("id", "unknown")
-                        output_type = out.get("type", "unknown")
-                        source = out.get("outputSource", "")
-                        label = out.get("label", "")
-                        label_str = f" [dim]({label})[/dim]" if label else ""
-                        source_str = f" [dim]← {source}[/dim]" if source else ""
-                        console.print(f"  • [cyan]{name}[/cyan]: {output_type}{label_str}{source_str}")
+            for out_item in outputs:
+                out_name = _strip_prefix(getattr(out_item, "id", "unknown"))
+                # note that there is no `type` attribute in this object, but there is an `type_`
+                out_type = getattr(out_item, "type_", "unknown")
+                out_source = _strip_prefix(getattr(out_item, "outputSource", "?"))
+                console.print(f"  • [cyan]{out_name}[/cyan]: {out_type} [dim]←[/dim] {out_source}")
             console.print()
 
         # Show hints
-        hints = cwl.get("hints", [])
+        hints = getattr(cwl, "hints", [])
         if hints:
             console.print("[bold blue]💡 HINTS:[/bold blue]")
             for hint in hints:
-                if isinstance(hint, dict):
-                    hint_class = hint.get("class", "unknown")
-                    console.print(f"  • {hint_class}")
-                    if hint_class == "dirac:Production":
-                        # Use plugin system for display formatting
-                        plugin_name = hint.get("input_dataset_plugin")
-                        if plugin_name:
-                            console.print(f"    [dim]Plugin:[/dim] {plugin_name}")
-                            try:
-                                from dirac_cwl.production import get_registry
+                hint_class = getattr(hint, "class", "unknown")
+                console.print(f"  • {hint_class}")
+                if hint_class == "dirac:Production":
+                    # Use plugin system for display formatting
+                    plugin_name = hint.input_dataset_plugin
+                    if plugin_name:
+                        console.print(f"    [dim]Plugin:[/dim] {plugin_name}")
+                        try:
+                            from dirac_cwl.production import get_registry
 
-                                plugin_cls = get_registry().get_plugin(plugin_name)
-                                if plugin_cls:
-                                    config = hint.get("input_dataset_config", {})
-                                    plugin_instance = plugin_cls()
-                                    for key, value in plugin_instance.format_hint_display(config):
-                                        console.print(f"    [dim]{key}:[/dim] {value}")
-                            except Exception:
-                                pass  # Silently ignore plugin display errors
+                            plugin_cls = get_registry().get_plugin(plugin_name)
+                            if plugin_cls:
+                                config = hint.get("input_dataset_config", {})
+                                plugin_instance = plugin_cls()
+                                for key, value in plugin_instance.format_hint_display(config):
+                                    console.print(f"    [dim]{key}:[/dim] {value}")
+                        except Exception:
+                            pass  # Silently ignore plugin display errors
             console.print()
 
     except Exception as e:
