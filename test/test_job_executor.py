@@ -33,7 +33,7 @@ def capture_workflow_visualization(workflow_path: Path) -> str:
 
 
 class TestPrintWorkflowVisualization:
-    """Tests for print_workflow_visualization() function"""
+    """Tests for print_workflow_visualization() function."""
 
     def test_command_line_tool_shows_metadata_only(self):
         """A CommandLineTool gets a graceful inputs/outputs-only style view."""
