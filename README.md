@@ -28,7 +28,7 @@ Once the workflow passes local testing, the user can choose from 3 options for s
   > - Dirac description (site, priority):  Dirac-specific attributes related to scheduling
   > - Metadata (job type): Dirac-specific attributes related to scheduling + execution
 
-2. **Submission as Dirac Transformation**: For workflows requiring continuous, real-time input data or large-scale execution, CWL tasks can be submitted as transformations. As new input data becomes available, jobs are automatically generated and executed as jobs. This method is ideal for ongoing data processing and scalable operations.
+2. **Submission as Dirac Transformation**: For workflows requiring continuous, real-time input data or large-scale execution, CWL tasks can be submitted as transformations. As new input data becomes available, CWL workflows are automatically generated and executed as jobs. This method is ideal for ongoing data processing and scalable operations.
 
   > - CWL task (inputs already described within it)
   > - Dirac description (site, priority)
