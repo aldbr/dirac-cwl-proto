@@ -76,7 +76,7 @@ def print_workflow_visualization(workflow_path: Path):
         )
 
         # Show basic info
-        cwl_version = getattr(cwl, "cwlVersion", "Unknown")
+        cwl_version = cwl.cwlVersion
         description = getattr(cwl, "doc", getattr(cwl, "label", ""))
 
         console.print("[bold cyan]CWL Version:[/bold cyan]", cwl_version)
@@ -133,7 +133,7 @@ def print_workflow_visualization(workflow_path: Path):
 
             console.print()
 
-        # Show final outputs (handle both dict and list formats)
+        # Show final outputs
         if outputs:
             console.print("[bold magenta]📤 FINAL OUTPUTS:[/bold magenta]")
             for out_item in outputs:
